@@ -1,0 +1,3 @@
+#!/bin/bash
+# Lanzador: usa el Python del entorno virtual del proyecto.
+exec "$(dirname "$0")/.venv/bin/python" "$(dirname "$0")/editor.py" "$@"

@@ -1,0 +1,10 @@
+.venv/
+build/
+dist/
+__pycache__/
+*.pyc
+.env
+proyectos/
+guiones/
+error.log
+.DS_Store

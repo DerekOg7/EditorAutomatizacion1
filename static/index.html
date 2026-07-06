@@ -1,0 +1,2839 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoFaceless Video — Editor</title>
+<style>
+  :root {
+    --bg: #0c0c13; --panel: #15151f; --panel2: #1c1c29; --borde: #2a2a3d;
+    --texto: #e7e7f2; --tenue: #9a9ab0; --acento: #8b5cf6; --acento2: #6d4bc4;
+    --ok: #34d399; --alerta: #f87171; --ambar: #fbbf24;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--texto); height: 100vh; display: flex;
+    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden;
+  }
+  button {
+    font: inherit; border: 0; border-radius: 8px; cursor: pointer;
+    background: var(--panel2); color: var(--texto); padding: 8px 14px;
+  }
+  button:hover { filter: brightness(1.2); }
+  button.primario { background: var(--acento); font-weight: 600; }
+  button.primario:disabled { background: #3a3a52; color: var(--tenue); cursor: default; }
+  input, select, textarea {
+    font: inherit; background: var(--bg); color: var(--texto);
+    border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; width: 100%;
+  }
+  textarea { resize: vertical; }
+  ::-webkit-scrollbar { height: 10px; width: 10px; }
+  ::-webkit-scrollbar-thumb { background: #33334a; border-radius: 5px; }
+
+  /* ---- barra lateral ---- */
+  #lateral {
+    width: 270px; min-width: 270px; background: var(--panel); height: 100%;
+    border-right: 1px solid var(--borde); display: flex; flex-direction: column;
+  }
+  #lateral h1 { font-size: 15px; padding: 18px 16px 4px; }
+  #lateral h1 small { display: block; color: var(--acento); font-weight: 500; font-size: 11px; letter-spacing: 2px; }
+  #lateral .zona-nuevo { padding: 12px 16px; }
+  #lista-proyectos { flex: 1; overflow-y: auto; padding: 0 10px; }
+  .proy {
+    padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 4px;
+    border: 1px solid transparent;
+  }
+  .proy:hover { background: var(--panel2); }
+  .proy.activo { background: var(--panel2); border-color: var(--acento); }
+  .proy .nombre { font-weight: 600; }
+  .proy .meta { color: var(--tenue); font-size: 12px; display: flex; gap: 10px; }
+  .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  #zona-unir { border-top: 1px solid var(--borde); padding: 14px 16px; }
+  #zona-unir h3 { font-size: 13px; margin-bottom: 8px; color: var(--tenue); }
+  #zona-unir label { display: flex; gap: 8px; align-items: center; padding: 3px 0; font-size: 13px; cursor: pointer; }
+  #zona-unir input[type=checkbox] { width: auto; }
+  #zona-unir input[type=text] { margin: 8px 0; }
+
+  /* ---- principal ---- */
+  #principal { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #vacio { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--tenue); text-align: center; }
+  #proyecto { flex: 1; display: none; flex-direction: column; overflow: hidden; }
+
+  #cabecera {
+    display: flex; align-items: center; gap: 14px; padding: 14px 20px;
+    border-bottom: 1px solid var(--borde); background: var(--panel);
+  }
+  #cabecera h2 { font-size: 17px; }
+  #chip-estado {
+    font-size: 12px; padding: 4px 12px; border-radius: 20px; background: var(--panel2);
+    color: var(--tenue); max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  #chip-estado.trabajando { color: var(--ambar); }
+  #chip-estado.error { color: var(--alerta); }
+  #chip-estado.listo { color: var(--ok); }
+  #barra-prog { height: 3px; background: var(--acento); width: 0%; transition: width .4s; }
+
+  #zona-audio { padding: 12px 20px 4px; }
+  #zona-audio audio { width: 100%; height: 36px; }
+
+  /* ---- timeline ---- */
+  #timeline-caja { padding: 10px 20px 6px; }
+  #timeline-scroll { overflow-x: auto; padding-bottom: 8px; flex: 1; }
+  #pistas { position: relative; }
+  #pistas-etiquetas { width: 74px; flex-shrink: 0; }
+  #pistas-etiquetas .etq {
+    color: var(--tenue); font-size: 10px; letter-spacing: .5px; text-transform: uppercase;
+    display: flex; align-items: center; justify-content: flex-end; gap: 4px;
+    padding-right: 6px; margin-bottom: 4px;
+  }
+  .mini-btn { padding: 2px 7px; font-size: 11px; background: var(--panel2); }
+  .pista-ov { position: relative; height: 26px; margin-bottom: 4px; border-radius: 6px; }
+  #pista-texto { background: rgba(139,92,246,.06); }
+  #pista-imagen { background: rgba(52,211,153,.06); }
+  #pista-anim { background: rgba(251,191,36,.06); }
+  .an-pl { display: none; }
+  #an-tabs button.activo { background: var(--acento); border-color: var(--acento); font-weight: 600; }
+  .an-barra-fila { display: flex; gap: 8px; margin-bottom: 6px; }
+  #pv-subs { position: absolute; left: 6%; right: 6%; bottom: 6%; text-align: center;
+             pointer-events: none; font-weight: 700; line-height: 1.25;
+             text-shadow: 0 0 4px #000, 2px 2px 3px #000, -2px 2px 3px #000; }
+  #pv-subs.centro { bottom: auto; top: 50%; transform: translateY(-50%); }
+  .sub-fila { display: flex; gap: 6px; margin-bottom: 5px; align-items: center; }
+  .sub-fila input[type=number] { width: 72px; flex: 0 0 72px; }
+  .sub-fila input[type=text] { flex: 1; }
+  #sub-lista { max-height: 300px; overflow-y: auto; padding-right: 4px; }
+  .an-barra-fila input { flex: 1; }
+  .an-barra-fila button { padding: 4px 10px; }
+  .ov-item {
+    position: absolute; top: 2px; bottom: 2px; border-radius: 6px; cursor: grab;
+    background: rgba(139,92,246,.45); border: 1px solid var(--acento);
+    font-size: 10px; color: #fff; padding: 2px 6px; overflow: hidden;
+    white-space: nowrap; text-overflow: ellipsis; user-select: none;
+  }
+  .ov-item:active { cursor: grabbing; }
+  #onda-narra { display: block; margin-bottom: 4px; cursor: pointer; background: rgba(139,92,246,.05); border-radius: 6px; }
+  #onda-musica { display: block; background: rgba(52,211,153,.05); border-radius: 6px; }
+  #timeline { position: relative; height: 92px; display: flex; gap: 2px; }
+  .bloque {
+    position: relative; height: 100%; border-radius: 8px; cursor: pointer; overflow: hidden;
+    background: #23233a center/cover no-repeat; border: 2px solid transparent; flex-shrink: 0;
+  }
+  .bloque.sel { border-color: var(--acento); }
+  .bloque.sin-imagen { border-color: var(--alerta); border-style: dashed; }
+  .bloque.destino { border-color: var(--ok); border-style: solid; }
+  .bloque .etiq {
+    position: absolute; left: 0; right: 0; bottom: 0; font-size: 10px; padding: 2px 5px;
+    background: linear-gradient(transparent, rgba(0,0,0,.85)); color: #fff;
+    pointer-events: none;
+  }
+  .bloque .asa {
+    position: absolute; right: -2px; top: 0; bottom: 0; width: 10px;
+    cursor: col-resize; z-index: 3;
+  }
+  .bloque .asa:hover, .bloque .asa.activa { background: rgba(139,92,246,.55); }
+  .bloque .badge-video {
+    position: absolute; top: 3px; left: 5px; font-size: 12px; z-index: 1;
+    text-shadow: 0 0 4px #000; pointer-events: none;
+  }
+  #pista-timeline { color: var(--tenue); font-size: 11px; padding: 0 20px 4px; }
+  .bloque .carga { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--tenue); font-size: 11px; }
+  #aguja { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--alerta); pointer-events: none; z-index: 2; }
+  #regla { color: var(--tenue); font-size: 11px; display: flex; justify-content: space-between; padding: 2px 20px 0; }
+
+  /* ---- pestañas ---- */
+  #pestanas { display: flex; gap: 4px; padding: 8px 20px 0; border-bottom: 1px solid var(--borde); }
+  .pestana {
+    background: none; color: var(--tenue); border-radius: 8px 8px 0 0; padding: 8px 16px;
+  }
+  .pestana.activa { background: var(--panel); color: var(--texto); font-weight: 600; }
+  #contenido { flex: 1; overflow-y: auto; padding: 16px 20px; background: var(--panel); }
+
+  /* detalle de escena */
+  #detalle { display: none; gap: 20px; }
+  #detalle.visible { display: flex; }
+  #det-izq { width: 46%; min-width: 320px; }
+  #det-img {
+    width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: #23233a center/cover no-repeat;
+    display: flex; align-items: center; justify-content: center; color: var(--tenue);
+  }
+  #det-izq .acciones { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  #det-der { flex: 1; min-width: 0; }
+  .campo { margin-bottom: 14px; }
+  .campo h4 { font-size: 11px; letter-spacing: 1.5px; color: var(--tenue); text-transform: uppercase; margin-bottom: 4px; }
+  .caja-texto { background: var(--bg); border: 1px solid var(--borde); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .fila-busqueda { display: flex; gap: 8px; }
+  #pexels-resultados { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  #pexels-resultados img {
+    width: 100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 8px; cursor: pointer;
+    border: 2px solid transparent; display: block;
+  }
+  #pexels-resultados img:hover { border-color: var(--acento); }
+
+  /* previsualización */
+  #previsualizacion { display: none; }
+  #previsualizacion.visible { display: block; }
+  #pv-fila { display: flex; gap: 16px; align-items: flex-start; }
+  #pv-izq { flex: 1; min-width: 0; }
+  #pv-panel {
+    width: 250px; flex-shrink: 0; background: var(--panel2);
+    border: 1px solid var(--borde); border-radius: 12px; padding: 14px;
+  }
+  #ef-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  #ef-cab h4 { font-size: 13px; }
+  .ef-ctl { margin-bottom: 12px; }
+  .ef-ctl label { display: flex; justify-content: space-between; font-size: 12px; color: var(--tenue); margin-bottom: 4px; }
+  .ef-ctl label b { color: var(--texto); font-weight: 600; }
+  .ef-ctl input[type=range] { width: 100%; padding: 0; }
+  #ef-vel-btns { display: flex; gap: 4px; }
+  #ef-vel-btns button { flex: 1; padding: 5px 0; font-size: 12px; background: var(--bg); }
+  #ef-vel-btns button.activo { background: var(--acento); font-weight: 600; }
+  #ef-vel-btns.deshab { opacity: .4; pointer-events: none; }
+  .pf-sep { height: 1px; background: var(--borde); margin: 12px 0; }
+  #pv-panel select { width: 100%; }
+  #pv-lienzo {
+    position: relative; width: 100%; margin: 0 auto;
+    aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;
+  }
+  .pv-capa { position: absolute; inset: 0; display: none; }
+  .pv-capa img, .pv-capa video {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+    transform-origin: center center; will-change: transform;
+  }
+  #pv-negro { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  #pv-overlays { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  #pv-anim { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .pv-an-num { position: absolute; font-weight: 700; white-space: nowrap;
+    text-shadow: 2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000; }
+  .pv-an-banner { position: absolute; display: flex; align-items: center; gap: 12px;
+    background: rgba(15,15,25,.88); border-radius: 12px; padding: 12px 18px; }
+  .pv-an-banner .barra { width: 5px; align-self: stretch; border-radius: 3px; }
+  .pv-an-banner .tit { color: #fff; font-weight: 600; white-space: nowrap; }
+  .pv-an-banner .sub { color: #b8b8c8; white-space: nowrap; }
+  .pv-an-barras { position: absolute; display: flex; align-items: flex-end; gap: 6%; }
+  .pv-an-barras .col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .pv-an-barras .bar { border-radius: 5px 5px 0 0; width: 100%; }
+  .pv-an-barras .val, .pv-an-barras .et { color: #fff; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
+  .pv-ov-texto { position: absolute; font-weight: 700; white-space: nowrap;
+    text-shadow: 2px 2px 0 #000, -2px 2px 0 #000, 2px -2px 0 #000, -2px -2px 0 #000, 0 0 6px #000; }
+  .pv-ov-logo { position: absolute; }
+  #pv-play {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+    width: 74px; height: 74px; border-radius: 50%; font-size: 26px;
+    background: rgba(0,0,0,.55); color: #fff; backdrop-filter: blur(3px);
+  }
+  #pv-play.oculto { display: none; }
+  #pv-barra { display: flex; align-items: center; gap: 12px; max-width: 960px;
+    margin: 10px auto 0; }
+  #pv-barra #pv-seek { flex: 1; padding: 0; }
+  #pv-barra button { width: 40px; }
+
+  /* cuadrícula de todas las escenas */
+  #cuadricula { display: none; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  #cuadricula.visible { display: grid; }
+  .tarjeta { background: var(--panel2); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid var(--borde); }
+  .tarjeta:hover { border-color: var(--acento); }
+  .tarjeta .mini { width: 100%; aspect-ratio: 16/9; background: #23233a center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--tenue); font-size: 12px; }
+  .tarjeta .cuerpo { padding: 10px 12px; }
+  .tarjeta .titulo { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; }
+  .tarjeta .narr { color: var(--tenue); font-size: 12px; margin: 4px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tarjeta .prompt { font-size: 11px; color: var(--tenue); background: var(--bg); border-radius: 8px; padding: 6px 8px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+
+  /* modales */
+  .modal-fondo {
+    position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none;
+    align-items: center; justify-content: center; z-index: 10;
+  }
+  .modal-fondo.visible { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--borde); border-radius: 16px; padding: 24px; width: 420px; max-width: 92vw; }
+  .modal h3 { margin-bottom: 14px; }
+  .modal .campo { margin-bottom: 12px; }
+  .modal .botones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+  #modal-video .modal { width: 860px; }
+  #modal-video video { width: 100%; border-radius: 10px; }
+  .zona-archivo {
+    border: 2px dashed var(--borde); border-radius: 12px; padding: 18px; text-align: center;
+    color: var(--tenue); cursor: pointer;
+  }
+  .zona-archivo.con-archivo { border-color: var(--ok); color: var(--ok); }
+  #aviso-pexels { background: #3a2b12; color: var(--ambar); border-radius: 10px; padding: 10px 14px; margin: 10px 20px 0; font-size: 13px; display: none; }
+
+  /* pantalla de bienvenida */
+  #bienvenida { position: fixed; inset: 0; z-index: 100; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; }
+  .bienv-caja { text-align: center; max-width: 460px; padding: 24px; }
+  .bienv-logo { font-size: 56px; margin-bottom: 8px; }
+  .bienv-marca { font-size: 30px; font-weight: 700; letter-spacing: .5px; }
+  .bienv-marca span { color: var(--acento); }
+  .bienv-tagline { color: var(--tenue); font-size: 16px; margin: 12px 0 28px; line-height: 1.5; }
+  .bienv-lbl { color: var(--tenue); font-size: 11px; letter-spacing: 2px; margin-bottom: 10px; }
+  .bienv-idiomas { display: flex; gap: 10px; justify-content: center; margin-bottom: 26px; }
+  .bi-lang { font: inherit; padding: 12px 26px; border-radius: 10px; cursor: pointer;
+    background: var(--panel); color: var(--texto); border: 1px solid var(--borde); }
+  .bi-lang.sel { border-color: var(--acento); background: var(--panel2); }
+  .bi-lang:hover { border-color: var(--acento); }
+  .bienv-start { width: 100%; padding: 14px; font-size: 15px; }
+  #btn-idioma { padding: 8px 12px; }
+</style>
+</head>
+<body>
+
+<div id="bienvenida">
+  <div class="bienv-caja">
+    <div class="bienv-logo">🎬</div>
+    <div class="bienv-marca">AutoFaceless <span>Video</span></div>
+    <p class="bienv-tagline" data-i18n="welcome_tagline">De la idea al video de YouTube, sin editar a mano.</p>
+    <div class="bienv-lbl" data-i18n="welcome_lang">ELIGE TU IDIOMA</div>
+    <div class="bienv-idiomas">
+      <button class="bi-lang" data-lang="es" onclick="elegirIdioma('es')">Español</button>
+      <button class="bi-lang" data-lang="en" onclick="elegirIdioma('en')">English</button>
+    </div>
+    <button class="primario bienv-start" data-i18n="welcome_start" onclick="entrarApp()">Comenzar</button>
+  </div>
+</div>
+
+<aside id="lateral">
+  <h1><small>AUTOFACELESS VIDEO</small> <span data-i18n="side_editor">Editor de historias</span></h1>
+  <div class="zona-nuevo">
+    <button class="primario" style="width:100%" onclick="abrirModalNuevo()" data-i18n="side_new">＋ Nueva historia</button>
+    <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">✨ Crear historia con IA</button>
+    <button style="width:100%;margin-top:6px" id="btn-claves" onclick="abrirClaves()" data-i18n="side_keys">🔑 Claves API</button>
+  </div>
+  <div id="lista-proyectos"></div>
+  <div id="zona-unir">
+    <h3 data-i18n="side_join_title">UNIR HISTORIAS (video final)</h3>
+    <div id="unir-lista"></div>
+    <input type="text" id="unir-nombre" placeholder="nombre del video final" value="video_final" data-i18n-ph="side_join_ph">
+    <button class="primario" style="width:100%" id="btn-unir" onclick="unirHistorias()" data-i18n="side_join_btn">Unir en un video</button>
+    <div id="unir-estado" style="font-size:12px;color:var(--tenue);margin-top:6px"></div>
+  </div>
+</aside>
+
+<main id="principal">
+  <div id="vacio">
+    <div>
+      <div style="font-size:40px">🎬</div>
+      <p data-i18n="empty_1">Crea una historia nueva o elige una de la izquierda.</p>
+      <p style="font-size:12px" data-i18n="empty_2">Sube el audio de MiniMax y mira cómo se arma sola la línea de tiempo.</p>
+    </div>
+  </div>
+
+  <div id="proyecto">
+    <div id="cabecera">
+      <h2 id="p-nombre"></h2>
+      <div id="chip-estado">—</div>
+      <div style="flex:1"></div>
+      <span id="aviso-desact" style="display:none;color:var(--ambar);font-size:12px" data-i18n="hdr_unsaved">⚠ hay cambios sin exportar</span>
+      <button id="btn-idioma" onclick="alternarIdioma()" title="Language / Idioma">🌐 EN</button>
+      <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
+      <button onclick="$('modal-ayuda').classList.add('visible')" data-i18n="hdr_help" data-i18n-title="hdr_help">❓ Cómo se usa</button>
+      <button id="btn-video" style="display:none" onclick="verVideo()" data-i18n="hdr_view">▶ Ver video</button>
+      <button class="primario" id="btn-exportar" onclick="abrirExportar()">Exportar video</button>
+    </div>
+    <div id="barra-prog"></div>
+    <div id="aviso-pexels"></div>
+
+    <div id="zona-audio">
+      <audio id="audio" controls></audio>
+      <div class="fila-busqueda" style="align-items:center;margin-top:6px;font-size:12px;color:var(--tenue)">
+        <span data-i18n="mus_bg">🎵 Música de fondo:</span>
+        <span id="musica-nombre">ninguna</span>
+        <button style="padding:4px 10px;font-size:12px" onclick="document.getElementById('archivo-musica').click()" data-i18n="mus_upload">Subir música</button>
+        <input type="file" id="archivo-musica" accept="audio/*,.mp3,.wav,.m4a" style="display:none" onchange="subirMusica(this)">
+        <span id="musica-controles" style="display:none;align-items:center;gap:8px">
+          <label><span data-i18n="mus_vol">volumen</span> <input type="range" id="musica-vol" min="2" max="40" step="1" style="width:110px;padding:0;vertical-align:middle" onchange="guardarVolumen()"> <span id="musica-vol-txt"></span></label>
+          <button style="padding:4px 10px;font-size:12px" onclick="quitarMusica()" title="Quitar música" data-i18n-title="mus_remove_t">✕</button>
+        </span>
+      </div>
+    </div>
+
+    <div id="timeline-caja">
+      <div style="display:flex;gap:8px">
+        <div id="pistas-etiquetas">
+          <div class="etq" style="height:26px">
+            <button class="mini-btn" onclick="abrirOverlay(null,'texto')" title="Añadir texto" data-i18n="trk_text" data-i18n-title="trk_text_t">Texto +T</button>
+          </div>
+          <div class="etq" style="height:26px">
+            <button class="mini-btn" onclick="abrirOverlay(null,'logo')" title="Añadir imagen/logo" data-i18n="trk_image" data-i18n-title="trk_image_t">Imagen +🖼</button>
+          </div>
+          <div class="etq" style="height:26px">
+            <button class="mini-btn" onclick="abrirAnim(null)" title="Añadir animación" data-i18n="trk_anim" data-i18n-title="trk_anim_t">Animación +📊</button>
+          </div>
+          <div class="etq" style="height:92px" data-i18n="trk_video">Video</div>
+          <div class="etq" style="height:46px" data-i18n="trk_narration">Narración</div>
+          <div class="etq" style="height:24px" data-i18n="trk_music">Música</div>
+        </div>
+        <div id="timeline-scroll">
+          <div id="pistas">
+            <div id="pista-texto" class="pista-ov"></div>
+            <div id="pista-imagen" class="pista-ov"></div>
+            <div id="pista-anim" class="pista-ov"></div>
+            <div id="timeline"></div>
+            <canvas id="onda-narra" height="46" title="Clic para saltar a ese punto"></canvas>
+            <canvas id="onda-musica" height="24"></canvas>
+            <div id="aguja" style="left:0"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="regla"><span>0:00</span><span id="regla-fin">—</span></div>
+    <div id="pista-timeline" data-i18n="tl_hint">Arrastra el borde derecho de una escena para cambiar su duración · arrastra una miniatura sobre otra para intercambiar · Texto e Imagen tienen su propia capa (+T / +🖼) encima del video · ⌘Z deshace, ⇧⌘Z rehace</div>
+
+    <div id="pestanas">
+      <button class="pestana activa" id="tab-detalle" onclick="verTab('detalle')" data-i18n="tab_scene">Escena</button>
+      <button class="pestana" id="tab-preview" onclick="verTab('preview')" data-i18n="tab_preview">▶ Previsualización</button>
+      <button class="pestana" id="tab-todas" onclick="verTab('todas')" data-i18n="tab_all">Todas las escenas y prompts</button>
+    </div>
+
+    <div id="contenido">
+      <div id="previsualizacion">
+        <div id="pv-fila">
+          <div id="pv-izq">
+            <div id="pv-lienzo">
+              <div class="pv-capa" id="pv-0"></div>
+              <div class="pv-capa" id="pv-1"></div>
+              <div id="pv-overlays"></div>
+              <div id="pv-anim"></div>
+              <div id="pv-subs"></div>
+              <div id="pv-negro"></div>
+              <button id="pv-play" onclick="pvToggle()">▶</button>
+            </div>
+            <div id="pv-barra">
+              <button onclick="pvToggle()" id="pv-play2">▶</button>
+              <span id="pv-tiempo">0:00 / 0:00</span>
+              <input type="range" id="pv-seek" min="0" max="1000" value="0" oninput="pvSeek(this.value)">
+              <span style="color:var(--tenue);font-size:12px" data-i18n="pv_approx">vista aproximada · exporta para el final</span>
+            </div>
+          </div>
+          <div id="pv-panel">
+            <div id="ef-cab">
+              <h4 id="ef-titulo" data-i18n="pv_effects">Efectos</h4>
+              <button class="mini-btn" onclick="resetAjustes()" title="Volver a los valores por defecto" data-i18n-title="pv_reset_t">↺ reset</button>
+            </div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_scale">Escala</span> <b id="ef-escala-v">1.00×</b></label>
+              <input type="range" id="ef-escala" min="0.3" max="3" step="0.05" value="1"
+                     oninput="ajustePreview('escala', this.value)">
+            </div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_posx">Posición X</span> <b id="ef-posx-v">0%</b></label>
+              <input type="range" id="ef-posx" min="-80" max="80" step="1" value="0"
+                     oninput="ajustePreview('pos_x', this.value)">
+            </div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_posy">Posición Y</span> <b id="ef-posy-v">0%</b></label>
+              <input type="range" id="ef-posy" min="-80" max="80" step="1" value="0"
+                     oninput="ajustePreview('pos_y', this.value)">
+            </div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_opac">Opacidad</span> <b id="ef-opac-v">100%</b></label>
+              <input type="range" id="ef-opac" min="0" max="1" step="0.05" value="1"
+                     oninput="ajustePreview('opacidad', this.value)">
+            </div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_speed">Velocidad (solo video)</span> <b id="ef-vel-v">1×</b></label>
+              <div id="ef-vel-btns">
+                <button data-v="0.5" onclick="ajusteVel(0.5)">0.5×</button>
+                <button data-v="1" onclick="ajusteVel(1)">1×</button>
+                <button data-v="1.5" onclick="ajusteVel(1.5)">1.5×</button>
+                <button data-v="2" onclick="ajusteVel(2)">2×</button>
+              </div>
+            </div>
+            <p id="ef-nota" style="color:var(--tenue);font-size:11px;margin:8px 0 0">
+              <span data-i18n="pv_note">Mueve los controles y míralos en el lienzo. Pausa para ajustar con calma.</span>
+            </p>
+
+            <div class="pf-sep"></div>
+            <div class="ef-ctl">
+              <label><span data-i18n="pv_dur">Duración</span> <b id="pf-dur">—</b></label>
+              <div style="display:flex;gap:6px">
+                <button style="flex:1" id="pf-menos" onclick="pfDur(-0.5)">−0.5s</button>
+                <button style="flex:1" id="pf-mas" onclick="pfDur(0.5)">+0.5s</button>
+              </div>
+            </div>
+            <div class="ef-ctl">
+              <label data-i18n="pv_motion">Efecto de movimiento</label>
+              <select id="pf-efecto" onchange="pfOpciones()">
+                <option value="auto" data-i18n="ef_auto">Automático</option>
+                <option value="zoom_in" data-i18n="ef_in">Acercar (zoom in)</option>
+                <option value="zoom_out" data-i18n="ef_out">Alejar (zoom out)</option>
+                <option value="pan_h" data-i18n="ef_panh">Paneo horizontal</option>
+                <option value="pan_v" data-i18n="ef_panv">Paneo vertical</option>
+                <option value="estatico" data-i18n="ef_static">Estático</option>
+              </select>
+            </div>
+            <div class="ef-ctl">
+              <label>Transición de salida</label>
+              <select id="pf-transicion" onchange="pfOpciones()">
+                <option value="fundido" data-i18n="tr_fund">Fundido cruzado</option>
+                <option value="corte" data-i18n="tr_cut">Corte seco</option>
+                <option value="negro" data-i18n="tr_black">Fundido a negro</option>
+                <option value="disolver" data-i18n="tr_diss">Disolver</option>
+                <option value="deslizar" data-i18n="tr_slide">Deslizar</option>
+                <option value="circulo" data-i18n="tr_circle">Círculo</option>
+                <option value="zoom" data-i18n="tr_zoom">Zoom</option>
+                <option value="pixel" data-i18n="tr_pixel">Pixelar</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <button style="flex:1" id="pf-dividir" onclick="dividirEscena(pvPanelN)" title="Corta esta escena en dos" data-i18n="pv_insert" data-i18n-title="pv_insert_t">➕ Insertar</button>
+              <button style="flex:1;color:var(--alerta)" onclick="eliminarEscena(pvPanelN)" title="Borra esta escena; ⌘Z para deshacer" data-i18n="pv_del" data-i18n-title="pv_del_t">🗑 Eliminar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="detalle" class="visible">
+        <div id="det-izq">
+          <div id="det-img"></div>
+          <div class="acciones">
+            <button onclick="document.getElementById('archivo-imagen').click()" data-i18n="det_upload">⬆ Subir mi imagen o video</button>
+            <input type="file" id="archivo-imagen" accept="image/*,video/*,.mp4,.mov,.webp" style="display:none" onchange="subirImagen(this)">
+          </div>
+        </div>
+        <div id="det-der">
+          <div class="campo"><h4 id="det-titulo">Escena</h4></div>
+          <div class="campo">
+            <h4 data-i18n="det_narr">Narración</h4>
+            <div class="caja-texto" id="det-narracion"></div>
+          </div>
+          <div class="campo">
+            <h4 data-i18n="det_det">Duración · efecto · transición de salida</h4>
+            <div class="fila-busqueda" style="align-items:center">
+              <span id="det-dur" style="min-width:46px;font-weight:600"></span>
+              <button onclick="ajustarDur(-0.5)" id="btn-menos" title="Quita 0.5s (se lo da a la escena siguiente)" data-i18n-title="tt_menos">−0.5s</button>
+              <button onclick="ajustarDur(0.5)" id="btn-mas" title="Agrega 0.5s (se lo quita a la escena siguiente)" data-i18n-title="tt_mas">+0.5s</button>
+              <select id="det-efecto" onchange="guardarOpciones()">
+                <option value="auto" data-i18n="def_auto">Efecto: automático</option>
+                <option value="zoom_in" data-i18n="ef_in">Acercar (zoom in)</option>
+                <option value="zoom_out" data-i18n="ef_out">Alejar (zoom out)</option>
+                <option value="pan_h" data-i18n="ef_panh">Paneo horizontal</option>
+                <option value="pan_v" data-i18n="ef_panv">Paneo vertical</option>
+                <option value="estatico" data-i18n="def_static">Estático (sin movimiento)</option>
+              </select>
+              <select id="det-transicion" onchange="guardarOpciones()">
+                <option value="fundido" data-i18n="dtr_fund">Salida: fundido cruzado</option>
+                <option value="corte" data-i18n="tr_cut">Corte seco</option>
+                <option value="negro" data-i18n="tr_black">Fundido a negro</option>
+                <option value="disolver" data-i18n="tr_diss">Disolver</option>
+                <option value="deslizar" data-i18n="tr_slide">Deslizar</option>
+                <option value="circulo" data-i18n="tr_circle">Círculo</option>
+                <option value="zoom" data-i18n="tr_zoom">Zoom</option>
+                <option value="pixel" data-i18n="tr_pixel">Pixelar</option>
+              </select>
+            </div>
+            <div style="margin-top:8px">
+              <button onclick="dividirEscena()" id="btn-dividir" title="Corta esta escena en dos para meter una imagen intermedia" data-i18n-title="tt_dividir" data-i18n="det_insert">➕ Insertar escena (dividir esta en 2)</button>
+              <button onclick="eliminarEscena()" id="btn-eliminar" style="color:var(--alerta)" title="Borra esta escena; su tiempo lo absorbe la anterior. ⌘Z para deshacer" data-i18n-title="tt_eliminar" data-i18n="det_del">🗑 Eliminar escena</button>
+            </div>
+          </div>
+          <div class="campo">
+            <h4><span data-i18n="det_prompt">Prompt de imagen (editable)</span>
+              <button style="padding:2px 10px;font-size:11px" onclick="copiarPrompt()" data-i18n="det_copy">copiar</button>
+            </h4>
+            <textarea id="det-prompt" rows="3" onblur="guardarPrompt()"></textarea>
+            <div class="fila-busqueda" style="margin-top:8px">
+              <button class="primario" id="btn-ia" onclick="generarIA()" style="flex:1" data-i18n="det_genai">✨ Generar imagen con IA (gratis)</button>
+              <button id="btn-video-ia" onclick="generarVideoIA()" style="flex:1;display:none" title="Genera un clip de video con MiniMax Hailuo (usa tus créditos)" data-i18n-title="tt_videoia">🎬 Video IA (MiniMax)</button>
+            </div>
+            <div id="ia-error" style="color:var(--alerta);font-size:12px;margin-top:4px"></div>
+          </div>
+          <div class="campo" id="campo-tramo" style="display:none">
+            <h4 data-i18n="det_trim">Parte del video a usar (el video dura más que la escena)</h4>
+            <div class="fila-busqueda" style="align-items:center">
+              <input type="range" id="tramo-slider" min="0" max="0" step="0.1" value="0"
+                     style="flex:1;padding:0" oninput="previsualizarTramo()" onchange="guardarTramo()">
+              <span id="tramo-info" style="min-width:110px;text-align:right;color:var(--tenue);font-size:12px"></span>
+            </div>
+          </div>
+          <div class="campo">
+            <h4><span data-i18n="det_search">Buscar imágenes y videos</span>
+              <button style="padding:2px 10px;font-size:11px" onclick="sugerirPalabras()" title="Deja que el editor elija mejores palabras clave a partir de la narración" data-i18n="det_suggest">✨ sugerir palabras</button>
+            </h4>
+            <div class="fila-busqueda">
+              <input type="text" id="det-consulta" placeholder="ej: bosque niebla noche" data-i18n-ph="det_search_ph">
+              <select id="pexels-tipo" style="width:160px;flex-shrink:0">
+                <option value="fotos" data-i18n="px_photos">Pexels · Fotos</option>
+                <option value="videos" data-i18n="px_videos">Pexels · Videos</option>
+                <option value="web" data-i18n="px_web">Web (Google/Bing)</option>
+              </select>
+              <button class="primario" onclick="buscarPexels()" data-i18n="det_search_btn">Buscar</button>
+            </div>
+            <div id="pexels-resultados"></div>
+          </div>
+        </div>
+      </div>
+      <div id="cuadricula"></div>
+    </div>
+  </div>
+</main>
+
+<!-- modal nueva historia -->
+<div class="modal-fondo" id="modal-nuevo">
+  <div class="modal">
+    <h3 data-i18n="nm_title">Nueva historia</h3>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_name">NOMBRE</h4>
+      <input type="text" id="nuevo-nombre" placeholder="ej: historia_roswell" data-i18n-ph="nm_name_ph">
+    </div>
+    <div class="campo">
+      <div class="zona-archivo" id="zona-audio-drop" onclick="document.getElementById('nuevo-audio').click()">
+        <span data-i18n="nm_audio">🎙 Haz clic para elegir el audio de MiniMax</span><br><small>mp3, wav, m4a…</small>
+      </div>
+      <input type="file" id="nuevo-audio" accept="audio/*,.mp3,.wav,.m4a,.aac,.flac,.ogg" style="display:none"
+             onchange="marcarAudio(this)">
+    </div>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_script">GUIÓN (OPCIONAL, RECOMENDADO)</h4>
+      <textarea id="nuevo-guion" rows="4" placeholder="Pega aquí el guión con el que hiciste el audio. Se usa para corregir nombres y palabras, y mejora los prompts y las búsquedas de imágenes." data-i18n-ph="nm_script_ph"></textarea>
+    </div>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_acc">PRECISIÓN DE TRANSCRIPCIÓN</h4>
+      <select id="nuevo-modelo">
+        <option value="small" selected data-i18n="nm_m_small">Normal — recomendada (modelo small)</option>
+        <option value="base" data-i18n="nm_m_base">Rápida (modelo base)</option>
+        <option value="tiny" data-i18n="nm_m_tiny">Muy rápida, solo pruebas (modelo tiny)</option>
+      </select>
+    </div>
+    <div class="botones">
+      <button onclick="cerrarModal('modal-nuevo')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" id="btn-crear" onclick="crearProyecto()" data-i18n="nm_create">Crear y procesar</button>
+    </div>
+    <div id="nuevo-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- modal crear historia con IA -->
+<div class="modal-fondo" id="modal-ia">
+  <div class="modal" style="width:640px">
+    <h3 data-i18n="ia_title">✨ Crear historia con IA (guión + voz)</h3>
+
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_channel">NOMBRE DE TU CANAL</h4>
+      <input type="text" id="ia-canal" placeholder="ej: Secretos Inexplicables" data-i18n-ph="ia_channel_ph">
+    </div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:2"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_topic">TEMA DE LA HISTORIA</h4>
+        <input type="text" id="ia-tema" placeholder="ej: la desaparición del vuelo MH370" data-i18n-ph="ia_topic_ph"></div>
+      <div style="width:90px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_min">MINUTOS</h4>
+        <input type="number" id="ia-minutos" min="1" max="20" value="10"></div>
+      <div style="width:140px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_style">ESTILO</h4>
+        <select id="ia-estilo">
+          <option value="misterio" data-i18n="ia_s_mystery">Misterio</option>
+          <option value="terror" data-i18n="ia_s_horror">Terror</option>
+          <option value="documental" data-i18n="ia_s_doc">Documental</option>
+        </select></div>
+    </div>
+    <button class="primario" id="btn-ia-guion" style="width:100%" onclick="generarGuion()" data-i18n="ia_genscript">📝 Generar guión</button>
+    <p id="ia-guion-info" style="font-size:11px;color:var(--tenue);margin:4px 0"></p>
+
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)"><span data-i18n="ia_script_lbl">GUIÓN (editable)</span>
+        <button style="padding:2px 10px;font-size:11px" onclick="navigator.clipboard.writeText($('ia-guion').value)" data-i18n="ia_copy">copiar</button>
+      </h4>
+      <textarea id="ia-guion" rows="9" placeholder="Genera el guión arriba, o pega aquí uno tuyo." data-i18n-ph="ia_script_ph" oninput="iaContar()"></textarea>
+    </div>
+
+    <div id="ia-zona-voz">
+      <div class="campo" style="display:flex;gap:8px">
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_voice">VOZ DE MINIMAX (voice_id)</h4>
+          <input type="text" id="ia-voz" placeholder="pega tu voice_id (sirven voces clonadas)" data-i18n-ph="ia_voice_ph"></div>
+        <div style="width:110px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_speed">VELOCIDAD</h4>
+          <select id="ia-velocidad">
+            <option value="0.9">0.9×</option>
+            <option value="1" selected>1×</option>
+            <option value="1.1">1.1×</option>
+          </select></div>
+        <div style="width:120px;display:flex;align-items:flex-end">
+          <button style="width:100%" id="btn-ia-probar" onclick="probarVoz()" data-i18n="ia_testvoice">▶ Probar voz</button></div>
+      </div>
+      <div class="campo" style="display:flex;gap:8px">
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_proj">NOMBRE DEL PROYECTO</h4>
+          <input type="text" id="ia-nombre" placeholder="ej: vuelo_mh370" data-i18n-ph="ia_proj_ph"></div>
+        <div style="width:220px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_trans">TRANSCRIPCIÓN</h4>
+          <select id="ia-modelo">
+            <option value="small" selected data-i18n="ia_m_small">Normal (recomendada)</option>
+            <option value="base" data-i18n="ia_m_base">Rápida</option>
+            <option value="tiny" data-i18n="ia_m_tiny">Muy rápida (pruebas)</option>
+          </select></div>
+      </div>
+    </div>
+    <p id="ia-aviso-minimax" style="display:none;color:var(--ambar);font-size:12px">
+      <span data-i18n="ia_nokey">⚠ Falta la clave de MiniMax en el .env (MINIMAX_API_KEY y MINIMAX_GROUP_ID). Puedes generar el guión, copiarlo, hacer la voz en la web de MiniMax y crear la historia con "＋ Nueva historia" como siempre.</span>
+    </p>
+
+    <div class="botones">
+      <button onclick="cerrarModal('modal-ia')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" id="btn-ia-crear" onclick="crearHistoriaIA()" data-i18n="ia_create">🎙 Crear historia (genera la voz)</button>
+    </div>
+    <div id="ia-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- modal ayuda / tutorial -->
+<div class="modal-fondo" id="modal-ayuda">
+  <div class="modal" style="width:620px;max-height:82vh;overflow-y:auto">
+    <h3 data-i18n="help_title">❓ Cómo se usa AutoFaceless Video</h3>
+    <div style="font-size:14px;line-height:1.65;color:var(--texto)" data-i18n-html="help_body">
+      <p style="color:var(--tenue);margin:6px 0 14px">De un guión a un video de YouTube listo para subir, en 4 pasos.</p>
+
+      <p><b>1 · Crea una historia</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li><b style="color:var(--texto)">＋ Nueva historia</b>: le pones nombre y subes tu audio (mp3 de MiniMax). También puedes pegar el guión para que las imágenes se busquen mejor.</li>
+        <li><b style="color:var(--texto)">✨ Crear historia con IA</b>: escribe un tema y la IA hace el guión y la voz por ti.</li>
+        <li>La app transcribe, divide en escenas de 5-10s y descarga una imagen de Pexels por escena, sola.</li>
+      </ul>
+
+      <p><b>2 · Ajusta cada escena</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li>Clic en una escena → ves su texto, y puedes <b style="color:var(--texto)">buscar otra imagen o video</b> (Pexels, web o IA), o subir la tuya.</li>
+        <li>En la <b style="color:var(--texto)">línea de tiempo</b>: arrastra el borde de una escena para cambiar su duración, o arrastra una miniatura sobre otra para intercambiarlas.</li>
+        <li>Elige el <b style="color:var(--texto)">efecto</b> (zoom, paneo) y la <b style="color:var(--texto)">transición</b> de cada escena.</li>
+        <li>Añade <b style="color:var(--texto)">texto, logos y animaciones</b> (contador, gráfica, banner, cita, lista) con los botones +T / +🖼 / +📊 sobre la timeline. También <b style="color:var(--texto)">música de fondo</b>.</li>
+        <li>¿Te equivocaste? <b style="color:var(--texto)">⌘Z</b> deshace, <b style="color:var(--texto)">⇧⌘Z</b> rehace.</li>
+      </ul>
+
+      <p><b>3 · Previsualiza</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li>Pestaña <b style="color:var(--texto)">▶ Previsualización</b>: ves el video como va quedando, sin exportar. Ahí mismo ajustas escala, posición, opacidad y velocidad de cada escena.</li>
+      </ul>
+
+      <p><b>4 · Exporta</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 6px;padding-left:20px">
+        <li><b style="color:var(--texto)">Exportar video</b>: eliges nombre, carpeta y calidad (hasta 1080p) y guardas el archivo listo para YouTube.</li>
+        <li>Para juntar 3 historias en un video de 30 min, usa <b style="color:var(--texto)">Unir historias</b> abajo a la izquierda.</li>
+      </ul>
+
+      <p style="color:var(--tenue);font-size:12px;margin-top:14px;border-top:1px solid var(--borde);padding-top:12px">
+        💡 Las funciones de IA (guión con Claude, voz y video con MiniMax) usan tus propias claves — se configuran en el archivo <code>.env</code>. Sin ellas, la app funciona con recursos gratuitos (Pexels, imágenes IA gratis).
+      </p>
+    </div>
+    <div class="botones"><button class="primario" onclick="cerrarModal('modal-ayuda')" data-i18n="help_ok">Entendido</button></div>
+  </div>
+</div>
+
+<!-- modal overlay (texto/logo) -->
+<!-- modal animación -->
+<div class="modal-fondo" id="modal-anim">
+  <div class="modal" style="width:560px">
+    <h3 id="an-titulo">Animación</h3>
+
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_template">PLANTILLA</h4>
+      <div id="an-tabs" style="display:flex;gap:6px;flex-wrap:wrap">
+        <button data-pl="contador" onclick="anTab('contador')" data-i18n="an_counter">🔢 Contador</button>
+        <button data-pl="cuenta" onclick="anTab('cuenta')" data-i18n="an_countdown">⏱ Cuenta regresiva</button>
+        <button data-pl="barras" onclick="anTab('barras')" data-i18n="an_chart">📊 Gráfica</button>
+        <button data-pl="banner" onclick="anTab('banner')" data-i18n="an_banner">🏷 Banner</button>
+        <button data-pl="cita" onclick="anTab('cita')" data-i18n="an_quote">❝ Cita</button>
+        <button data-pl="lista" onclick="anTab('lista')" data-i18n="an_list">☰ Lista</button>
+      </div>
+    </div>
+
+    <div class="campo an-pl an-contador">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_target">NÚMERO OBJETIVO</h4>
+          <input type="number" id="an-objetivo" data-i18n-ph="an_ph_target" placeholder="ej: 1947"></div>
+        <div style="width:130px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_format">FORMATO</h4>
+          <select id="an-formato">
+            <option value="anio" data-i18n="an_f_year">Año (1947)</option>
+            <option value="numero" data-i18n="an_f_num">Número (2.300)</option>
+          </select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_before">ANTES (opcional)</h4>
+          <input type="text" id="an-prefijo" data-i18n-ph="an_ph_prefix" placeholder="ej: +"></div>
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_after">DESPUÉS (opcional)</h4>
+          <input type="text" id="an-sufijo" data-i18n-ph="an_ph_suffix" placeholder="ej: víctimas"></div>
+      </div>
+    </div>
+
+    <div class="campo an-pl an-banner">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_ttl">TÍTULO</h4>
+      <input type="text" id="an-titulo-txt" data-i18n-ph="an_ph_title" placeholder="ej: Roswell, Nuevo México">
+      <h4 style="font-size:11px;color:var(--tenue);margin-top:8px" data-i18n="an_sub">SUBTÍTULO (opcional)</h4>
+      <input type="text" id="an-subtitulo" data-i18n-ph="an_ph_sub" placeholder="ej: 8 de julio de 1947">
+    </div>
+
+    <div class="campo an-pl an-barras">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_bars">BARRAS (etiqueta y valor, 2 a 5)</h4>
+      <div id="an-barras-lista"></div>
+      <button style="margin-top:6px;font-size:12px;padding:5px 12px" onclick="anAgregarBarra()" data-i18n="an_addbar">＋ Añadir barra</button>
+    </div>
+
+    <div class="campo an-pl an-cuenta">
+      <div style="display:flex;gap:8px">
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_from">CUENTA DESDE (baja hasta 0)</h4>
+          <input type="number" id="an-desde" data-i18n-ph="an_ph_from" placeholder="ej: 10"></div>
+        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_after2">DESPUÉS (opcional)</h4>
+          <input type="text" id="an-cuenta-suf" data-i18n-ph="an_ph_csuf" placeholder="ej: %"></div>
+      </div>
+    </div>
+
+    <div class="campo an-pl an-cita">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_quotetxt">TEXTO DE LA CITA</h4>
+      <textarea id="an-cita-txt" rows="2" data-i18n-ph="an_ph_quote" placeholder="ej: Vi luces que no eran de este mundo"></textarea>
+      <h4 style="font-size:11px;color:var(--tenue);margin-top:8px" data-i18n="an_author">AUTOR (opcional)</h4>
+      <input type="text" id="an-autor" data-i18n-ph="an_ph_author" placeholder="ej: testigo anónimo, 1947">
+    </div>
+
+    <div class="campo an-pl an-lista">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_points">PUNTOS (aparecen uno por uno, 2 a 6)</h4>
+      <div id="an-lista-items"></div>
+      <button style="margin-top:6px;font-size:12px;padding:5px 12px" onclick="anAgregarItem()" data-i18n="an_addpoint">＋ Añadir punto</button>
+    </div>
+
+    <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_pos">POSICIÓN</h4>
+        <select id="an-pos">
+          <option value="si" data-i18n="pos_si_a">Arriba izq.</option><option value="sc" data-i18n="pos_sc_a">Arriba centro</option>
+          <option value="sd" data-i18n="pos_sd_a">Arriba der.</option><option value="ci" data-i18n="pos_ci_a">Centro izq.</option>
+          <option value="cc" selected data-i18n="pos_cc">Centro</option><option value="cd" data-i18n="pos_cd_a">Centro der.</option>
+          <option value="ii" data-i18n="pos_ii_a">Abajo izq.</option><option value="ic" data-i18n="pos_ic_a">Abajo centro</option>
+          <option value="id" data-i18n="pos_id_a">Abajo der.</option>
+        </select></div>
+      <div style="width:110px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_size">TAMAÑO</h4>
+        <select id="an-tam"><option value="s" data-i18n="sz_s">Chico</option><option value="m" selected data-i18n="sz_m">Mediano</option><option value="g" data-i18n="sz_g">Grande</option></select></div>
+      <div><h4 style="font-size:11px;color:var(--tenue)" data-i18n="an_color">COLOR</h4>
+        <input type="color" id="an-color" value="#ffdd88" style="width:44px;padding:2px"></div>
+    </div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="from_s">DESDE (s)</h4>
+        <input type="number" id="an-ini" min="0" step="0.5"></div>
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="to_s">HASTA (s)</h4>
+        <input type="number" id="an-fin" min="0.5" step="0.5"></div>
+    </div>
+
+    <div class="botones">
+      <button id="an-eliminar" style="margin-right:auto;color:var(--alerta)" onclick="eliminarAnimUI()" data-i18n="btn_delete">🗑 Eliminar</button>
+      <button onclick="cerrarModal('modal-anim')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" onclick="guardarAnimUI()" data-i18n="btn_save">Guardar</button>
+    </div>
+    <div id="an-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="modal-fondo" id="modal-overlay">
+  <div class="modal">
+    <h3 id="ov-titulo">Texto</h3>
+    <div class="campo" id="ov-campo-texto">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="ov_text">TEXTO</h4>
+      <input type="text" id="ov-texto" placeholder="ej: SUSCRÍBETE" data-i18n-ph="ov_text_ph">
+      <div style="margin-top:6px;font-size:12px;color:var(--tenue)">
+        <span data-i18n="ov_color">Color:</span> <input type="color" id="ov-color" value="#ffffff" style="width:48px;padding:2px;vertical-align:middle">
+      </div>
+    </div>
+    <div class="campo" id="ov-campo-logo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="ov_logo">IMAGEN DEL LOGO (png con transparencia ideal)</h4>
+      <input type="file" id="ov-logo" accept="image/*">
+    </div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="from_s">DESDE (s)</h4>
+        <input type="number" id="ov-ini" min="0" step="0.5"></div>
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="to_s">HASTA (s)</h4>
+        <input type="number" id="ov-fin" min="0.5" step="0.5"></div>
+    </div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ov_pos">POSICIÓN</h4>
+        <select id="ov-pos">
+          <option value="si" data-i18n="pos_si">Arriba izquierda</option><option value="sc" data-i18n="pos_sc_a">Arriba centro</option>
+          <option value="sd" data-i18n="pos_sd">Arriba derecha</option><option value="ci" data-i18n="pos_ci">Centro izquierda</option>
+          <option value="cc" data-i18n="pos_ccb">Centro</option><option value="cd" data-i18n="pos_cd">Centro derecha</option>
+          <option value="ii" data-i18n="pos_ii">Abajo izquierda</option><option value="ic" data-i18n="pos_ic_a">Abajo centro</option>
+          <option value="id" data-i18n="pos_id">Abajo derecha</option>
+        </select></div>
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ov_size">TAMAÑO</h4>
+        <select id="ov-tam">
+          <option value="s" data-i18n="sz_s">Chico</option><option value="m" data-i18n="sz_m">Mediano</option>
+          <option value="g" data-i18n="sz_g">Grande</option>
+        </select></div>
+    </div>
+    <div class="botones">
+      <button id="ov-eliminar" style="margin-right:auto;color:var(--alerta)" onclick="eliminarOverlayUI()" data-i18n="btn_delete">🗑 Eliminar</button>
+      <button onclick="cerrarModal('modal-overlay')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" onclick="guardarOverlayUI()" data-i18n="btn_save">Guardar</button>
+    </div>
+    <div id="ov-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- modal video -->
+<div class="modal-fondo" id="modal-video">
+  <div class="modal">
+    <h3 id="video-titulo">Video</h3>
+    <video id="video-player" controls></video>
+    <div class="botones"><button onclick="cerrarVideo()" data-i18n="btn_close">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- modal exportar -->
+<div class="modal-fondo" id="modal-exportar">
+  <div class="modal">
+    <h3 data-i18n="exp_title">Exportar esta historia</h3>
+    <div id="exp-form">
+      <div class="campo">
+        <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="exp_file">NOMBRE DEL ARCHIVO</h4>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="text" id="exp-nombre" placeholder="mi_historia" data-i18n-ph="exp_file_ph">
+          <span style="color:var(--tenue)">.mp4</span>
+        </div>
+      </div>
+      <div class="campo">
+        <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="exp_folder">CARPETA DESTINO</h4>
+        <select id="exp-carpeta-sel" onchange="sincCarpeta()"></select>
+        <input type="text" id="exp-carpeta" placeholder="/ruta/a/la/carpeta" style="display:none;margin-top:6px" data-i18n-ph="exp_folder_ph">
+      </div>
+      <div class="campo">
+        <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="exp_quality">CALIDAD</h4>
+        <select id="exp-calidad"></select>
+      </div>
+      <p id="exp-nota-rebuild" style="display:none;color:var(--ambar);font-size:12px">
+        <span data-i18n="exp_rebuild">⚙ Hay cambios sin renderizar: se construirá el video antes de guardar (puede tardar).</span>
+      </p>
+      <div class="botones">
+        <button onclick="cerrarModal('modal-exportar')" data-i18n="btn_cancel">Cancelar</button>
+        <button class="primario" id="btn-exp-lanzar" onclick="lanzarExportar()" data-i18n="exp_go">Exportar</button>
+      </div>
+    </div>
+    <div id="exp-progreso" style="display:none">
+      <p id="exp-prog-txt" style="margin-bottom:8px" data-i18n="exp_processing">Procesando…</p>
+      <div style="height:6px;background:var(--panel2);border-radius:3px;overflow:hidden">
+        <div id="exp-prog-barra" style="height:100%;width:0;background:var(--acento);transition:width .4s"></div>
+      </div>
+    </div>
+    <div id="exp-resultado" style="display:none">
+      <p style="color:var(--ok)" data-i18n="exp_saved">✓ Video guardado en:</p>
+      <p id="exp-ruta" style="font-size:12px;word-break:break-all;background:var(--bg);padding:8px 10px;border-radius:8px;margin:8px 0"></p>
+      <div class="botones">
+        <button id="btn-revelar" data-i18n="exp_reveal">Mostrar en Finder</button>
+        <button class="primario" onclick="cerrarModal('modal-exportar')" data-i18n="btn_close">Cerrar</button>
+      </div>
+    </div>
+    <div id="exp-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- modal subtítulos -->
+<div class="modal-fondo" id="modal-subs">
+  <div class="modal" style="width:640px">
+    <h3 data-i18n="sub_title">💬 Subtítulos</h3>
+    <div class="campo" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <label style="display:flex;gap:6px;align-items:center;font-size:14px">
+        <input type="checkbox" id="sub-activo" style="width:auto"> <span data-i18n="sub_on">Quemar subtítulos en el video</span>
+      </label>
+      <div style="flex:1"></div>
+      <button class="primario" onclick="subsGenerar()" id="btn-sub-gen" data-i18n="sub_gen">⚡ Generar desde la narración</button>
+    </div>
+    <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
+      <div><h4 style="font-size:11px;color:var(--tenue)" data-i18n="sub_size">TAMAÑO</h4>
+        <select id="sub-tam"><option value="s" data-i18n="sz_s">Chico</option><option value="m" selected data-i18n="sz_m">Mediano</option><option value="g" data-i18n="sz_g">Grande</option></select></div>
+      <div><h4 style="font-size:11px;color:var(--tenue)" data-i18n="sub_pos">POSICIÓN</h4>
+        <select id="sub-pos"><option value="abajo" data-i18n="sub_p_low">Abajo</option><option value="centro" data-i18n="sub_p_mid">Centro</option></select></div>
+      <div><h4 style="font-size:11px;color:var(--tenue)" data-i18n="sub_color">COLOR</h4>
+        <input type="color" id="sub-color" value="#ffffff" style="width:44px;padding:2px"></div>
+      <div style="flex:1;text-align:right;font-size:12px;color:var(--tenue)" id="sub-cuenta"></div>
+    </div>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="sub_list">FRASES (desde · hasta · texto)</h4>
+      <div id="sub-lista"></div>
+      <button style="margin-top:6px;font-size:12px;padding:5px 12px" onclick="subsAgregar()" data-i18n="sub_add">＋ Añadir frase</button>
+    </div>
+    <div class="botones">
+      <button onclick="cerrarModal('modal-subs')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" id="btn-sub-guardar" onclick="guardarSubs()" data-i18n="btn_save">Guardar</button>
+    </div>
+    <div id="sub-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
+  </div>
+</div>
+
+<!-- modal claves API -->
+<div class="modal-fondo" id="modal-claves">
+  <div class="modal" style="width:560px">
+    <h3 data-i18n="cl_title">🔑 Claves API</h3>
+    <p style="color:var(--tenue);font-size:13px;margin:4px 0 14px" data-i18n="cl_intro">
+      Pega aquí tus claves y listo — se guardan en tu Mac y aplican al instante,
+      sin reiniciar. Solo necesitas las de las funciones que quieras usar.</p>
+
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)">PEXELS <span id="cl-est-pexels" style="font-weight:400"></span></h4>
+      <input type="text" id="cl-pexels" autocomplete="off" spellcheck="false">
+      <div style="font-size:11px;color:var(--tenue);margin-top:3px" data-i18n-html="cl_h_pexels">Imágenes y videos automáticos · clave gratis en <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--acento)">pexels.com/api</a></div>
+    </div>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)">CLAUDE (ANTHROPIC) <span id="cl-est-anthropic" style="font-weight:400"></span></h4>
+      <input type="text" id="cl-anthropic" autocomplete="off" spellcheck="false">
+      <div style="font-size:11px;color:var(--tenue);margin-top:3px" data-i18n-html="cl_h_anthropic">Guiones de mejor calidad (opcional: sin clave se usa IA gratuita) · <a href="https://console.anthropic.com/" target="_blank" style="color:var(--acento)">console.anthropic.com</a></div>
+    </div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue)">MINIMAX API KEY <span id="cl-est-minimax" style="font-weight:400"></span></h4>
+        <input type="text" id="cl-minimax" autocomplete="off" spellcheck="false">
+      </div>
+      <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue)">MINIMAX GROUP ID <span id="cl-est-group" style="font-weight:400"></span></h4>
+        <input type="text" id="cl-group" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--tenue);margin-top:-6px" data-i18n-html="cl_h_minimax">Voz y video con IA · en tu cuenta de <a href="https://www.minimax.io/" target="_blank" style="color:var(--acento)">minimax.io</a> → API keys</div>
+
+    <div class="botones">
+      <button onclick="cerrarModal('modal-claves')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" id="btn-cl-guardar" onclick="guardarClaves()" data-i18n="btn_save">Guardar</button>
+    </div>
+    <div id="cl-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
+  </div>
+</div>
+
+<script>
+let proyectos = [];
+let actual = null;        // datos del proyecto abierto
+let escenaSel = null;     // número de escena seleccionada
+let timerProyecto = null;
+
+const $ = id => document.getElementById(id);
+
+/* ==================== IDIOMAS (es / en) ====================
+   El español es el markup original; el diccionario solo trae el inglés.
+   Textos estáticos: atributos data-i18n / data-i18n-ph / data-i18n-title /
+   data-i18n-html. Textos dinámicos (JS): helper L('es','en'). */
+let idioma = localStorage.getItem('afv_idioma') || 'es';
+const L = (es, en) => idioma === 'en' ? en : es;
+
+const EN = {
+  hdr_subs: "💬 Subtitles",
+  sub_title: "💬 Subtitles",
+  sub_on: "Burn subtitles into the video",
+  sub_gen: "⚡ Generate from the narration",
+  sub_size: "SIZE", sub_pos: "POSITION", sub_color: "COLOR",
+  sub_p_low: "Bottom", sub_p_mid: "Center",
+  sub_list: "CAPTIONS (from · to · text)",
+  sub_add: "＋ Add caption",
+  side_keys: "🔑 API keys",
+  cl_title: "🔑 API keys",
+  cl_intro: "Paste your keys here and you're done — they're saved on your Mac and apply instantly, no restart. You only need the ones for the features you want to use.",
+  cl_h_pexels: 'Automatic images and videos · free key at <a href="https://www.pexels.com/api/" target="_blank" style="color:var(--acento)">pexels.com/api</a>',
+  cl_h_anthropic: 'Better-quality scripts (optional: without a key, free AI is used) · <a href="https://console.anthropic.com/" target="_blank" style="color:var(--acento)">console.anthropic.com</a>',
+  cl_h_minimax: 'AI voice and video · in your <a href="https://www.minimax.io/" target="_blank" style="color:var(--acento)">minimax.io</a> account → API keys',
+  tt_menos: "Removes 0.5s (gives it to the next scene)",
+  tt_mas: "Adds 0.5s (takes it from the next scene)",
+  tt_dividir: "Split this scene in two to insert an intermediate image",
+  tt_eliminar: "Delete this scene; its time is absorbed by the previous one. ⌘Z to undo",
+  tt_videoia: "Generate a video clip with MiniMax Hailuo (uses your credits)",
+  an_template: "TEMPLATE",
+  an_ph_target: "e.g. 1947",
+  an_ph_prefix: "e.g. +",
+  an_ph_suffix: "e.g. victims",
+  an_ph_title: "e.g. Roswell, New Mexico",
+  an_ph_sub: "e.g. July 8, 1947",
+  an_ph_from: "e.g. 10",
+  an_ph_csuf: "e.g. %",
+  an_ph_quote: "e.g. I saw lights not of this world",
+  an_ph_author: "e.g. anonymous witness, 1947",
+  mus_bg: "🎵 Background music:",
+  mus_upload: "Upload music",
+  mus_vol: "volume",
+  mus_remove_t: "Remove music",
+  tl_hint: "Drag a scene's right edge to change its duration · drag one thumbnail onto another to swap them · Text and Image have their own layer (+T / +🖼) above the video · ⌘Z undoes, ⇧⌘Z redoes",
+  pv_approx: "approximate preview · export for the final",
+  pv_effects: "Effects",
+  pv_reset_t: "Reset to defaults",
+  pv_scale: "Scale",
+  pv_posx: "Position X",
+  pv_posy: "Position Y",
+  pv_opac: "Opacity",
+  pv_speed: "Speed (video only)",
+  pv_note: "Move the controls and watch them on the canvas. Pause to fine-tune calmly.",
+  pv_dur: "Duration",
+  pv_motion: "Motion effect",
+  pv_insert: "➕ Insert",
+  pv_del: "🗑 Delete",
+  det_upload: "⬆ Upload my image or video",
+  det_narr: "Narration",
+  det_det: "Duration · effect · exit transition",
+  det_insert: "➕ Insert scene (split this in 2)",
+  det_del: "🗑 Delete scene",
+  det_prompt: "Image prompt (editable)",
+  det_copy: "copy",
+  det_genai: "✨ Generate image with AI (free)",
+  det_trim: "Part of the video to use (the clip is longer than the scene)",
+  det_search: "Search images and videos",
+  det_suggest: "✨ suggest keywords",
+  det_search_ph: "e.g. forest fog night",
+  det_search_btn: "Search",
+  pv_insert_t: "Split this scene in two",
+  pv_del_t: "Delete this scene; ⌘Z to undo",
+  ef_auto: "Automatic",
+  ef_in: "Zoom in",
+  ef_out: "Zoom out",
+  ef_panh: "Horizontal pan",
+  ef_panv: "Vertical pan",
+  ef_static: "Static",
+  tr_fund: "Crossfade",
+  tr_cut: "Hard cut",
+  tr_black: "Fade to black",
+  tr_diss: "Dissolve",
+  tr_slide: "Slide",
+  tr_circle: "Circle",
+  tr_zoom: "Zoom",
+  tr_pixel: "Pixelate",
+  def_auto: "Effect: automatic",
+  def_static: "Static (no motion)",
+  dtr_fund: "Exit: crossfade",
+  px_photos: "Pexels · Photos",
+  px_videos: "Pexels · Videos",
+  px_web: "Web (Google/Bing)",
+  nm_name: "NAME",
+  nm_name_ph: "e.g. roswell_story",
+  nm_audio: "🎙 Click to choose the MiniMax audio",
+  nm_script: "SCRIPT (OPTIONAL, RECOMMENDED)",
+  nm_script_ph: "Paste here the script you used for the audio. It helps fix names and words, and improves prompts and image searches.",
+  nm_acc: "TRANSCRIPTION ACCURACY",
+  nm_m_small: "Normal — recommended (small model)",
+  nm_m_base: "Fast (base model)",
+  nm_m_tiny: "Very fast, testing only (tiny model)",
+  ia_channel: "YOUR CHANNEL NAME",
+  ia_channel_ph: "e.g. Unexplained Secrets",
+  ia_topic: "STORY TOPIC",
+  ia_topic_ph: "e.g. the disappearance of flight MH370",
+  ia_min: "MINUTES",
+  ia_style: "STYLE",
+  ia_s_mystery: "Mystery",
+  ia_s_horror: "Horror",
+  ia_s_doc: "Documentary",
+  ia_genscript: "📝 Generate script",
+  ia_script_lbl: "SCRIPT (editable)",
+  ia_copy: "copy",
+  ia_script_ph: "Generate the script above, or paste your own here.",
+  ia_voice: "MINIMAX VOICE (voice_id)",
+  ia_voice_ph: "paste your voice_id (cloned voices work)",
+  ia_speed: "SPEED",
+  ia_testvoice: "▶ Test voice",
+  ia_proj: "PROJECT NAME",
+  ia_proj_ph: "e.g. flight_mh370",
+  ia_trans: "TRANSCRIPTION",
+  ia_m_small: "Normal (recommended)",
+  ia_m_base: "Fast",
+  ia_m_tiny: "Very fast (testing)",
+  ia_nokey: "⚠ MiniMax key missing in .env (MINIMAX_API_KEY and MINIMAX_GROUP_ID). You can still generate the script, copy it, make the voice on the MiniMax website and create the story with \"＋ New story\" as usual.",
+  an_counter: "🔢 Counter",
+  an_countdown: "⏱ Countdown",
+  an_chart: "📊 Chart",
+  an_banner: "🏷 Banner",
+  an_quote: "❝ Quote",
+  an_list: "☰ List",
+  an_target: "TARGET NUMBER",
+  an_format: "FORMAT",
+  an_f_year: "Year (1947)",
+  an_f_num: "Number (2,300)",
+  an_before: "BEFORE (optional)",
+  an_after: "AFTER (optional)",
+  an_ttl: "TITLE",
+  an_sub: "SUBTITLE (optional)",
+  an_bars: "BARS (label and value, 2 to 5)",
+  an_addbar: "＋ Add bar",
+  an_from: "COUNT FROM (down to 0)",
+  an_after2: "AFTER (optional)",
+  an_quotetxt: "QUOTE TEXT",
+  an_author: "AUTHOR (optional)",
+  an_points: "POINTS (appear one by one, 2 to 6)",
+  an_addpoint: "＋ Add point",
+  an_pos: "POSITION",
+  an_size: "SIZE",
+  an_color: "COLOR",
+  pos_si_a: "Top left",
+  pos_sc_a: "Top center",
+  pos_sd_a: "Top right",
+  pos_ci_a: "Center left",
+  pos_cc: "Center",
+  pos_cd_a: "Center right",
+  pos_ii_a: "Bottom left",
+  pos_ic_a: "Bottom center",
+  pos_id_a: "Bottom right",
+  sz_s: "Small",
+  sz_m: "Medium",
+  sz_g: "Large",
+  from_s: "FROM (s)",
+  to_s: "TO (s)",
+  btn_delete: "🗑 Delete",
+  ov_text: "TEXT",
+  ov_text_ph: "e.g. SUBSCRIBE",
+  ov_color: "Color:",
+  ov_logo: "LOGO IMAGE (png with transparency is ideal)",
+  ov_pos: "POSITION",
+  ov_size: "SIZE",
+  btn_close: "Close",
+  exp_file: "FILE NAME",
+  exp_file_ph: "my_story",
+  exp_folder: "DESTINATION FOLDER",
+  exp_folder_ph: "/path/to/the/folder",
+  exp_quality: "QUALITY",
+  exp_rebuild: "⚙ There are unrendered changes: the video will be built before saving (may take a while).",
+  exp_processing: "Processing…",
+  exp_saved: "✓ Video saved to:",
+  exp_reveal: "Show in Finder",
+  pos_si: "Top left",
+  pos_sd: "Top right",
+  pos_ci: "Center left",
+  pos_ccb: "Center",
+  pos_cd: "Center right",
+  pos_ii: "Bottom left",
+  pos_id: "Bottom right",
+  welcome_tagline: 'From script to finished YouTube video, without editing by hand.',
+  welcome_lang: 'CHOOSE YOUR LANGUAGE', welcome_start: 'Get started',
+  side_editor: 'Story editor', side_new: '＋ New story', side_ai: '✨ Create story with AI',
+  side_join_title: 'MERGE STORIES (final video)', side_join_btn: 'Merge into one video',
+  side_join_ph: 'final video name',
+  empty_1: 'Create a new story or pick one on the left.',
+  empty_2: 'Upload your audio and watch the timeline build itself.',
+  hdr_unsaved: '⚠ unsaved changes', hdr_help: '❓ How to use', hdr_view: '▶ View video',
+  hdr_export: 'Export video',
+  trk_text: 'Text +T', trk_image: 'Image +🖼', trk_anim: 'Animation +📊',
+  trk_text_t: 'Add text', trk_image_t: 'Add image/logo', trk_anim_t: 'Add animation',
+  trk_video: 'Video', trk_narration: 'Narration', trk_music: 'Music',
+  tab_scene: 'Scene', tab_preview: '▶ Preview', tab_all: 'All scenes and prompts',
+  nm_title: 'New story', nm_create: 'Create and process',
+  ia_title: '✨ Create story with AI (script + voice)',
+  ia_create: '🎙 Create story (generates the voice)',
+  exp_title: 'Export this story', exp_go: 'Export',
+  btn_cancel: 'Cancel', btn_save: 'Save',
+  help_title: '❓ How to use AutoFaceless Video', help_ok: 'Got it',
+  help_body: `
+      <p style="color:var(--tenue);margin:6px 0 14px">From a script to a YouTube-ready video, in 4 steps.</p>
+      <p><b>1 · Create a story</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li><b style="color:var(--texto)">＋ New story</b>: give it a name and upload your audio (mp3). You can also paste the script so images are matched more accurately.</li>
+        <li><b style="color:var(--texto)">✨ Create story with AI</b>: type a topic and the AI writes the script and voice for you.</li>
+        <li>The app transcribes, splits into 5–10s scenes and downloads one Pexels image per scene, automatically.</li>
+      </ul>
+      <p><b>2 · Adjust each scene</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li>Click a scene → see its text, and <b style="color:var(--texto)">search another image or video</b> (Pexels, web or AI), or upload your own.</li>
+        <li>On the <b style="color:var(--texto)">timeline</b>: drag a scene's edge to change its duration, or drag one thumbnail onto another to swap them.</li>
+        <li>Choose the <b style="color:var(--texto)">effect</b> (zoom, pan) and the <b style="color:var(--texto)">transition</b> of each scene.</li>
+        <li>Add <b style="color:var(--texto)">text, logos and animations</b> (counter, chart, banner, quote, list) with the +T / +🖼 / +📊 buttons above the timeline. Also <b style="color:var(--texto)">background music</b>.</li>
+        <li>Made a mistake? <b style="color:var(--texto)">⌘Z</b> undoes, <b style="color:var(--texto)">⇧⌘Z</b> redoes.</li>
+      </ul>
+      <p><b>3 · Preview</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 14px;padding-left:20px">
+        <li><b style="color:var(--texto)">▶ Preview</b> tab: see the video as it's shaping up, without exporting. Right there you tweak scale, position, opacity and speed of each scene.</li>
+      </ul>
+      <p><b>4 · Export</b></p>
+      <ul style="color:var(--tenue);margin:4px 0 6px;padding-left:20px">
+        <li><b style="color:var(--texto)">Export video</b>: choose name, folder and quality (up to 1080p) and save the YouTube-ready file.</li>
+        <li>To merge 3 stories into a 30-min video, use <b style="color:var(--texto)">Merge stories</b> at the bottom left.</li>
+      </ul>
+      <p style="color:var(--tenue);font-size:12px;margin-top:14px;border-top:1px solid var(--borde);padding-top:12px">
+        💡 AI features (script with Claude, voice and video with MiniMax) use your own keys — set them in the <code>.env</code> file. Without them, the app works with free resources (Pexels, free AI images).
+      </p>`,
+};
+
+function aplicarIdioma() {
+  document.documentElement.lang = idioma;
+  const en = idioma === 'en';
+  const pon = (sel, prop, dsKey, dictFn) => document.querySelectorAll(sel).forEach(el => {
+    if (el.dataset[dsKey] === undefined) el.dataset[dsKey] = dictFn(el).orig;
+    const k = dictFn(el).key;
+    el[prop] = en && EN[k] !== undefined ? EN[k] : el.dataset[dsKey];
+  });
+  pon('[data-i18n]', 'textContent', 'orig', el => ({ key: el.dataset.i18n, orig: el.textContent }));
+  pon('[data-i18n-ph]', 'placeholder', 'origPh', el => ({ key: el.dataset.i18nPh, orig: el.placeholder }));
+  pon('[data-i18n-title]', 'title', 'origTitle', el => ({ key: el.dataset.i18nTitle, orig: el.title }));
+  pon('[data-i18n-html]', 'innerHTML', 'origHtml', el => ({ key: el.dataset.i18nHtml, orig: el.innerHTML }));
+  const lb = $('btn-idioma'); if (lb) lb.textContent = en ? '🌐 ES' : '🌐 EN';
+  if (actual) render();
+}
+
+function fijarIdioma(x) { idioma = x; localStorage.setItem('afv_idioma', x); aplicarIdioma(); }
+function alternarIdioma() { fijarIdioma(idioma === 'en' ? 'es' : 'en'); }
+function elegirIdioma(x) {
+  fijarIdioma(x);
+  document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === x));
+}
+function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bienvenida').style.display = 'none'; }
+
+/* ==================== claves API (modal 🔑) ==================== */
+async function abrirClaves() {
+  $('cl-msg').textContent = '';
+  ['cl-pexels','cl-anthropic','cl-minimax','cl-group'].forEach(id => { $(id).value = ''; });
+  $('modal-claves').classList.add('visible');
+  try {
+    const c = await api('/api/claves');
+    const pinta = (id, est, info) => {
+      $(est).textContent = info.configurada
+        ? ' · ' + L('configurada','set') + ' ' + (info.pista || '')
+        : ' · ' + L('sin configurar','not set');
+      $(est).style.color = info.configurada ? 'var(--ok)' : 'var(--tenue)';
+      $(id).placeholder = info.configurada
+        ? L('pega una nueva para reemplazarla','paste a new one to replace it')
+        : L('pega tu clave aquí','paste your key here');
+    };
+    pinta('cl-pexels','cl-est-pexels', c.PEXELS_API_KEY);
+    pinta('cl-anthropic','cl-est-anthropic', c.ANTHROPIC_API_KEY);
+    pinta('cl-minimax','cl-est-minimax', c.MINIMAX_API_KEY);
+    pinta('cl-group','cl-est-group', c.MINIMAX_GROUP_ID);
+  } catch (e) { /* sin red no pasa: es local */ }
+}
+
+async function guardarClaves() {
+  const btn = $('btn-cl-guardar');
+  btn.disabled = true;
+  try {
+    configApp = await api('/api/claves', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        PEXELS_API_KEY: $('cl-pexels').value.trim(),
+        ANTHROPIC_API_KEY: $('cl-anthropic').value.trim(),
+        MINIMAX_API_KEY: $('cl-minimax').value.trim(),
+        MINIMAX_GROUP_ID: $('cl-group').value.trim(),
+      })
+    });
+    actualizarAvisoPexels();
+    $('cl-msg').style.color = 'var(--ok)';
+    $('cl-msg').textContent = L('✓ Guardado — ya puedes usarlas, sin reiniciar.','✓ Saved — ready to use, no restart needed.');
+    setTimeout(() => cerrarModal('modal-claves'), 1200);
+  } catch (e) {
+    $('cl-msg').style.color = 'var(--alerta)';
+    $('cl-msg').textContent = e.message;
+  }
+  btn.disabled = false;
+}
+
+/* ==================== subtítulos (modal 💬) ==================== */
+let subsData = null;   // subtítulos del proyecto abierto (para el preview)
+
+async function cargarSubs() {
+  if (!actual) return;
+  try { subsData = await api(`/api/proyectos/${actual.nombre}/subtitulos`); }
+  catch (e) { subsData = null; }
+}
+
+function subsFila(fr) {
+  const fila = document.createElement('div');
+  fila.className = 'sub-fila';
+  fila.innerHTML = `
+    <input type="number" step="0.1" min="0" value="${fr.inicio}" title="${L('desde (s)','from (s)')}">
+    <input type="number" step="0.1" min="0" value="${fr.fin}" title="${L('hasta (s)','to (s)')}">
+    <input type="text" value="${(fr.texto||'').replace(/"/g,'&quot;')}">
+    <button onclick="this.parentElement.remove(); subsCuenta()" title="${L('Quitar','Remove')}">✕</button>`;
+  return fila;
+}
+
+function subsPintar(datos) {
+  $('sub-activo').checked = !!datos.activo;
+  $('sub-tam').value = datos.estilo?.tamano || 'm';
+  $('sub-pos').value = datos.estilo?.posicion || 'abajo';
+  $('sub-color').value = datos.estilo?.color || '#ffffff';
+  const lista = $('sub-lista');
+  lista.innerHTML = '';
+  for (const fr of (datos.frases || [])) lista.appendChild(subsFila(fr));
+  subsCuenta();
+}
+
+function subsCuenta() {
+  const n = $('sub-lista').children.length;
+  $('sub-cuenta').textContent = n ? `${n} ${L('frases','captions')}` : L('sin frases todavía','no captions yet');
+}
+
+async function abrirSubs() {
+  if (!actual) return;
+  $('sub-msg').textContent = '';
+  $('modal-subs').classList.add('visible');
+  await cargarSubs();
+  subsPintar(subsData || { activo:false, estilo:{}, frases:[] });
+}
+
+function subsAgregar() {
+  const t = Math.round(($('audio').currentTime || 0) * 10) / 10;
+  $('sub-lista').appendChild(subsFila({ inicio:t, fin:t+2, texto:'' }));
+  $('sub-lista').lastElementChild.querySelector('input[type=text]').focus();
+  subsCuenta();
+}
+
+async function subsGenerar() {
+  const btn = $('btn-sub-gen');
+  btn.disabled = true;
+  btn.textContent = L('⚡ Generando…','⚡ Generating…');
+  try {
+    const datos = await api(`/api/proyectos/${actual.nombre}/subtitulos/generar`, { method:'POST' });
+    subsData = datos;
+    subsPintar(datos);
+    $('sub-msg').style.color = 'var(--ok)';
+    $('sub-msg').textContent = `✓ ${datos.frases.length} ${L('frases generadas — revísalas y ajusta las que quieras.','captions generated — review and tweak any you like.')}`;
+    marcarVideoDesactualizado();
+  } catch (e) {
+    $('sub-msg').style.color = 'var(--alerta)';
+    $('sub-msg').textContent = e.message;
+  }
+  btn.disabled = false;
+  btn.textContent = L('⚡ Generar desde la narración','⚡ Generate from the narration');
+}
+
+async function guardarSubs() {
+  const frases = [...$('sub-lista').children].map(f => {
+    const [ini, fin, txt] = f.querySelectorAll('input');
+    return { inicio: parseFloat(ini.value)||0, fin: parseFloat(fin.value)||0, texto: txt.value };
+  }).filter(f => f.texto.trim() && f.fin > f.inicio);
+  try {
+    subsData = await api(`/api/proyectos/${actual.nombre}/subtitulos`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        activo: $('sub-activo').checked,
+        estilo: { tamano: $('sub-tam').value, posicion: $('sub-pos').value, color: $('sub-color').value },
+        frases,
+      })
+    });
+    marcarVideoDesactualizado();
+    $('sub-msg').style.color = 'var(--ok)';
+    $('sub-msg').textContent = L('✓ Guardado. Los verás en la Previsualización y quemados al exportar.','✓ Saved. You\'ll see them in the Preview and burned in on export.');
+    setTimeout(() => cerrarModal('modal-subs'), 1000);
+  } catch (e) {
+    $('sub-msg').style.color = 'var(--alerta)';
+    $('sub-msg').textContent = e.message;
+  }
+}
+
+function marcarVideoDesactualizado() {
+  if (actual && actual.video) {
+    actual.video_desactualizado = true;
+    $('aviso-desact').style.display = '';
+    $('btn-exportar').textContent = L('Re-exportar video','Re-export video');
+  }
+}
+
+const SUB_TAM_PV = { s: 2.4, m: 3.1, g: 3.9 };  // tamaño en % del alto del lienzo (aprox del export)
+
+function pvSubs(t) {
+  const capa = $('pv-subs');
+  if (!subsData || !subsData.activo || !subsData.frases?.length) { capa.textContent=''; return; }
+  const fr = subsData.frases.find(f => t >= f.inicio && t < f.fin);
+  if (!fr) { capa.textContent=''; return; }
+  const est = subsData.estilo || {};
+  capa.textContent = fr.texto;
+  capa.className = est.posicion === 'centro' ? 'centro' : '';
+  capa.style.color = est.color || '#ffffff';
+  capa.style.fontSize = ($('pv-lienzo').clientHeight * (SUB_TAM_PV[est.tamano||'m']||3.1) / 100) + 'px';
+}
+
+function actualizarAvisoPexels() {
+  const aviso = $('aviso-pexels');
+  if (configApp.pexels) { aviso.style.display = 'none'; return; }
+  aviso.style.display = 'block';
+  aviso.style.cursor = 'pointer';
+  aviso.onclick = abrirClaves;
+  aviso.textContent = L('⚠ Falta tu clave de Pexels (gratis) para buscar imágenes automáticamente — haz clic aquí para pegarla.',
+                        '⚠ Your (free) Pexels key is missing for automatic image search — click here to paste it.');
+}
+const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+
+async function api(ruta, opciones) {
+  const r = await fetch(ruta, opciones);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || `Error ${r.status}`);
+  return d;
+}
+
+/* ---------------- lista de proyectos ---------------- */
+
+async function cargarLista() {
+  proyectos = await api('/api/proyectos');
+  const cont = $('lista-proyectos');
+  cont.innerHTML = '';
+  for (const p of proyectos) {
+    const div = document.createElement('div');
+    div.className = 'proy' + (actual && actual.nombre === p.nombre ? ' activo' : '');
+    const fase = p.estado.fase || 'inactivo';
+    const color = fase === 'error' ? 'var(--alerta)'
+                : ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) ? 'var(--ambar)'
+                : p.video ? 'var(--ok)' : 'var(--tenue)';
+    div.innerHTML = `<div class="nombre"><span class="punto" style="background:${color}"></span>${p.nombre}</div>
+      <div class="meta"><span>${p.escenas} ${L('escenas','scenes')}</span><span>${p.imagenes}/${p.escenas} ${L('imágenes','images')}</span>${p.video ? '<span>🎬 video</span>' : ''}</div>`;
+    div.onclick = () => abrirProyecto(p.nombre);
+    cont.appendChild(div);
+  }
+  const lista = $('unir-lista');
+  lista.innerHTML = '';
+  for (const p of proyectos.filter(p => p.video)) {
+    lista.innerHTML += `<label><input type="checkbox" value="${p.nombre}"> ${p.nombre}</label>`;
+  }
+  if (!lista.innerHTML) lista.innerHTML = '<div style="color:var(--tenue);font-size:12px">Exporta al menos 2 historias para unirlas.</div>';
+}
+
+/* ---------------- proyecto abierto ---------------- */
+
+async function abrirProyecto(nombre) {
+  pvDetener();
+  actual = await api('/api/proyectos/' + nombre);
+  escenaSel = actual.escenas.length ? actual.escenas[0].n : null;
+  $('vacio').style.display = 'none';
+  $('proyecto').style.display = 'flex';
+  $('p-nombre').textContent = nombre;
+  $('audio').src = `/api/proyectos/${nombre}/audio`;
+  $('audio').pause();
+  verTab('detalle');
+  render();
+  cargarLista();
+  cargarSubs();
+  clearInterval(timerProyecto);
+  timerProyecto = setInterval(refrescar, 1800);
+}
+
+async function refrescar() {
+  if (!actual || ajuste || arrastrando || ajustePendiente) return;
+  if (document.activeElement?.closest?.('#pv-panel')) return;
+  const firma = d => JSON.stringify([d.escenas.map(e => [e.v, e.tiene_imagen, e.inicio, e.fin]),
+                                     d.estado, d.video, d.video_desactualizado, d.musica]);
+  const antes = firma(actual);
+  const nuevo = await api('/api/proyectos/' + actual.nombre);
+  const cambio = firma(nuevo) !== antes;
+  const primerasEscenas = !actual.escenas.length && nuevo.escenas.length;
+  actual = nuevo;
+  if (primerasEscenas && !escenaSel) escenaSel = nuevo.escenas[0].n;
+  if (cambio) { render(); cargarLista(); }
+}
+
+function urlImg(e) { return `/api/proyectos/${actual.nombre}/imagen/${e.n}?v=${e.v}`; }
+function escena(n) { return actual.escenas.find(e => e.n === n); }
+
+function render() {
+  renderEstado();
+  renderTimeline();
+  renderDetalle();
+  renderCuadricula();
+  renderMusica();
+  $('btn-video').style.display = actual.video ? '' : 'none';
+  $('aviso-desact').style.display = (actual.video && actual.video_desactualizado) ? '' : 'none';
+  $('btn-exportar').textContent = (actual.video && actual.video_desactualizado) ? L('Re-exportar video','Re-export video') : L('Exportar video','Export video');
+  const fase = actual.estado.fase;
+  $('btn-exportar').disabled = ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) || !actual.escenas.length;
+}
+
+function renderEstado() {
+  const est = actual.estado, chip = $('chip-estado');
+  const fase = est.fase || 'inactivo';
+  const nombres = { transcribiendo: L('Transcribiendo','Transcribing'), escenas: L('Creando escenas','Building scenes'),
+                    voz: L('Generando voz','Generating voice'), video_ia: L('Generando video IA','Generating AI video'),
+                    imagenes: L('Descargando imágenes','Downloading images'), exportando: L('Exportando','Exporting'), listo: L('Listo','Done') };
+  chip.className = '';
+  if (fase === 'error') { chip.className = 'error'; chip.textContent = '✗ ' + (est.error || 'Error'); chip.title = est.error || ''; }
+  else if (nombres[fase] && fase !== 'listo') { chip.className = 'trabajando'; chip.textContent = `⏳ ${nombres[fase]}… ${est.detalle || ''}`; }
+  else if (fase === 'listo') { chip.className = 'listo'; chip.textContent = '✓ ' + (est.detalle || 'Listo'); }
+  else chip.textContent = actual.escenas.length ? '—' : L('Sin procesar','Not processed');
+  chip.id = 'chip-estado';
+  $('barra-prog').style.width = (['transcribiendo','imagenes','exportando'].includes(fase) ? (est.progreso || 0) : 0) + '%';
+}
+
+let anchoTL = 0;       // ancho en px de la timeline (para convertir px↔segundos)
+let ajuste = null;     // arrastre de borde en curso
+let arrastrando = false; // drag&drop de intercambio en curso
+
+function renderTimeline() {
+  const tl = $('timeline');
+  tl.querySelectorAll('.bloque').forEach(b => b.remove());
+  const total = actual.duracion || 1;
+  anchoTL = Math.max($('timeline-scroll').clientWidth - 4, actual.escenas.length * 84);
+  tl.style.width = anchoTL + 'px';
+  $('pistas').style.width = anchoTL + 'px';
+  renderOverlays();
+  renderOndas();
+  actual.escenas.forEach((e, i) => {
+    const ultimo = i === actual.escenas.length - 1;
+    const b = document.createElement('div');
+    b.className = 'bloque' + (e.n === escenaSel ? ' sel' : '') + (e.tiene_imagen ? '' : ' sin-imagen');
+    b.style.width = ((e.fin - e.inicio) / total * anchoTL - 2) + 'px';
+    if (e.tiene_imagen) b.style.backgroundImage = `url("${urlImg(e)}")`;
+    let html = e.tiene_imagen ? '' : '<div class="carga">…</div>';
+    if (e.tipo_medio === 'video') html += '<div class="badge-video">🎬</div>';
+    html += `<div class="etiq" id="etiq-${e.n}">#${e.n} · ${(e.fin - e.inicio).toFixed(1)}s</div>`;
+    if (!ultimo) html += '<div class="asa" title="Arrastra para cambiar la duración"></div>';
+    b.innerHTML = html;
+    b.onclick = () => { if (!ajuste) { seleccionar(e.n); $('audio').currentTime = e.inicio + 0.01; } };
+
+    // intercambiar imágenes/videos arrastrando un bloque sobre otro
+    b.draggable = true;
+    b.ondragstart = ev => {
+      if (ajuste) { ev.preventDefault(); return; }
+      arrastrando = true;
+      ev.dataTransfer.setData('text/plain', String(e.n));
+    };
+    b.ondragend = () => { arrastrando = false; };
+    b.ondragover = ev => { ev.preventDefault(); b.classList.add('destino'); };
+    b.ondragleave = () => b.classList.remove('destino');
+    b.ondrop = async ev => {
+      ev.preventDefault();
+      b.classList.remove('destino');
+      arrastrando = false;
+      const origen = parseInt(ev.dataTransfer.getData('text/plain'));
+      if (origen && origen !== e.n) {
+        await api(`/api/proyectos/${actual.nombre}/escenas/intercambiar`,
+          { method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ a: origen, b: e.n }) });
+        await refrescarForzado();
+      }
+    };
+
+    // ajustar la duración arrastrando el borde derecho
+    const asa = b.querySelector('.asa');
+    if (asa) asa.onmousedown = ev => {
+      ev.preventDefault(); ev.stopPropagation();
+      b.draggable = false;
+      asa.classList.add('activa');
+      const sig = actual.escenas[i + 1];
+      ajuste = { n: e.n, x0: ev.clientX, w0: b.offsetWidth, bloque: b,
+                 inicio: e.inicio, finSig: sig.fin, total, asa,
+                 sigEl: b.nextElementSibling, w0sig: b.nextElementSibling ? b.nextElementSibling.offsetWidth : 0 };
+    };
+    tl.appendChild(b);
+  });
+  $('regla-fin').textContent = fmt(total);
+}
+
+document.addEventListener('mousemove', ev => {
+  if (!ajuste) return;
+  const minPx = 1.5 / ajuste.total * anchoTL;
+  const maxPx = (ajuste.finSig - 1.5 - ajuste.inicio) / ajuste.total * anchoTL;
+  const w = Math.max(minPx, Math.min(maxPx, ajuste.w0 + (ev.clientX - ajuste.x0)));
+  ajuste.bloque.style.width = w + 'px';
+  if (ajuste.sigEl) ajuste.sigEl.style.width = (ajuste.w0sig - (w - ajuste.w0)) + 'px';
+  const dur = w / anchoTL * ajuste.total;
+  const etiq = document.getElementById('etiq-' + ajuste.n);
+  if (etiq) etiq.textContent = `#${ajuste.n} · ${dur.toFixed(1)}s`;
+});
+
+document.addEventListener('mouseup', async () => {
+  if (!ajuste) return;
+  const a = ajuste; ajuste = null;
+  a.asa.classList.remove('activa');
+  const nuevoFin = a.inicio + a.bloque.offsetWidth / anchoTL * a.total;
+  try {
+    await api(`/api/proyectos/${actual.nombre}/escenas/${a.n}/limite`,
+      { method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ fin: nuevoFin }) });
+  } catch (e) { /* el refresco repone el estado real */ }
+  await refrescarForzado();
+});
+
+function seleccionar(n) {
+  escenaSel = n;
+  $('pexels-resultados').innerHTML = '';
+  verTab('detalle');
+  render();
+}
+
+function renderDetalle() {
+  const e = escena(escenaSel);
+  if (!e) { $('detalle').classList.remove('visible'); return; }
+  const i = actual.escenas.indexOf(e);
+  $('det-titulo').textContent = `${L('Escena','Scene')} ${e.n} ${L('de','of')} ${actual.escenas.length} · ${fmt(e.inicio)} → ${fmt(e.fin)}`;
+  $('det-narracion').textContent = e.texto;
+  if (!$('det-prompt').matches(':focus')) $('det-prompt').value = e.prompt || '';
+  $('det-dur').textContent = (e.fin - e.inicio).toFixed(1) + 's';
+  const esUltima = i === actual.escenas.length - 1;
+  $('btn-menos').disabled = $('btn-mas').disabled = esUltima;
+  $('btn-dividir').disabled = (e.fin - e.inicio) < 2;
+  $('det-efecto').value = e.efecto || 'auto';
+  $('det-efecto').disabled = e.tipo_medio === 'video';
+  $('det-transicion').value = e.transicion || 'fundido';
+  if (!$('det-consulta').matches(':focus')) $('det-consulta').value = e.consulta;
+  const dur = e.fin - e.inicio;
+  const sobra = e.tipo_medio === 'video' ? (e.medio_duracion || 0) - dur : 0;
+  $('campo-tramo').style.display = sobra > 0.2 ? '' : 'none';
+  if (sobra > 0.2) {
+    const sl = $('tramo-slider');
+    sl.max = sobra.toFixed(1);
+    if (!sl.matches(':active')) sl.value = e.video_inicio || 0;
+    $('tramo-info').textContent =
+      `${(e.video_inicio || 0).toFixed(1)}s → ${((e.video_inicio || 0) + dur).toFixed(1)}s ${L('de','of')} ${e.medio_duracion.toFixed(1)}s`;
+  }
+  $('btn-video-ia').style.display = configApp.minimax ? '' : 'none';
+  const img = $('det-img');
+  if (e.tipo_medio === 'video') {
+    img.style.backgroundImage = '';
+    img.innerHTML = `<video src="/api/proyectos/${actual.nombre}/medio/${e.n}?v=${e.v}#t=${e.video_inicio || 0}" muted loop autoplay controls style="width:100%;height:100%;border-radius:12px;object-fit:cover"></video>`;
+  } else if (e.tiene_imagen) {
+    img.style.backgroundImage = `url("${urlImg(e)}")`; img.innerHTML = '';
+  } else {
+    img.style.backgroundImage = ''; img.innerHTML = L('Sin imagen todavía — busca en Pexels o sube la tuya','No image yet — search Pexels or upload your own');
+  }
+}
+
+function previsualizarTramo() {
+  const e = escena(escenaSel);
+  const v = document.querySelector('#det-img video');
+  const t = parseFloat($('tramo-slider').value);
+  if (v) { v.currentTime = t; v.pause(); }
+  if (e) $('tramo-info').textContent =
+    `${t.toFixed(1)}s → ${(t + e.fin - e.inicio).toFixed(1)}s`;
+}
+
+async function guardarTramo() {
+  const e = escena(escenaSel);
+  if (!e) return;
+  e.video_inicio = parseFloat($('tramo-slider').value);
+  await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/opciones`,
+    { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ video_inicio: e.video_inicio }) });
+  const v = document.querySelector('#det-img video');
+  if (v) v.play();
+}
+
+async function subirMusica(input) {
+  if (!input.files.length) return;
+  const fd = new FormData();
+  fd.append('musica', input.files[0]);
+  await api(`/api/proyectos/${actual.nombre}/musica`, { method: 'POST', body: fd });
+  input.value = '';
+  await refrescarForzado();
+}
+
+async function guardarVolumen() {
+  $('musica-vol-txt').textContent = $('musica-vol').value + '%';
+  await api(`/api/proyectos/${actual.nombre}/musica/volumen`,
+    { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ volumen: $('musica-vol').value / 100 }) });
+}
+
+async function quitarMusica() {
+  await api(`/api/proyectos/${actual.nombre}/musica`, { method: 'DELETE' });
+  await refrescarForzado();
+}
+
+function renderMusica() {
+  const m = actual.musica;
+  $('musica-nombre').textContent = m ? m.archivo : L('ninguna','none');
+  $('musica-controles').style.display = m ? 'inline-flex' : 'none';
+  if (m && !$('musica-vol').matches(':active')) {
+    $('musica-vol').value = Math.round(m.volumen * 100);
+    $('musica-vol-txt').textContent = Math.round(m.volumen * 100) + '%';
+  }
+}
+
+async function dividirEscena(n = escenaSel) {
+  const e = escena(n);
+  if (!e) return;
+  try {
+    const r = await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/dividir`,
+      { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' });
+    await refrescarForzado();
+    escenaSel = r.nueva;      // salta a la escena nueva (vacía) para darle imagen
+    const nueva = escena(r.nueva);
+    if (nueva) $('audio').currentTime = nueva.inicio + 0.05;
+    render();
+  } catch (err) { alert(err.message); }
+}
+
+async function sugerirPalabras() {
+  const e = escena(escenaSel);
+  if (!e) return;
+  try {
+    const r = await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/sugerir`,
+      { method: 'POST' });
+    e.consulta = r.consulta;
+    $('det-consulta').value = r.consulta;
+    if ($('pexels-tipo').value === 'videos') $('pexels-tipo').value = 'fotos';
+    buscarPexels();
+  } catch (err) { alert(err.message); }
+}
+
+async function ajustarDur(delta, n = escenaSel) {
+  const e = escena(n);
+  if (!e) return;
+  try {
+    await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/limite`,
+      { method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ fin: e.fin + delta }) });
+  } catch (err) { /* límites alcanzados */ }
+  await refrescarForzado();
+}
+
+async function aplicarOpciones(n, efecto, transicion) {
+  const e = escena(n);
+  if (!e) return;
+  await api(`/api/proyectos/${actual.nombre}/escenas/${n}/opciones`,
+    { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ efecto, transicion }) });
+  e.efecto = efecto;
+  e.transicion = transicion;
+  if (actual.video) {
+    actual.video_desactualizado = true;
+    $('aviso-desact').style.display = '';
+    $('btn-exportar').textContent = L('Re-exportar video','Re-export video');
+  }
+}
+
+function guardarOpciones() {
+  aplicarOpciones(escenaSel, $('det-efecto').value, $('det-transicion').value);
+}
+
+function renderCuadricula() {
+  const c = $('cuadricula');
+  c.innerHTML = '';
+  for (const e of actual.escenas) {
+    const t = document.createElement('div');
+    t.className = 'tarjeta';
+    t.innerHTML = `
+      <div class="mini" style="${e.tiene_imagen ? `background-image:url('${urlImg(e)}')` : ''}">${e.tiene_imagen ? '' : 'sin imagen'}</div>
+      <div class="cuerpo">
+        <div class="titulo"><span>Escena ${e.n}</span><span style="color:var(--tenue);font-weight:400">${fmt(e.inicio)}–${fmt(e.fin)}</span></div>
+        <div class="narr">${e.texto}</div>
+        <div class="prompt">${e.prompt || ''}</div>
+      </div>`;
+    t.onclick = () => seleccionar(e.n);
+    c.appendChild(t);
+  }
+}
+
+function verTab(cual) {
+  $('tab-detalle').classList.toggle('activa', cual === 'detalle');
+  $('tab-preview').classList.toggle('activa', cual === 'preview');
+  $('tab-todas').classList.toggle('activa', cual === 'todas');
+  $('detalle').classList.toggle('visible', cual === 'detalle');
+  $('previsualizacion').classList.toggle('visible', cual === 'preview');
+  $('cuadricula').classList.toggle('visible', cual === 'todas');
+  if (cual === 'preview') pvIniciar(); else pvDetener();
+}
+
+/* ==================== PREVISUALIZADOR ==================== */
+const FUNDIDO = 0.6;               // debe coincidir con editor.py
+const ZOOM_KB = 1.13;
+let pvActivo = false;
+let pvRAF = null;
+let pvSlots = [];                  // 2 capas físicas (#pv-0, #pv-1)
+let pvMusica = null;               // <audio> de música (oculto)
+let pvVisibles = '';               // firma de overlays visibles (para no repintar)
+
+function pvIniciar() {
+  if (!actual) return;
+  pvActivo = true;
+  pvSlots = [{ el: $('pv-0'), n: null }, { el: $('pv-1'), n: null }];
+  // música: audio oculto en loop, sincronizado con la narración
+  if (pvMusica) { pvMusica.pause(); pvMusica = null; }
+  if (actual.musica) {
+    pvMusica = new Audio(`/api/proyectos/${actual.nombre}/musica/audio`);
+    pvMusica.loop = true;
+    pvMusica.volume = actual.musica.volumen;
+  }
+  if (!$('audio').paused) pvMusicaPlay();
+  pvBucle();
+}
+
+function pvDetener() {
+  pvActivo = false;
+  if (pvRAF) cancelAnimationFrame(pvRAF);
+  pvSlots.forEach(s => { const v = s.el.querySelector('video'); if (v) v.pause(); });
+  if (pvMusica) pvMusica.pause();
+}
+
+function pvToggle() {
+  const a = $('audio');
+  if (a.paused) { a.play(); pvMusicaPlay(); }
+  else { a.pause(); if (pvMusica) pvMusica.pause(); }
+}
+
+function pvSeek(v) {
+  if (!actual) return;
+  $('audio').currentTime = v / 1000 * actual.duracion;
+}
+
+function pvMusicaPlay() {
+  if (!pvMusica || !pvActivo) return;
+  pvMusica.currentTime = $('audio').currentTime % (pvMusica.duration || 1e9);
+  pvMusica.play().catch(() => {});
+}
+$('audio').addEventListener('play', () => { if (pvActivo) pvMusicaPlay(); });
+$('audio').addEventListener('pause', () => { if (pvMusica) pvMusica.pause(); });
+
+function pvTransform(efecto, idx, p) {
+  if (efecto === 'auto') efecto = ['zoom_in', 'zoom_out', 'pan_h', 'pan_v'][idx % 4];
+  const o = 6.2;   // % de paneo a cada lado (aprox. del overflow al hacer zoom)
+  if (efecto === 'estatico') return 'scale(1.001)';
+  if (efecto === 'zoom_out') return `scale(${(ZOOM_KB - (ZOOM_KB - 1) * p).toFixed(4)})`;
+  if (efecto === 'pan_h') return `scale(${ZOOM_KB}) translateX(${(o - 2 * o * p).toFixed(2)}%)`;
+  if (efecto === 'pan_v') return `scale(${ZOOM_KB}) translateY(${(o - 2 * o * p).toFixed(2)}%)`;
+  return `scale(${(1 + (ZOOM_KB - 1) * p).toFixed(4)})`;   // zoom_in
+}
+
+function pvCargar(slot, e) {
+  const clave = `${e.n}|${e.v}|${e.tipo_medio}`;
+  if (slot.n === clave) return;
+  slot.n = clave;
+  slot.tipo = e.tipo_medio;
+  if (e.tipo_medio === 'video') {
+    slot.el.innerHTML = `<video muted playsinline src="/api/proyectos/${actual.nombre}/medio/${e.n}?v=${e.v}"></video>`;
+  } else if (e.tiene_imagen) {
+    slot.el.innerHTML = `<img src="/api/proyectos/${actual.nombre}/imagen/${e.n}?v=${e.v}">`;
+  } else {
+    slot.el.innerHTML = `<div style="position:absolute;inset:0;background:#14141f;display:flex;align-items:center;justify-content:center;color:#555">escena ${e.n} · sin imagen</div>`;
+  }
+  slot.media = slot.el.querySelector('img,video');
+}
+
+function pvAplicar(slot, e, idx, p, t) {
+  const m = slot.media;
+  if (!m) return;
+  const E = e.escala ?? 1, px = e.pos_x ?? 0, py = e.pos_y ?? 0;
+  const op = e.opacidad ?? 1, vel = Math.max(0.25, Math.min(4, e.velocidad ?? 1));
+  m.style.opacity = op;
+  const extra = `scale(${E}) translate(${px}%, ${py}%)`;
+  if (slot.tipo !== 'video') {
+    m.style.transform = pvTransform(e.efecto, idx, p) + ' ' + extra;
+  } else {
+    m.style.transform = extra;
+    m.playbackRate = vel;
+    const destino = (e.video_inicio || 0) + (t - e.inicio) * vel;
+    if ($('audio').paused) { m.pause(); if (Math.abs(m.currentTime - destino) > 0.05) m.currentTime = destino; }
+    else { if (m.paused) m.play().catch(() => {}); if (Math.abs(m.currentTime - destino) > 0.3) m.currentTime = destino; }
+  }
+}
+
+function pvBucle() {
+  if (!pvActivo) return;
+  const a = $('audio'), t = a.currentTime, total = actual.duracion || 1;
+  let i = actual.escenas.findIndex(e => t >= e.inicio && t < e.fin);
+  if (i < 0) i = t >= total ? actual.escenas.length - 1 : 0;
+  const A = actual.escenas[i];
+  if (pvPanelN !== A.n && !document.activeElement?.closest?.('#pv-panel'))
+    renderPanelEfectos(A.n);
+  const cur = pvSlots[i % 2], otro = pvSlots[(i + 1) % 2];
+  const pA = Math.max(0, Math.min(1, (t - A.inicio) / (A.fin - A.inicio)));
+  pvCargar(cur, A); pvAplicar(cur, A, i, pA, t);
+  cur.el.style.display = 'block'; cur.el.style.opacity = 1; cur.el.style.transform = '';
+
+  const sig = actual.escenas[i + 1];
+  const enTrans = sig && A.transicion !== 'corte' && (A.fin - t) <= FUNDIDO;
+  let negro = 0;
+  if (enTrans) {
+    const tp = Math.max(0, Math.min(1, (t - (A.fin - FUNDIDO)) / FUNDIDO));
+    pvCargar(otro, sig); pvAplicar(otro, sig, i + 1, 0, sig.inicio);
+    otro.el.style.display = 'block'; otro.el.style.transform = '';
+    if (A.transicion === 'negro') {
+      cur.el.style.opacity = tp < 0.5 ? 1 - tp * 2 : 0;
+      otro.el.style.opacity = tp > 0.5 ? (tp - 0.5) * 2 : 0;
+      negro = 1 - Math.abs(tp - 0.5) * 2;
+    } else if (A.transicion === 'deslizar') {
+      otro.el.style.opacity = 1;
+      otro.el.style.transform = `translateX(${((1 - tp) * 100).toFixed(1)}%)`;
+    } else {   // fundido, disolver, círculo, zoom, pixel → disolvencia
+      otro.el.style.opacity = tp;
+    }
+  } else {
+    otro.el.style.display = 'none';
+    const v = otro.el.querySelector('video'); if (v) v.pause();
+  }
+  $('pv-negro').style.opacity = negro;
+
+  pvOverlays(t, total);
+  pvAnim(t);
+  pvSubs(t);
+  $('pv-play').classList.toggle('oculto', !a.paused);
+  const txt = `▶`, pausa = `⏸`;
+  $('pv-play2').textContent = a.paused ? txt : pausa;
+  $('pv-play').textContent = txt;
+  $('pv-tiempo').textContent = `${fmt(t)} / ${fmt(total)}`;
+  if (!$('pv-seek').matches(':active')) $('pv-seek').value = t / total * 1000;
+  pvRAF = requestAnimationFrame(pvBucle);
+}
+
+/* --------- panel de efectos (en vivo) --------- */
+let pvPanelN = null;
+let guardarAjusteTimer = null;
+let ajustePendiente = false;
+
+function renderPanelEfectos(n) {
+  const e = escena(n);
+  if (!e) return;
+  pvPanelN = n;
+  $('ef-titulo').textContent = `${L('Efectos · escena','Effects · scene')} ${e.n}`;
+  const set = (id, val, txt) => { $(id).value = val; $(id + '-v').textContent = txt; };
+  set('ef-escala', e.escala ?? 1, (e.escala ?? 1).toFixed(2) + '×');
+  set('ef-posx', e.pos_x ?? 0, Math.round(e.pos_x ?? 0) + '%');
+  set('ef-posy', e.pos_y ?? 0, Math.round(e.pos_y ?? 0) + '%');
+  set('ef-opac', e.opacidad ?? 1, Math.round((e.opacidad ?? 1) * 100) + '%');
+  $('ef-vel-v').textContent = (e.velocidad ?? 1) + '×';
+  const esVideo = e.tipo_medio === 'video';
+  $('ef-vel-btns').classList.toggle('deshab', !esVideo);
+  for (const b of $('ef-vel-btns').children)
+    b.classList.toggle('activo', parseFloat(b.dataset.v) === (e.velocidad ?? 1));
+
+  // controles de escena (duración, efecto, transición, insertar, eliminar)
+  const esUltima = actual.escenas.indexOf(e) === actual.escenas.length - 1;
+  $('pf-dur').textContent = (e.fin - e.inicio).toFixed(1) + 's';
+  $('pf-menos').disabled = $('pf-mas').disabled = esUltima;
+  $('pf-efecto').value = e.efecto || 'auto';
+  $('pf-efecto').disabled = esVideo;
+  $('pf-transicion').value = e.transicion || 'fundido';
+  $('pf-transicion').disabled = esUltima;
+  $('pf-dividir').disabled = (e.fin - e.inicio) < 2;
+}
+
+function pfDur(delta) { ajustarDur(delta, pvPanelN); }
+function pfOpciones() {
+  aplicarOpciones(pvPanelN, $('pf-efecto').value, $('pf-transicion').value);
+}
+
+function ajustePreview(param, valor) {
+  const e = escena(pvPanelN);
+  if (!e) return;
+  e[param] = parseFloat(valor);
+  const etq = { escala: ['ef-escala-v', v => v.toFixed(2) + '×'],
+                pos_x: ['ef-posx-v', v => Math.round(v) + '%'],
+                pos_y: ['ef-posy-v', v => Math.round(v) + '%'],
+                opacidad: ['ef-opac-v', v => Math.round(v * 100) + '%'] }[param];
+  if (etq) $(etq[0]).textContent = etq[1](e[param]);
+  programarGuardadoAjustes();
+}
+
+function ajusteVel(v) {
+  const e = escena(pvPanelN);
+  if (!e || e.tipo_medio !== 'video') return;
+  e.velocidad = v;
+  $('ef-vel-v').textContent = v + '×';
+  for (const b of $('ef-vel-btns').children)
+    b.classList.toggle('activo', parseFloat(b.dataset.v) === v);
+  programarGuardadoAjustes();
+}
+
+function resetAjustes() {
+  const e = escena(pvPanelN);
+  if (!e) return;
+  Object.assign(e, { escala: 1, pos_x: 0, pos_y: 0, opacidad: 1, velocidad: 1 });
+  renderPanelEfectos(e.n);
+  programarGuardadoAjustes();
+}
+
+function programarGuardadoAjustes() {
+  clearTimeout(guardarAjusteTimer);
+  ajustePendiente = true;
+  const e = escena(pvPanelN);
+  if (!e) { ajustePendiente = false; return; }
+  const nombre = actual.nombre, ne = e.n;
+  const ajustes = { escala: e.escala, pos_x: e.pos_x, pos_y: e.pos_y,
+                    opacidad: e.opacidad, velocidad: e.velocidad };
+  guardarAjusteTimer = setTimeout(async () => {
+    try {
+      await api(`/api/proyectos/${nombre}/escenas/${ne}/opciones`,
+        { method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ajustes }) });
+      if (actual.video) {
+        actual.video_desactualizado = true;
+        $('aviso-desact').style.display = '';
+        $('btn-exportar').textContent = L('Re-exportar video','Re-export video');
+      }
+    } catch (e) { /* el poll repone el estado real */ }
+    finally { ajustePendiente = false; }
+  }, 450);
+}
+
+function pvOverlays(t, total) {
+  const capa = $('pv-overlays');
+  const visibles = (actual.overlays || []).filter(o => o.tipo !== 'animacion' && t >= o.inicio && t <= o.fin)
+    .sort((a, b) => (a.tipo === 'logo' ? 0 : 1) - (b.tipo === 'logo' ? 0 : 1));
+  const firma = visibles.map(o => o.id).join(',');
+  const escala = capa.clientWidth / 1920;
+  const TAM_T = { s: 42, m: 62, g: 90 }, TAM_L = { s: 90, m: 150, g: 240 }, M = 48 * escala;
+  if (firma !== pvVisibles) {           // repintar solo cuando cambia el conjunto
+    pvVisibles = firma;
+    capa.innerHTML = '';
+    for (const o of visibles) {
+      let el;
+      if (o.tipo === 'texto') {
+        el = document.createElement('div');
+        el.className = 'pv-ov-texto';
+        el.textContent = o.texto || '';
+        el.style.color = o.color || '#fff';
+        el.style.fontSize = (TAM_T[o.tamano] * escala) + 'px';
+      } else {
+        el = document.createElement('img');
+        el.className = 'pv-ov-logo';
+        el.src = `/api/proyectos/${actual.nombre}/overlays/${o.id}/imagen`;
+        el.style.height = (TAM_L[o.tamano] * escala) + 'px';
+      }
+      const fila = o.posicion[0], col = o.posicion[1];
+      if (fila === 's') el.style.top = M + 'px';
+      else if (fila === 'i') el.style.bottom = M + 'px';
+      else { el.style.top = '50%'; el.dataset.cy = '1'; }
+      if (col === 'i') el.style.left = M + 'px';
+      else if (col === 'd') el.style.right = M + 'px';
+      else { el.style.left = '50%'; el.dataset.cx = '1'; }
+      el.style.transform = `translate(${col === 'c' ? '-50%' : '0'}, ${fila === 'c' ? '-50%' : '0'})`;
+      capa.appendChild(el);
+    }
+  }
+}
+
+function pvPosicionar(el, pos, M) {
+  const fila = pos[0], col = pos[1];
+  if (fila === 's') el.style.top = M + 'px';
+  else if (fila === 'i') el.style.bottom = M + 'px';
+  else el.style.top = '50%';
+  if (col === 'i') el.style.left = M + 'px';
+  else if (col === 'd') el.style.right = M + 'px';
+  else el.style.left = '50%';
+  el.style.transform = `translate(${col === 'c' ? '-50%' : '0'}, ${fila === 'c' ? '-50%' : '0'})`;
+}
+
+function pvAnim(t) {
+  const capa = $('pv-anim');
+  capa.innerHTML = '';
+  const escala = capa.clientWidth / 1920;
+  const M = 48 * escala;
+  const ease = x => 1 - Math.pow(1 - Math.max(0, Math.min(1, x)), 3);
+  const anims = (actual.overlays || []).filter(o => o.tipo === 'animacion' && t >= o.inicio && t <= o.fin);
+  for (const o of anims) {
+    const dur = Math.max(0.3, o.fin - o.inicio);
+    const p = (t - o.inicio) / dur;
+    if (o.plantilla === 'contador') {
+      const val = (o.objetivo || 0) * ease(Math.min(1, p / 0.6));
+      const txt = o.formato === 'anio' ? String(Math.round(val)) : Math.round(val).toLocaleString('es-ES');
+      const el = document.createElement('div');
+      el.className = 'pv-an-num';
+      el.textContent = (o.prefijo || '') + txt + (o.sufijo || '');
+      el.style.color = o.color || '#ffdd88';
+      el.style.fontSize = ({ s: 74, m: 116, g: 168 }[o.tamano] || 116) * escala + 'px';
+      el.style.opacity = Math.min(1, p / 0.12);
+      pvPosicionar(el, o.posicion, M);
+      capa.appendChild(el);
+    } else if (o.plantilla === 'banner') {
+      const el = document.createElement('div');
+      el.className = 'pv-an-banner';
+      const esc = { s: 0.8, m: 1, g: 1.25 }[o.tamano] || 1;
+      el.style.fontSize = 28 * esc * escala + 'px';
+      el.innerHTML = `<div class="barra" style="background:${o.color || '#8b5cf6'}"></div>
+        <div><div class="tit" style="font-size:${46 * esc * escala}px">${o.titulo || ''}</div>
+        ${o.subtitulo ? `<div class="sub" style="font-size:${28 * esc * escala}px">${o.subtitulo}</div>` : ''}</div>`;
+      const sl = Math.min(0.4, dur / 2);
+      let dx = 0;                          // deslizamiento aproximado
+      if (p < sl / dur) dx = -(1 - (t - o.inicio) / sl) * 120;
+      else if (t > o.fin - sl) dx = -((t - (o.fin - sl)) / sl) * 120;
+      const fila = o.posicion[0];
+      el.style.left = M + 'px';
+      if (fila === 's') el.style.top = M + 'px';
+      else if (fila === 'i') el.style.bottom = M + 'px';
+      else { el.style.top = '50%'; }
+      el.style.transform = `translate(${dx}%, ${fila === 'c' ? '-50%' : '0'})`;
+      capa.appendChild(el);
+    } else if (o.plantilla === 'barras') {
+      const barras = o.barras || [];
+      const vmax = Math.max(1, ...barras.map(b => +b.valor || 0));
+      const esc = { s: 0.75, m: 1, g: 1.3 }[o.tamano] || 1;
+      const el = document.createElement('div');
+      el.className = 'pv-an-barras';
+      el.style.height = 300 * esc * escala + 'px';
+      el.style.fontSize = 24 * esc * escala + 'px';
+      const crecer = ease(Math.min(1, p / 0.75));
+      el.innerHTML = barras.map(b => {
+        const h = ((+b.valor || 0) / vmax) * crecer * 100;
+        return `<div class="col" style="height:100%">
+          <div class="val" style="font-size:${24 * esc * escala}px">${Math.round((+b.valor || 0) * crecer)}</div>
+          <div class="bar" style="height:${h}%;background:${o.color || '#8b5cf6'};width:${90 * esc * escala}px"></div>
+          <div class="et" style="font-size:${26 * esc * escala}px;margin-top:4px">${b.etiqueta || ''}</div></div>`;
+      }).join('');
+      pvPosicionar(el, o.posicion, M);
+      capa.appendChild(el);
+    } else if (o.plantilla === 'cuenta') {
+      const val = Math.round((o.desde || 0) * (1 - Math.min(1, p)));
+      const el = document.createElement('div');
+      el.className = 'pv-an-num';
+      el.textContent = val + (o.sufijo || '');
+      el.style.color = o.color || '#f87171';
+      el.style.fontSize = ({ s: 74, m: 116, g: 168 }[o.tamano] || 116) * escala + 'px';
+      pvPosicionar(el, o.posicion, M);
+      capa.appendChild(el);
+    } else if (o.plantilla === 'cita') {
+      const el = document.createElement('div');
+      el.style.cssText = `position:absolute;max-width:62%;text-align:left;
+        opacity:${p < 0.4 ? p / 0.4 : (t > o.fin - 0.4 ? Math.max(0, (o.fin - t) / 0.4) : 1)}`;
+      const fs = ({ s: 40, m: 54, g: 70 }[o.tamano] || 54) * escala;
+      el.innerHTML = `<div style="color:${o.color || '#8b5cf6'};font-size:${fs * 2}px;font-weight:700;line-height:.6">“</div>
+        <div style="color:#fff;font-size:${fs}px;font-weight:600;text-shadow:1px 1px 0 #000">${o.texto || ''}</div>
+        ${o.autor ? `<div style="color:#c8c8d8;font-size:${fs * 0.6}px;margin-top:4px">— ${o.autor}</div>` : ''}`;
+      pvPosicionar(el, o.posicion, M);
+      capa.appendChild(el);
+    } else if (o.plantilla === 'lista') {
+      const items = o.items || [];
+      const el = document.createElement('div');
+      el.style.cssText = 'position:absolute;text-align:left';
+      const fs = ({ s: 34, m: 46, g: 58 }[o.tamano] || 46) * escala;
+      const reveal = 0.7 * (o.fin - o.inicio);
+      el.innerHTML = items.map((it, i) => {
+        const ap = Math.max(0, Math.min(1, (t - o.inicio - (i / items.length) * reveal) / 0.3));
+        return `<div style="display:flex;align-items:center;gap:${fs * 0.4}px;margin:${fs * 0.35}px 0;
+          opacity:${ap};transform:translateX(${(1 - ap) * 30}px);font-size:${fs}px">
+          <span style="width:${fs * 0.35}px;height:${fs * 0.35}px;border-radius:50%;background:${o.color || '#8b5cf6'};flex-shrink:0"></span>
+          <span style="color:#fff;text-shadow:1px 1px 0 #000;white-space:nowrap">${it}</span></div>`;
+      }).join('');
+      pvPosicionar(el, o.posicion, M);
+      capa.appendChild(el);
+    }
+  }
+}
+
+/* aguja de reproducción */
+$('audio').addEventListener('timeupdate', () => {
+  if (!actual || !actual.duracion) return;
+  const ancho = parseFloat($('timeline').style.width || 0);
+  $('aguja').style.left = ($('audio').currentTime / actual.duracion * ancho) + 'px';
+  const e = actual.escenas.find(e => $('audio').currentTime >= e.inicio && $('audio').currentTime < e.fin);
+  if (e && e.n !== escenaSel && !$('audio').paused) { escenaSel = e.n; renderTimeline(); renderDetalle(); }
+});
+
+/* ---------------- pistas: ondas y overlays ---------------- */
+
+const ondasCache = {};   // clave → picos [0..1]
+
+async function renderOndas() {
+  await dibujarOnda('onda-narra', 'narracion', '#8b5cf6',
+                    `${actual.nombre}|narracion`);
+  const claveM = `${actual.nombre}|musica|${actual.musica ? actual.musica.archivo : ''}`;
+  if (actual.musica) {
+    await dibujarOnda('onda-musica', 'musica', '#34d399', claveM);
+  } else {
+    const cv = $('onda-musica');
+    cv.width = anchoTL;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = 'rgba(154,154,176,.5)';
+    ctx.font = '10px sans-serif';
+    ctx.fillText('sin música — usa "Subir música" arriba', 8, 15);
+  }
+}
+
+async function dibujarOnda(idCanvas, cual, color, clave) {
+  if (!ondasCache[clave]) {
+    try { ondasCache[clave] = await api(`/api/proyectos/${actual.nombre}/waveform?cual=${cual}`); }
+    catch (e) { ondasCache[clave] = []; }
+  }
+  const picos = ondasCache[clave];
+  const cv = $(idCanvas);
+  cv.width = anchoTL;
+  const ctx = cv.getContext('2d');
+  const h = cv.height;
+  ctx.clearRect(0, 0, cv.width, h);
+  if (!picos.length) return;
+  ctx.fillStyle = color;
+  const paso = anchoTL / picos.length;
+  for (let i = 0; i < picos.length; i++) {
+    const alt = Math.max(1, picos[i] * (h - 4));
+    ctx.fillRect(i * paso, (h - alt) / 2, Math.max(1, paso - 0.6), alt);
+  }
+}
+
+$('onda-narra').addEventListener('click', ev => {
+  if (!actual || !actual.duracion) return;
+  const r = ev.currentTarget.getBoundingClientRect();
+  $('audio').currentTime = (ev.clientX - r.left) / anchoTL * actual.duracion;
+});
+
+/* overlays (capa de texto/logos) */
+let ovDrag = null;
+
+const ETIQ_PLANTILLA = { contador: '🔢 contador', cuenta: '⏱ regresiva', barras: '📊 gráfica',
+  banner: '🏷 banner', cita: '❝ cita', lista: '☰ lista' };
+function renderOverlays() {
+  $('pista-texto').innerHTML = '';
+  $('pista-imagen').innerHTML = '';
+  $('pista-anim').innerHTML = '';
+  const total = actual.duracion || 1;
+  for (const ov of (actual.overlays || [])) {
+    const d = document.createElement('div');
+    d.className = 'ov-item';
+    d.style.left = (ov.inicio / total * anchoTL) + 'px';
+    d.style.width = Math.max(24, (ov.fin - ov.inicio) / total * anchoTL) + 'px';
+    d.textContent = ov.tipo === 'texto' ? 'T ' + (ov.texto || '')
+      : ov.tipo === 'animacion' ? (ETIQ_PLANTILLA[ov.plantilla] || 'animación')
+      : '🖼 imagen';
+    d.title = `${ov.inicio.toFixed(1)}s → ${ov.fin.toFixed(1)}s · arrastra para mover, clic para editar`;
+    d.onmousedown = ev => {
+      ev.preventDefault();
+      ovDrag = { ov, x0: ev.clientX, left0: parseFloat(d.style.left), el: d, movido: false };
+    };
+    const pista = ov.tipo === 'texto' ? 'pista-texto'
+      : ov.tipo === 'animacion' ? 'pista-anim' : 'pista-imagen';
+    $(pista).appendChild(d);
+  }
+}
+
+document.addEventListener('mousemove', ev => {
+  if (!ovDrag) return;
+  const dx = ev.clientX - ovDrag.x0;
+  if (Math.abs(dx) > 3) ovDrag.movido = true;
+  const total = actual.duracion || 1;
+  const largoPx = (ovDrag.ov.fin - ovDrag.ov.inicio) / total * anchoTL;
+  const izq = Math.max(0, Math.min(anchoTL - largoPx, ovDrag.left0 + dx));
+  ovDrag.el.style.left = izq + 'px';
+});
+
+document.addEventListener('mouseup', async () => {
+  if (!ovDrag) return;
+  const d = ovDrag; ovDrag = null;
+  const total = actual.duracion || 1;
+  if (!d.movido) { d.ov.tipo === 'animacion' ? abrirAnim(d.ov) : abrirOverlay(d.ov); return; }
+  const largo = d.ov.fin - d.ov.inicio;
+  const ini = parseFloat(d.el.style.left) / anchoTL * total;
+  await api(`/api/proyectos/${actual.nombre}/overlays`,
+    { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ...d.ov, inicio: ini, fin: ini + largo }) });
+  await refrescarForzado();
+});
+
+let ovEditando = null;   // overlay en edición (o {tipo} si es nuevo)
+
+function abrirOverlay(ov, tipoNuevo) {
+  ovEditando = ov || { id: null, tipo: tipoNuevo, inicio: Math.round(($('audio').currentTime || 0) * 10) / 10,
+                       fin: Math.round((($('audio').currentTime || 0) + 4) * 10) / 10,
+                       posicion: tipoNuevo === 'logo' ? 'sd' : 'ic', tamano: 'm', texto: '', color: '#ffffff' };
+  const esTexto = ovEditando.tipo === 'texto';
+  $('ov-titulo').textContent = esTexto ? (ov ? L('Editar texto','Edit text') : L('Añadir texto encima del video','Add text over the video'))
+                                       : (ov ? L('Editar logo','Edit logo') : L('Añadir logo/imagen encima del video','Add logo/image over the video'));
+  $('ov-campo-texto').style.display = esTexto ? '' : 'none';
+  $('ov-campo-logo').style.display = esTexto ? 'none' : '';
+  $('ov-texto').value = ovEditando.texto || '';
+  $('ov-color').value = ovEditando.color || '#ffffff';
+  $('ov-ini').value = ovEditando.inicio;
+  $('ov-fin').value = ovEditando.fin;
+  $('ov-pos').value = ovEditando.posicion;
+  $('ov-tam').value = ovEditando.tamano;
+  $('ov-eliminar').style.display = ov ? '' : 'none';
+  $('ov-error').textContent = '';
+  $('ov-logo').value = '';
+  $('modal-overlay').classList.add('visible');
+}
+
+async function guardarOverlayUI() {
+  const base = { id: ovEditando.id, tipo: ovEditando.tipo,
+                 inicio: parseFloat($('ov-ini').value) || 0,
+                 fin: parseFloat($('ov-fin').value) || 5,
+                 posicion: $('ov-pos').value, tamano: $('ov-tam').value };
+  try {
+    if (ovEditando.tipo === 'logo' && $('ov-logo').files.length) {
+      const fd = new FormData();
+      fd.append('logo', $('ov-logo').files[0]);
+      for (const [k, v] of Object.entries(base)) if (v !== null) fd.append(k, v);
+      await api(`/api/proyectos/${actual.nombre}/overlays`, { method: 'POST', body: fd });
+    } else if (ovEditando.tipo === 'logo' && !ovEditando.id) {
+      $('ov-error').textContent = L('Elige la imagen del logo.','Choose the logo image.');
+      return;
+    } else {
+      await api(`/api/proyectos/${actual.nombre}/overlays`,
+        { method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ...base, texto: $('ov-texto').value, color: $('ov-color').value }) });
+    }
+  } catch (e) { $('ov-error').textContent = '✗ ' + e.message; return; }
+  cerrarModal('modal-overlay');
+  await refrescarForzado();
+}
+
+async function eliminarOverlayUI() {
+  if (ovEditando && ovEditando.id) {
+    await api(`/api/proyectos/${actual.nombre}/overlays/${ovEditando.id}`, { method: 'DELETE' });
+  }
+  cerrarModal('modal-overlay');
+  await refrescarForzado();
+}
+
+/* ---------------- animaciones (contador / gráfica / banner) ---------------- */
+let anEditando = null;
+
+function anTab(pl) {
+  anEditando.plantilla = pl;
+  for (const b of document.querySelectorAll('#an-tabs button'))
+    b.classList.toggle('activo', b.dataset.pl === pl);
+  for (const g of ['contador', 'cuenta', 'barras', 'banner', 'cita', 'lista'])
+    document.querySelector('.an-' + g).style.display = pl === g ? 'block' : 'none';
+  if (pl === 'barras' && !$('an-barras-lista').children.length) {
+    anAgregarBarra(); anAgregarBarra();
+  }
+  if (pl === 'lista' && !$('an-lista-items').children.length) {
+    anAgregarItem(); anAgregarItem();
+  }
+}
+
+function anAgregarItem(texto = '') {
+  if ($('an-lista-items').children.length >= 6) return;
+  const fila = document.createElement('div');
+  fila.className = 'an-barra-fila';
+  fila.innerHTML = `<input type="text" placeholder="${L('ej: un dato revelador','e.g. a revealing fact')}" value="${texto.replace(/"/g, '&quot;')}">
+    <button onclick="this.parentElement.remove()" title="${L('Quitar','Remove')}">✕</button>`;
+  $('an-lista-items').appendChild(fila);
+}
+
+function anAgregarBarra(etiqueta = '', valor = '') {
+  if ($('an-barras-lista').children.length >= 5) return;
+  const fila = document.createElement('div');
+  fila.className = 'an-barra-fila';
+  fila.innerHTML = `<input type="text" placeholder="${L('etiqueta (ej: 1947)','label (e.g. 1947)')}" value="${etiqueta}">
+    <input type="number" placeholder="${L('valor','value')}" value="${valor}" style="width:90px;flex:0 0 90px">
+    <button onclick="this.parentElement.remove()" title="${L('Quitar','Remove')}">✕</button>`;
+  $('an-barras-lista').appendChild(fila);
+}
+
+function abrirAnim(ov) {
+  const t0 = Math.round(($('audio').currentTime || 0) * 10) / 10;
+  anEditando = ov ? { ...ov } : { id: null, tipo: 'animacion', plantilla: 'contador',
+    inicio: t0, fin: t0 + 4, posicion: 'cc', tamano: 'm', color: '#ffdd88' };
+  $('an-titulo').textContent = ov ? L('Editar animación','Edit animation') : L('Añadir animación','Add animation');
+  $('an-error').textContent = '';
+  $('an-eliminar').style.display = ov ? '' : 'none';
+  $('an-ini').value = anEditando.inicio;
+  $('an-fin').value = anEditando.fin;
+  $('an-pos').value = anEditando.posicion || 'cc';
+  $('an-tam').value = anEditando.tamano || 'm';
+  $('an-color').value = anEditando.color || '#ffdd88';
+  // contador
+  $('an-objetivo').value = anEditando.objetivo ?? '';
+  $('an-formato').value = anEditando.formato || 'anio';
+  $('an-prefijo').value = anEditando.prefijo || '';
+  $('an-sufijo').value = anEditando.sufijo || '';
+  // banner
+  $('an-titulo-txt').value = anEditando.titulo || '';
+  $('an-subtitulo').value = anEditando.subtitulo || '';
+  // cuenta regresiva
+  $('an-desde').value = anEditando.desde ?? '';
+  $('an-cuenta-suf').value = anEditando.plantilla === 'cuenta' ? (anEditando.sufijo || '') : '';
+  // cita
+  $('an-cita-txt').value = anEditando.texto || '';
+  $('an-autor').value = anEditando.autor || '';
+  // barras
+  $('an-barras-lista').innerHTML = '';
+  for (const b of (anEditando.barras || [])) anAgregarBarra(b.etiqueta, b.valor);
+  // lista
+  $('an-lista-items').innerHTML = '';
+  for (const it of (anEditando.items || [])) anAgregarItem(it);
+  anTab(anEditando.plantilla || 'contador');
+  $('modal-anim').classList.add('visible');
+}
+
+async function guardarAnimUI() {
+  const cuerpo = {
+    id: anEditando.id, tipo: 'animacion', plantilla: anEditando.plantilla,
+    inicio: parseFloat($('an-ini').value) || 0, fin: parseFloat($('an-fin').value) || 4,
+    posicion: $('an-pos').value, tamano: $('an-tam').value, color: $('an-color').value,
+  };
+  const pl = anEditando.plantilla;
+  if (pl === 'contador') {
+    cuerpo.objetivo = $('an-objetivo').value;
+    cuerpo.formato = $('an-formato').value;
+    cuerpo.prefijo = $('an-prefijo').value;
+    cuerpo.sufijo = $('an-sufijo').value;
+  } else if (pl === 'cuenta') {
+    cuerpo.desde = $('an-desde').value;
+    cuerpo.sufijo = $('an-cuenta-suf').value;
+  } else if (pl === 'banner') {
+    cuerpo.titulo = $('an-titulo-txt').value;
+    cuerpo.subtitulo = $('an-subtitulo').value;
+  } else if (pl === 'cita') {
+    cuerpo.texto = $('an-cita-txt').value;
+    cuerpo.autor = $('an-autor').value;
+  } else if (pl === 'lista') {
+    cuerpo.items = [...$('an-lista-items').children].map(f => f.children[0].value);
+  } else {
+    cuerpo.barras = [...$('an-barras-lista').children].map(f => ({
+      etiqueta: f.children[0].value, valor: f.children[1].value }));
+  }
+  try {
+    await api(`/api/proyectos/${actual.nombre}/overlays`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(cuerpo) });
+  } catch (e) { $('an-error').textContent = '✗ ' + e.message; return; }
+  cerrarModal('modal-anim');
+  await refrescarForzado();
+}
+
+async function eliminarAnimUI() {
+  if (anEditando && anEditando.id)
+    await api(`/api/proyectos/${actual.nombre}/overlays/${anEditando.id}`, { method: 'DELETE' });
+  cerrarModal('modal-anim');
+  await refrescarForzado();
+}
+
+/* ---------------- crear historia con IA ---------------- */
+let configApp = { pexels: false, anthropic: false, minimax: false };
+
+function abrirModalIA() {
+  $('ia-error').textContent = '';
+  $('ia-guion-info').textContent = configApp.anthropic
+    ? 'Se usará Claude (premium) para el guión.'
+    : 'Se usará el generador gratuito. Para mejor calidad, agrega ANTHROPIC_API_KEY al .env.';
+  const sinMinimax = !configApp.minimax;
+  $('ia-aviso-minimax').style.display = sinMinimax ? '' : 'none';
+  $('ia-zona-voz').style.display = sinMinimax ? 'none' : '';
+  $('btn-ia-crear').style.display = sinMinimax ? 'none' : '';
+  $('modal-ia').classList.add('visible');
+}
+
+function iaContar() {
+  const n = $('ia-guion').value.trim().split(/\s+/).filter(Boolean).length;
+  if (n) $('ia-guion-info').textContent = `${n} palabras (~${Math.round(n / 145)} min narrados)`;
+}
+
+async function generarGuion() {
+  const btn = $('btn-ia-guion');
+  btn.disabled = true;
+  btn.textContent = L('📝 Escribiendo guión… (puede tardar ~1 min)','📝 Writing script… (may take ~1 min)');
+  $('ia-error').textContent = '';
+  try {
+    const r = await api('/api/ia/guion', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ tema: $('ia-tema').value, minutos: $('ia-minutos').value,
+                             estilo: $('ia-estilo').value, canal: $('ia-canal').value }) });
+    $('ia-guion').value = r.guion;
+    $('ia-guion-info').textContent =
+      `${r.palabras} palabras (~${Math.round(r.palabras / 145)} min) · generado con ${r.proveedor === 'claude' ? 'Claude (premium)' : 'el servicio gratuito'}`;
+    if (!$('ia-nombre').value) {
+      $('ia-nombre').value = $('ia-tema').value.toLowerCase()
+        .normalize('NFD').replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+    }
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
+  btn.disabled = false;
+  btn.textContent = L('📝 Generar guión','📝 Generate script');
+}
+
+let audioPrueba = null;
+async function probarVoz() {
+  const btn = $('btn-ia-probar');
+  btn.disabled = true; btn.textContent = '…';
+  $('ia-error').textContent = '';
+  try {
+    const texto = ($('ia-guion').value || 'Esta es una prueba de la voz para tu canal de YouTube.').slice(0, 200);
+    const r = await fetch('/api/ia/voz_prueba', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ texto, voz: $('ia-voz').value, velocidad: $('ia-velocidad').value }) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || `Error ${r.status}`); }
+    if (audioPrueba) audioPrueba.pause();
+    audioPrueba = new Audio(URL.createObjectURL(await r.blob()));
+    audioPrueba.play();
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
+  btn.disabled = false; btn.textContent = L('▶ Probar voz','▶ Test voice');
+}
+
+async function crearHistoriaIA() {
+  $('ia-error').textContent = '';
+  const btn = $('btn-ia-crear');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/ia/historia', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ nombre: $('ia-nombre').value, guion: $('ia-guion').value,
+                             voz: $('ia-voz').value, velocidad: $('ia-velocidad').value,
+                             modelo: $('ia-modelo').value }) });
+    cerrarModal('modal-ia');
+    setTimeout(() => abrirProyecto(r.nombre).catch(() => cargarLista()), 800);
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
+  btn.disabled = false;
+}
+
+/* ---------------- video IA por escena ---------------- */
+async function generarVideoIA() {
+  const e = escena(escenaSel);
+  if (!e) return;
+  if (!confirm(L(`Generar un clip de video con IA (MiniMax Hailuo) para la escena ${e.n}.\n\nTarda varios minutos y consume créditos de tu cuenta MiniMax. ¿Continuar?`,`Generate an AI video clip (MiniMax Hailuo) for scene ${e.n}.\n\nIt takes several minutes and uses credits from your MiniMax account. Continue?`))) return;
+  try {
+    await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/video_ia`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt: $('det-prompt').value }) });
+  } catch (err) { alert(err.message); return; }
+  await refrescarForzado();
+}
+
+/* ---------------- deshacer / rehacer ---------------- */
+
+document.addEventListener('keydown', ev => {
+  if (!(ev.metaKey || ev.ctrlKey) || ev.key.toLowerCase() !== 'z' || !actual) return;
+  if (ev.target.matches('input, textarea, select')) return;
+  ev.preventDefault();
+  const accion = ev.shiftKey ? 'rehacer' : 'deshacer';
+  api(`/api/proyectos/${actual.nombre}/${accion}`, { method: 'POST' })
+    .then(refrescarForzado)
+    .catch(() => {});
+});
+
+async function eliminarEscena(n = escenaSel) {
+  const e = escena(n);
+  if (!e) return;
+  try {
+    await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/eliminar`, { method: 'POST' });
+  } catch (err) { alert(err.message); return; }
+  escenaSel = Math.max(1, e.n - 1);
+  await refrescarForzado();
+  const q = escena(escenaSel);
+  if (q) $('audio').currentTime = q.inicio + 0.05;
+}
+
+/* ---------------- acciones de escena ---------------- */
+
+async function buscarPexels() {
+  const q = $('det-consulta').value.trim();
+  if (!q) return;
+  const tipo = $('pexels-tipo').value;
+  const cont = $('pexels-resultados');
+  cont.innerHTML = `<div style="color:var(--tenue)">${L('Buscando…','Searching…')}</div>`;
+  try {
+    const res = tipo === 'web'
+      ? await api(`/api/web?q=${encodeURIComponent(q)}`)
+      : await api(`/api/pexels?q=${encodeURIComponent(q)}&tipo=${tipo}`);
+    cont.innerHTML = res.length ? '' : '<div style="color:var(--tenue)">Sin resultados — prueba otras palabras o usa el prompt con tu IA.</div>';
+    for (const f of res) {
+      const caja = document.createElement('div');
+      caja.style.position = 'relative';
+      const img = document.createElement('img');
+      img.src = f.miniatura;
+      img.title = (f.titulo ? f.titulo + ' — ' : '') + f.autor;
+      img.onerror = () => caja.remove();
+      caja.appendChild(img);
+      if (tipo === 'videos') {
+        const et = document.createElement('div');
+        et.textContent = `🎬 ${f.duracion}s`;
+        et.style.cssText = 'position:absolute;bottom:4px;left:6px;font-size:11px;color:#fff;text-shadow:0 0 4px #000;pointer-events:none';
+        caja.appendChild(et);
+      }
+      img.onclick = async () => {
+        img.style.opacity = .4;
+        const et2 = document.createElement('div');
+        et2.textContent = L('Descargando…','Downloading…');
+        et2.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px';
+        caja.appendChild(et2);
+        try {
+          if (tipo === 'web') {
+            await api(`/api/proyectos/${actual.nombre}/escenas/${escenaSel}/web`,
+              { method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ url: f.grande }) });
+          } else {
+            await api(`/api/proyectos/${actual.nombre}/escenas/${escenaSel}/pexels`,
+              { method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(tipo === 'videos'
+                  ? { url: f.url, tipo: 'video' } : { url: f.grande }) });
+          }
+        } catch (err) {
+          et2.textContent = '✗ ' + err.message;
+          setTimeout(() => { et2.remove(); img.style.opacity = 1; }, 2500);
+          return;
+        }
+        et2.remove(); img.style.opacity = 1;
+        await refrescarForzado();
+      };
+      cont.appendChild(caja);
+    }
+  } catch (e) { cont.innerHTML = `<div style="color:var(--alerta)">${e.message}</div>`; }
+}
+
+async function subirImagen(input) {
+  if (!input.files.length || !escenaSel) return;
+  const fd = new FormData();
+  fd.append('imagen', input.files[0]);
+  await api(`/api/proyectos/${actual.nombre}/escenas/${escenaSel}/imagen`, { method: 'POST', body: fd });
+  input.value = '';
+  await refrescarForzado();
+}
+
+async function refrescarForzado() {
+  actual = await api('/api/proyectos/' + actual.nombre);
+  pvVisibles = '';        // que el previsualizador repinte overlays y medios
+  render();
+}
+
+function copiarPrompt() {
+  navigator.clipboard.writeText($('det-prompt').value || '');
+}
+
+async function guardarPrompt() {
+  const e = escena(escenaSel);
+  if (!e || $('det-prompt').value === (e.prompt || '')) return;
+  e.prompt = $('det-prompt').value;
+  await api(`/api/proyectos/${actual.nombre}/escenas/${e.n}/opciones`,
+    { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ prompt: e.prompt }) });
+}
+
+async function generarIA() {
+  const e = escena(escenaSel);
+  if (!e) return;
+  const n = e.n;
+  await guardarPrompt();
+  const btn = $('btn-ia');
+  btn.disabled = true;
+  btn.textContent = L('✨ Generando… (puede tardar ~20s)','✨ Generating… (may take ~20s)');
+  $('ia-error').textContent = '';
+  const img = $('det-img');
+  img.style.backgroundImage = '';
+  img.innerHTML = `<div style="text-align:center">✨<br>${L('Generando imagen con IA…','Generating image with AI…')}</div>`;
+  try {
+    await api(`/api/proyectos/${actual.nombre}/escenas/${n}/ia`,
+      { method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ prompt: $('det-prompt').value }) });
+  } catch (err) {
+    $('ia-error').textContent = '✗ ' + err.message;
+  }
+  btn.disabled = false;
+  btn.textContent = L('✨ Generar imagen con IA (gratis)','✨ Generate image with AI (free)');
+  await refrescarForzado();
+}
+
+/* ---------------- exportar / video ---------------- */
+
+let expTimer = null;
+
+async function abrirExportar() {
+  $('exp-error').textContent = '';
+  $('exp-resultado').style.display = 'none';
+  $('exp-form').style.display = '';
+  $('exp-progreso').style.display = 'none';
+  $('btn-exp-lanzar').disabled = false;
+  $('exp-nombre').value = actual.nombre;
+  const desact = actual.video && actual.video_desactualizado;
+  $('exp-nota-rebuild').style.display = (!actual.video || desact) ? '' : 'none';
+  try {
+    const o = await api('/api/exportar/opciones');
+    $('exp-carpeta-sel').innerHTML = o.carpetas.map(c =>
+      `<option value="${c.ruta}">${c.etiqueta} — ${c.ruta}</option>`).join('')
+      + '<option value="__otra__">Otra carpeta…</option>';
+    $('exp-calidad').innerHTML = o.calidades.map(c =>
+      `<option value="${c.id}"${c.id === 'alta' ? ' selected' : ''}>${c.etiqueta}</option>`).join('');
+    sincCarpeta();
+  } catch (e) { $('exp-error').textContent = e.message; }
+  $('modal-exportar').classList.add('visible');
+}
+
+function sincCarpeta() {
+  const sel = $('exp-carpeta-sel').value;
+  if (sel === '__otra__') {
+    $('exp-carpeta').style.display = '';
+    if (!$('exp-carpeta').value || $('exp-carpeta').dataset.auto) $('exp-carpeta').value = '';
+    $('exp-carpeta').dataset.auto = '';
+    $('exp-carpeta').focus();
+  } else {
+    $('exp-carpeta').style.display = 'none';
+    $('exp-carpeta').value = sel;
+    $('exp-carpeta').dataset.auto = '1';
+  }
+}
+
+async function lanzarExportar() {
+  const carpeta = $('exp-carpeta').value.trim();
+  if (!carpeta) { $('exp-error').textContent = L('Elige o escribe una carpeta destino.','Choose or type a destination folder.'); return; }
+  $('exp-error').textContent = '';
+  $('btn-exp-lanzar').disabled = true;
+  $('exp-form').style.display = 'none';
+  $('exp-progreso').style.display = '';
+  $('exp-prog-txt').textContent = L('Iniciando…','Starting…');
+  const nombre = actual.nombre;
+  try {
+    await api(`/api/proyectos/${nombre}/exportar_final`,
+      { method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ carpeta, nombre_archivo: $('exp-nombre').value,
+                               calidad: $('exp-calidad').value }) });
+  } catch (e) {
+    $('exp-error').textContent = e.message;
+    $('exp-form').style.display = ''; $('exp-progreso').style.display = 'none';
+    $('btn-exp-lanzar').disabled = false; return;
+  }
+  clearInterval(expTimer);
+  expTimer = setInterval(async () => {
+    const est = await api(`/api/proyectos/${nombre}/estado`);
+    if (est.fase === 'exportando') {
+      $('exp-prog-txt').textContent = est.detalle || 'Procesando…';
+      $('exp-prog-barra').style.width = (est.progreso || 0) + '%';
+    } else {
+      clearInterval(expTimer);
+      await refrescarForzado();
+      if (est.fase === 'error') {
+        $('exp-form').style.display = ''; $('exp-progreso').style.display = 'none';
+        $('btn-exp-lanzar').disabled = false;
+        $('exp-error').textContent = '✗ ' + est.error;
+      } else {
+        $('exp-progreso').style.display = 'none';
+        $('exp-resultado').style.display = '';
+        $('exp-ruta').textContent = est.destino || '';
+        $('btn-revelar').onclick = () =>
+          api('/api/revelar', { method: 'POST', headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({ ruta: est.destino }) }).catch(() => {});
+      }
+    }
+  }, 1200);
+}
+
+function verVideo() {
+  $('video-titulo').textContent = actual.nombre + ' — video.mp4';
+  $('video-player').src = `/api/proyectos/${actual.nombre}/video?t=${Date.now()}`;
+  $('modal-video').classList.add('visible');
+}
+function cerrarVideo() {
+  $('video-player').pause();
+  $('video-player').src = '';
+  $('modal-video').classList.remove('visible');
+}
+
+/* ---------------- nueva historia ---------------- */
+
+function abrirModalNuevo() {
+  $('nuevo-error').textContent = '';
+  $('modal-nuevo').classList.add('visible');
+}
+function cerrarModal(id) { $(id).classList.remove('visible'); }
+function marcarAudio(input) {
+  const z = $('zona-audio-drop');
+  if (input.files.length) { z.classList.add('con-archivo'); z.innerHTML = '🎙 ' + input.files[0].name; }
+}
+
+async function crearProyecto() {
+  const nombre = $('nuevo-nombre').value.trim();
+  const archivo = $('nuevo-audio').files[0];
+  const fd = new FormData();
+  fd.append('nombre', nombre);
+  if (archivo) fd.append('audio', archivo);
+  fd.append('guion', $('nuevo-guion').value);
+  fd.append('modelo', $('nuevo-modelo').value);
+  $('btn-crear').disabled = true;
+  try {
+    const r = await api('/api/proyectos', { method: 'POST', body: fd });
+    cerrarModal('modal-nuevo');
+    $('nuevo-nombre').value = ''; $('nuevo-audio').value = '';
+    $('zona-audio-drop').classList.remove('con-archivo');
+    $('zona-audio-drop').innerHTML = '🎙 Haz clic para elegir el audio de MiniMax<br><small>mp3, wav, m4a…</small>';
+    await abrirProyecto(r.nombre);
+  } catch (e) { $('nuevo-error').textContent = e.message; }
+  $('btn-crear').disabled = false;
+}
+
+/* ---------------- unir historias ---------------- */
+
+let timerUnir = null;
+
+async function unirHistorias() {
+  const marcadas = [...document.querySelectorAll('#unir-lista input:checked')].map(c => c.value);
+  const salida = $('unir-nombre').value.trim() || 'video_final';
+  try {
+    await api('/api/unir', { method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ historias: marcadas, salida }) });
+  } catch (e) { $('unir-estado').textContent = '✗ ' + e.message; return; }
+  $('btn-unir').disabled = true;
+  clearInterval(timerUnir);
+  timerUnir = setInterval(async () => {
+    const est = await api('/api/unir/estado');
+    if (est.fase === 'exportando') $('unir-estado').textContent = '⏳ ' + (est.detalle || L('Uniendo…','Merging…'));
+    else {
+      clearInterval(timerUnir);
+      $('btn-unir').disabled = false;
+      if (est.fase === 'error') $('unir-estado').textContent = '✗ ' + est.error;
+      else {
+        $('unir-estado').innerHTML = `✓ ${L('Listo','Done')} — <a href="/api/unir/video/${est.salida}" target="_blank" style="color:var(--ok)">${L('ver','view')} ${est.salida}.mp4</a>`;
+      }
+    }
+  }, 1500);
+}
+
+/* ---------------- arranque ---------------- */
+
+(async function init() {
+  // idioma + bienvenida
+  aplicarIdioma();
+  document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === idioma));
+  if (localStorage.getItem('afv_bienvenida_vista')) {
+    $('bienvenida').style.display = 'none';
+  }
+
+  const conf = await api('/api/config');
+  configApp = conf;
+  actualizarAvisoPexels();
+  await cargarLista();
+  setInterval(cargarLista, 5000);
+})();
+</script>
+</body>
+</html>

@@ -747,6 +747,201 @@ def _guion_pollinations(prompt):
         f".env para usar Claude (mejor calidad y más confiable).")
 
 
+# ------------------------------------------------- estudio de guión (chat LLM)
+
+GUIONES = DATOS / "guiones"
+
+SISTEMA_GUIONISTA = """Eres un guionista experto en videos "faceless" de YouTube \
+(misterio, documental, historias narradas). Trabajas dentro de AutoFaceless Video, \
+una app que convierte guiones en videos con voz e imágenes automáticas.
+
+Tu trabajo es AYUDAR Y GUIAR al usuario a crear un gran guión, no solo escribirlo:
+- Si el usuario llega sin idea clara, hazle 2-3 preguntas cortas (tema, duración \
+en minutos, tono, canal) antes de escribir.
+- Propón ganchos de apertura (primeros 15 segundos) y estructura (gancho → \
+desarrollo con giros → clímax → cierre con pregunta al espectador).
+- Cuando escribas guión, escribe SOLO el texto que se narrará en voz alta: sin \
+encabezados, sin acotaciones, sin "ESCENA 1", sin emojis. Párrafos cortos y \
+lenguaje hablado natural (se convertirá a voz).
+- Una duración de N minutos ≈ N x 150 palabras habladas.
+- Si el usuario pide cambios, reescribe solo lo necesario y entrega el guión \
+completo actualizado.
+- Responde siempre en el idioma del usuario.
+
+Cuando entregues una versión completa del guión (nueva o revisada), enciérrala \
+EXACTAMENTE entre las marcas <guion> y </guion> (una sola vez por respuesta), \
+con tus comentarios fuera de las marcas. Si solo estás conversando o haciendo \
+preguntas, no uses las marcas."""
+
+
+def _mensajes_openai(mensajes, sistema):
+    ms = [{"role": "system", "content": sistema}]
+    for m in mensajes:
+        ms.append({"role": "user" if m.get("rol") == "usuario" else "assistant",
+                   "content": m.get("texto", "")})
+    return ms
+
+
+def chat_guion(mensajes, proveedor="gratis", modelo=""):
+    """Un turno del asistente de guiones. mensajes = [{rol, texto}, ...] con el
+    historial completo (el último es del usuario). Devuelve el texto de respuesta."""
+    import requests
+    env = leer_env()
+    sistema = SISTEMA_GUIONISTA
+
+    if proveedor == "claude":
+        import anthropic
+        key = env.get("ANTHROPIC_API_KEY")
+        if not key:
+            err("Falta la clave de Claude (ANTHROPIC_API_KEY) — pégala en 🔑 Claves API.")
+        cliente = anthropic.Anthropic(api_key=key)
+        mod = modelo or env.get("ANTHROPIC_CHAT_MODEL", "claude-sonnet-5")
+        try:
+            with cliente.messages.stream(
+                    model=mod, max_tokens=16000, system=sistema,
+                    messages=[{"role": "user" if m.get("rol") == "usuario" else "assistant",
+                               "content": m.get("texto", "")} for m in mensajes],
+            ) as stream:
+                r = stream.get_final_message()
+        except anthropic.AuthenticationError:
+            err("La clave ANTHROPIC_API_KEY no es válida — revísala en 🔑 Claves API.")
+        except anthropic.APIStatusError as e:
+            err(f"Claude respondió un error ({e.status_code}). Intenta de nuevo.")
+        return "".join(b.text for b in r.content if b.type == "text").strip()
+
+    if proveedor == "gemini":
+        key = env.get("GEMINI_API_KEY")
+        if not key:
+            err("Falta la clave de Gemini (GEMINI_API_KEY) — pégala en 🔑 Claves API.")
+        mod = modelo or env.get("GEMINI_MODEL", "gemini-2.5-flash")
+        contents = [{"role": "user" if m.get("rol") == "usuario" else "model",
+                     "parts": [{"text": m.get("texto", "")}]} for m in mensajes]
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent",
+            params={"key": key},
+            json={"contents": contents,
+                  "systemInstruction": {"parts": [{"text": sistema}]}},
+            timeout=180)
+        if r.status_code in (401, 403):
+            err("La clave GEMINI_API_KEY no es válida — revísala en 🔑 Claves API.")
+        if not r.ok:
+            err(f"Gemini respondió un error (HTTP {r.status_code}). Intenta de nuevo.")
+        try:
+            return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        except (KeyError, IndexError):
+            err("Gemini no devolvió texto (posible filtro de contenido). Reformula el mensaje.")
+
+    if proveedor == "openai":
+        key = env.get("OPENAI_API_KEY")
+        if not key:
+            err("Falta la clave de OpenAI (OPENAI_API_KEY) — pégala en 🔑 Claves API.")
+        mod = modelo or env.get("OPENAI_MODEL", "gpt-4o-mini")
+        r = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {key}"},
+            json={"model": mod, "messages": _mensajes_openai(mensajes, sistema)},
+            timeout=180)
+        if r.status_code == 401:
+            err("La clave OPENAI_API_KEY no es válida — revísala en 🔑 Claves API.")
+        if not r.ok:
+            err(f"ChatGPT respondió un error (HTTP {r.status_code}). Intenta de nuevo.")
+        return r.json()["choices"][0]["message"]["content"].strip()
+
+    if proveedor == "local":
+        mod = modelo
+        if not mod:
+            err("Elige un modelo local de la lista (necesitas Ollama corriendo).")
+        try:
+            r = requests.post("http://127.0.0.1:11434/api/chat",
+                              json={"model": mod, "stream": False,
+                                    "messages": _mensajes_openai(mensajes, sistema)},
+                              timeout=600)
+        except requests.RequestException:
+            err("No encuentro Ollama corriendo en tu Mac. Ábrelo (o instálalo "
+                "gratis en ollama.com) y vuelve a intentar.")
+        if not r.ok:
+            err(f"El modelo local respondió un error (HTTP {r.status_code}). "
+                f"¿Está descargado? Prueba: ollama pull {mod}")
+        return r.json().get("message", {}).get("content", "").strip()
+
+    # gratis (Pollinations) — sin clave
+    intentos = 0
+    while intentos < 3:
+        intentos += 1
+        try:
+            r = requests.post("https://text.pollinations.ai/openai",
+                              json={"model": "openai",
+                                    "messages": _mensajes_openai(mensajes, sistema)},
+                              timeout=180)
+            if r.ok:
+                texto = _extraer_texto_llm(r.text)
+                if texto:
+                    return texto
+        except requests.RequestException:
+            pass
+    err("El asistente gratuito no respondió — reintenta en un momento, o usa "
+        "un proveedor con clave (🔑 Claves API) para mayor confiabilidad.")
+
+
+def modelos_ollama():
+    """Modelos instalados en Ollama local, con su tamaño en GB. [] si no corre."""
+    import requests
+    try:
+        r = requests.get("http://127.0.0.1:11434/api/tags", timeout=2)
+        if not r.ok:
+            return None
+        return [{"nombre": m.get("name", ""),
+                 "gb": round(m.get("size", 0) / 1e9, 1)}
+                for m in r.json().get("models", [])]
+    except requests.RequestException:
+        return None
+
+
+# --------------------------------------------------- guiones guardados (CRUD)
+
+def _ruta_guion(nombre):
+    limpio = re.sub(r"[^\w\-. ]", "", (nombre or "").strip())[:80]
+    if not limpio:
+        err("Ponle un nombre al guión.")
+    return GUIONES / f"{limpio}.json"
+
+
+def listar_guiones():
+    GUIONES.mkdir(exist_ok=True)
+    res = []
+    for f in sorted(GUIONES.glob("*.json"),
+                    key=lambda x: x.stat().st_mtime, reverse=True):
+        try:
+            d = json.loads(f.read_text())
+        except ValueError:
+            continue
+        res.append({"nombre": f.stem,
+                    "palabras": len((d.get("texto") or "").split()),
+                    "actualizado": f.stat().st_mtime})
+    return res
+
+
+def leer_guion(nombre):
+    f = _ruta_guion(nombre)
+    if not f.exists():
+        err(f"No existe el guión {nombre}.")
+    return {"nombre": f.stem, **json.loads(f.read_text())}
+
+
+def guardar_guion(nombre, texto, chat):
+    GUIONES.mkdir(exist_ok=True)
+    f = _ruta_guion(nombre)
+    f.write_text(json.dumps({"texto": texto or "", "chat": chat or []},
+                            ensure_ascii=False, indent=2))
+    return f.stem
+
+
+def borrar_guion(nombre):
+    f = _ruta_guion(nombre)
+    if f.exists():
+        f.unlink()
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")

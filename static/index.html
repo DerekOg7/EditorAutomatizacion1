@@ -273,6 +273,40 @@
   .bi-lang:hover { border-color: var(--acento); }
   .bienv-start { width: 100%; padding: 14px; font-size: 15px; }
   #btn-idioma { padding: 8px 12px; }
+
+  /* ---------- estudio de guión ---------- */
+  #estudio { display: none; position: fixed; inset: 0; z-index: 90; background: var(--bg);
+             flex-direction: column; }
+  #estudio.visible { display: flex; }
+  #est-cab { display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+             border-bottom: 1px solid var(--borde); background: var(--panel); flex-wrap: wrap; }
+  #est-cab h2 { font-size: 15px; margin: 0 8px 0 0; }
+  #est-cuerpo { flex: 1; display: flex; min-height: 0; }
+  #est-chat { width: 46%; min-width: 340px; display: flex; flex-direction: column;
+              border-right: 1px solid var(--borde); }
+  #est-mensajes { flex: 1; overflow-y: auto; padding: 16px; display: flex;
+                  flex-direction: column; gap: 10px; }
+  .est-msg { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: 14px;
+             line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
+  .est-msg.usuario { align-self: flex-end; background: var(--acento); color: #fff;
+                     border-bottom-right-radius: 4px; }
+  .est-msg.asistente { align-self: flex-start; background: var(--panel2);
+                       border: 1px solid var(--borde); border-bottom-left-radius: 4px; }
+  .est-msg.pensando { color: var(--tenue); font-style: italic; }
+  .est-chip-guion { display: inline-block; margin-top: 8px; font-size: 12px;
+                    color: var(--ok); border: 1px solid var(--ok); border-radius: 8px;
+                    padding: 2px 10px; }
+  #est-entrada { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--borde); }
+  #est-texto { flex: 1; resize: none; height: 64px; }
+  #est-doc { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #est-doc-cab { display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+                 border-bottom: 1px solid var(--borde); font-size: 12px; color: var(--tenue); }
+  #est-guion { flex: 1; resize: none; border: 0; border-radius: 0; padding: 18px 22px;
+               font-size: 15px; line-height: 1.7; background: var(--bg); }
+  #est-guion:focus { outline: none; }
+  @media (max-width: 900px) { #est-cuerpo { flex-direction: column; }
+    #est-chat { width: 100%; min-width: 0; height: 50%; border-right: 0;
+                border-bottom: 1px solid var(--borde); } }
 </style>
 </head>
 <body>
@@ -291,11 +325,49 @@
   </div>
 </div>
 
+
+<!-- estudio de guión -->
+<div id="estudio">
+  <div id="est-cab">
+    <button onclick="cerrarEstudio()" data-i18n="est_back">← Volver</button>
+    <h2 data-i18n="est_title">📝 Estudio de guión</h2>
+    <select id="est-sel" style="max-width:200px" onchange="estCargar(this.value)"></select>
+    <button onclick="estNuevo()" data-i18n="est_new">＋ Nuevo</button>
+    <button onclick="estBorrar()" title="Borrar este guión" data-i18n-title="est_del_t">🗑</button>
+    <div style="flex:1"></div>
+    <span style="font-size:11px;color:var(--tenue)" data-i18n="est_ai">ASISTENTE:</span>
+    <select id="est-prov" style="max-width:190px" onchange="estProvCambio()"></select>
+    <select id="est-modelo" style="max-width:200px;display:none"></select>
+    <button class="primario" onclick="estAVoz()" data-i18n="est_tovoice">🎙 Usar en Estudio de voz</button>
+  </div>
+  <div id="est-cuerpo">
+    <div id="est-chat">
+      <div id="est-mensajes"></div>
+      <div id="est-entrada">
+        <textarea id="est-texto" data-i18n-ph="est_ph" placeholder="Cuéntale tu idea… ej: quiero un guión de 10 min sobre el Triángulo de las Bermudas"></textarea>
+        <button class="primario" id="est-enviar" onclick="estEnviar()" data-i18n="est_send">Enviar ➤</button>
+      </div>
+    </div>
+    <div id="est-doc">
+      <div id="est-doc-cab">
+        <span data-i18n="est_doc">GUIÓN (editable — lo que se narrará)</span>
+        <div style="flex:1"></div>
+        <span id="est-palabras"></span>
+        <button style="padding:3px 10px;font-size:11px" onclick="navigator.clipboard.writeText($('est-guion').value)" data-i18n="est_copy">copiar</button>
+        <span id="est-guardado" style="color:var(--ok)"></span>
+      </div>
+      <textarea id="est-guion" data-i18n-ph="est_doc_ph" placeholder="Aquí aparecerá el guión que escriba el asistente. También puedes escribir o pegar el tuyo y pedirle mejoras en el chat." oninput="estDocCambio()"></textarea>
+    </div>
+  </div>
+</div>
+
 <aside id="lateral">
   <h1><small>AUTOFACELESS VIDEO</small> <span data-i18n="side_editor">Editor de historias</span></h1>
   <div class="zona-nuevo">
     <button class="primario" style="width:100%" onclick="abrirModalNuevo()" data-i18n="side_new">＋ Nueva historia</button>
-    <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">✨ Crear historia con IA</button>
+    <div style="font-size:10px;letter-spacing:1.5px;color:var(--tenue);margin:12px 0 4px" data-i18n="side_tools">HERRAMIENTAS</div>
+    <button style="width:100%" onclick="abrirEstudio()" data-i18n="side_script">📝 Estudio de guión</button>
+    <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">🎙 Estudio de voz</button>
     <button style="width:100%;margin-top:6px" id="btn-claves" onclick="abrirClaves()" data-i18n="side_keys">🔑 Claves API</button>
   </div>
   <div id="lista-proyectos"></div>
@@ -604,25 +676,13 @@
 <!-- modal crear historia con IA -->
 <div class="modal-fondo" id="modal-ia">
   <div class="modal" style="width:640px">
-    <h3 data-i18n="ia_title">✨ Crear historia con IA (guión + voz)</h3>
+    <h3 data-i18n="ia_title">🎙 Estudio de voz (guión → narración)</h3>
 
-    <div class="campo">
-      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_channel">NOMBRE DE TU CANAL</h4>
-      <input type="text" id="ia-canal" placeholder="ej: Secretos Inexplicables" data-i18n-ph="ia_channel_ph">
+    <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
+      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_saved">GUIÓN GUARDADO (del Estudio de guión)</h4>
+        <select id="ia-guion-sel"></select></div>
+      <button onclick="iaCargarGuion()" data-i18n="ia_load">📥 Cargar</button>
     </div>
-    <div class="campo" style="display:flex;gap:8px">
-      <div style="flex:2"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_topic">TEMA DE LA HISTORIA</h4>
-        <input type="text" id="ia-tema" placeholder="ej: la desaparición del vuelo MH370" data-i18n-ph="ia_topic_ph"></div>
-      <div style="width:90px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_min">MINUTOS</h4>
-        <input type="number" id="ia-minutos" min="1" max="20" value="10"></div>
-      <div style="width:140px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_style">ESTILO</h4>
-        <select id="ia-estilo">
-          <option value="misterio" data-i18n="ia_s_mystery">Misterio</option>
-          <option value="terror" data-i18n="ia_s_horror">Terror</option>
-          <option value="documental" data-i18n="ia_s_doc">Documental</option>
-        </select></div>
-    </div>
-    <button class="primario" id="btn-ia-guion" style="width:100%" onclick="generarGuion()" data-i18n="ia_genscript">📝 Generar guión</button>
     <p id="ia-guion-info" style="font-size:11px;color:var(--tenue);margin:4px 0"></p>
 
     <div class="campo">
@@ -964,6 +1024,17 @@
     </div>
     <div class="campo" style="display:flex;gap:8px">
       <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue)">GEMINI <span id="cl-est-gemini" style="font-weight:400"></span></h4>
+        <input type="text" id="cl-gemini" autocomplete="off" spellcheck="false">
+      </div>
+      <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue)">OPENAI (CHATGPT) <span id="cl-est-openai" style="font-weight:400"></span></h4>
+        <input type="text" id="cl-openai" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--tenue);margin-top:-6px;margin-bottom:8px" data-i18n-html="cl_h_llm">Para el Estudio de guión (opcionales: sin clave se usa IA gratuita) · <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--acento)">aistudio.google.com</a> · <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--acento)">platform.openai.com</a></div>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1">
         <h4 style="font-size:11px;color:var(--tenue)">MINIMAX API KEY <span id="cl-est-minimax" style="font-weight:400"></span></h4>
         <input type="text" id="cl-minimax" autocomplete="off" spellcheck="false">
       </div>
@@ -998,6 +1069,24 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  side_tools: "TOOLS",
+  side_script: "📝 Script studio",
+  side_ai: "🎙 Voice studio",
+  ia_title: "🎙 Voice studio (script → narration)",
+  ia_saved: "SAVED SCRIPT (from the Script studio)",
+  ia_load: "📥 Load",
+  cl_h_llm: 'For the Script studio (optional: without a key, free AI is used) · <a href="https://aistudio.google.com/apikey" target="_blank" style="color:var(--acento)">aistudio.google.com</a> · <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--acento)">platform.openai.com</a>',
+  est_back: "← Back",
+  est_title: "📝 Script studio",
+  est_new: "＋ New",
+  est_del_t: "Delete this script",
+  est_ai: "ASSISTANT:",
+  est_tovoice: "🎙 Use in Voice studio",
+  est_ph: "Tell me your idea… e.g. I want a 10-min script about the Bermuda Triangle",
+  est_send: "Send ➤",
+  est_doc: "SCRIPT (editable — what will be narrated)",
+  est_doc_ph: "The assistant's script will appear here. You can also write or paste your own and ask for improvements in the chat.",
+  est_copy: "copy",
   hdr_subs: "💬 Subtitles",
   sub_title: "💬 Subtitles",
   sub_on: "Burn subtitles into the video",
@@ -1178,7 +1267,7 @@ const EN = {
   pos_id: "Bottom right",
   welcome_tagline: 'From script to finished YouTube video, without editing by hand.',
   welcome_lang: 'CHOOSE YOUR LANGUAGE', welcome_start: 'Get started',
-  side_editor: 'Story editor', side_new: '＋ New story', side_ai: '✨ Create story with AI',
+  side_editor: 'Story editor', side_new: '＋ New story',
   side_join_title: 'MERGE STORIES (final video)', side_join_btn: 'Merge into one video',
   side_join_ph: 'final video name',
   empty_1: 'Create a new story or pick one on the left.',
@@ -1190,7 +1279,6 @@ const EN = {
   trk_video: 'Video', trk_narration: 'Narration', trk_music: 'Music',
   tab_scene: 'Scene', tab_preview: '▶ Preview', tab_all: 'All scenes and prompts',
   nm_title: 'New story', nm_create: 'Create and process',
-  ia_title: '✨ Create story with AI (script + voice)',
   ia_create: '🎙 Create story (generates the voice)',
   exp_title: 'Export this story', exp_go: 'Export',
   btn_cancel: 'Cancel', btn_save: 'Save',
@@ -1252,7 +1340,7 @@ function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bie
 /* ==================== claves API (modal 🔑) ==================== */
 async function abrirClaves() {
   $('cl-msg').textContent = '';
-  ['cl-pexels','cl-anthropic','cl-minimax','cl-group'].forEach(id => { $(id).value = ''; });
+  ['cl-pexels','cl-anthropic','cl-minimax','cl-group','cl-gemini','cl-openai'].forEach(id => { $(id).value = ''; });
   $('modal-claves').classList.add('visible');
   try {
     const c = await api('/api/claves');
@@ -1269,6 +1357,8 @@ async function abrirClaves() {
     pinta('cl-anthropic','cl-est-anthropic', c.ANTHROPIC_API_KEY);
     pinta('cl-minimax','cl-est-minimax', c.MINIMAX_API_KEY);
     pinta('cl-group','cl-est-group', c.MINIMAX_GROUP_ID);
+    pinta('cl-gemini','cl-est-gemini', c.GEMINI_API_KEY);
+    pinta('cl-openai','cl-est-openai', c.OPENAI_API_KEY);
   } catch (e) { /* sin red no pasa: es local */ }
 }
 
@@ -1283,6 +1373,8 @@ async function guardarClaves() {
         ANTHROPIC_API_KEY: $('cl-anthropic').value.trim(),
         MINIMAX_API_KEY: $('cl-minimax').value.trim(),
         MINIMAX_GROUP_ID: $('cl-group').value.trim(),
+        GEMINI_API_KEY: $('cl-gemini').value.trim(),
+        OPENAI_API_KEY: $('cl-openai').value.trim(),
       })
     });
     actualizarAvisoPexels();
@@ -1396,6 +1488,245 @@ function marcarVideoDesactualizado() {
     $('aviso-desact').style.display = '';
     $('btn-exportar').textContent = L('Re-exportar video','Re-export video');
   }
+}
+
+/* ==================== estudio de guión ==================== */
+let estChat = [];          // [{rol, texto}]
+let estNombre = '';        // guión abierto
+let estOcupado = false;
+let estGuardarTimer = null;
+
+async function abrirEstudio() {
+  $('estudio').classList.add('visible');
+  await estProveedores();
+  await estLista();
+  const ultimo = localStorage.getItem('afv_guion_actual');
+  if (ultimo && [...$('est-sel').options].some(o => o.value === ultimo)) {
+    await estCargar(ultimo);
+  } else if (!estNombre && !estChat.length) {
+    estMensajeBienvenida();
+  }
+}
+
+function cerrarEstudio() { $('estudio').classList.remove('visible'); }
+
+function estMensajeBienvenida() {
+  $('est-mensajes').innerHTML = '';
+  estBurbuja('asistente', L(
+    '¡Hola! Soy tu asistente de guiones. Cuéntame tu idea (tema, duración y tono) y te ayudo a convertirla en un guión listo para narrar. Si no sabes por dónde empezar, dime solo el tema y yo te guío.',
+    "Hi! I'm your script assistant. Tell me your idea (topic, length and tone) and I'll help you turn it into a narration-ready script. Not sure where to start? Just give me the topic and I'll guide you."));
+}
+
+async function estProveedores() {
+  try {
+    const p = await api('/api/guion/proveedores');
+    const sel = $('est-prov');
+    const op = (v, txt, ok) => `<option value="${v}" ${ok ? '' : 'disabled'}>${txt}${ok ? '' : ' · ' + L('sin clave','no key')}</option>`;
+    let html = `<option value="gratis">${L('Gratis (sin clave)','Free (no key)')}</option>`;
+    html += op('claude', 'Claude', p.claude);
+    html += op('gemini', 'Gemini', p.gemini);
+    html += op('openai', 'ChatGPT', p.openai);
+    if (p.local === null) {
+      html += `<option value="local" disabled>${L('Local · instala Ollama','Local · install Ollama')}</option>`;
+    } else if (!p.local.length) {
+      html += `<option value="local" disabled>${L('Local · sin modelos descargados','Local · no models downloaded')}</option>`;
+    } else {
+      html += `<option value="local">${L('Local (Ollama, gratis)','Local (Ollama, free)')}</option>`;
+      $('est-modelo').innerHTML = p.local
+        .map(m => `<option value="${m.nombre}">${m.nombre} · ${m.gb} GB</option>`).join('');
+    }
+    sel.innerHTML = html;
+    const guardado = localStorage.getItem('afv_guion_prov');
+    if (guardado && [...sel.options].some(o => o.value === guardado && !o.disabled)) sel.value = guardado;
+    estProvCambio(false);
+  } catch (e) { /* offline */ }
+}
+
+function estProvCambio(guardar = true) {
+  const local = $('est-prov').value === 'local';
+  $('est-modelo').style.display = local ? '' : 'none';
+  if (guardar) localStorage.setItem('afv_guion_prov', $('est-prov').value);
+}
+
+function estBurbuja(rol, texto, conGuion = false) {
+  const div = document.createElement('div');
+  div.className = 'est-msg ' + rol;
+  div.textContent = texto;
+  if (conGuion) {
+    const chip = document.createElement('div');
+    chip.className = 'est-chip-guion';
+    chip.textContent = L('📄 Guión actualizado en el panel derecho','📄 Script updated in the right panel');
+    div.appendChild(document.createElement('br'));
+    div.appendChild(chip);
+  }
+  $('est-mensajes').appendChild(div);
+  $('est-mensajes').scrollTop = $('est-mensajes').scrollHeight;
+  return div;
+}
+
+async function estEnviar() {
+  const texto = $('est-texto').value.trim();
+  if (!texto || estOcupado) return;
+  $('est-texto').value = '';
+  estChat.push({ rol: 'usuario', texto });
+  estBurbuja('usuario', texto);
+  estOcupado = true;
+  $('est-enviar').disabled = true;
+  const pensando = estBurbuja('asistente', L('Escribiendo…','Writing…'));
+  pensando.classList.add('pensando');
+  try {
+    // se manda también el guión actual como contexto si existe
+    const mensajes = [...estChat];
+    const doc = $('est-guion').value.trim();
+    if (doc) {
+      mensajes[mensajes.length - 1] = { rol: 'usuario',
+        texto: `(Guión actual en el editor:\n<guion>${doc}</guion>)\n\n${texto}` };
+    }
+    const r = await api('/api/guion/chat', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ mensajes, proveedor: $('est-prov').value,
+                             modelo: $('est-prov').value === 'local' ? $('est-modelo').value : '' })
+    });
+    pensando.remove();
+    let visible = r.texto;
+    let huboGuion = false;
+    const m = r.texto.match(/<guion>([\s\S]*?)<\/guion>/);
+    if (m && m[1].trim()) {
+      $('est-guion').value = m[1].trim();
+      estDocCambio();
+      visible = r.texto.replace(/<guion>[\s\S]*?<\/guion>/, '').replace(/\n{3,}/g, '\n\n').trim()
+                || L('Aquí tienes el guión.','Here is your script.');
+      huboGuion = true;
+    }
+    estChat.push({ rol: 'asistente', texto: r.texto });
+    estBurbuja('asistente', visible, huboGuion);
+    estAutoGuardar();
+  } catch (e) {
+    pensando.remove();
+    estBurbuja('asistente', '✗ ' + e.message);
+    estChat.pop();   // no cuenta el turno fallido
+  }
+  estOcupado = false;
+  $('est-enviar').disabled = false;
+  $('est-texto').focus();
+}
+
+function estDocCambio() {
+  const n = $('est-guion').value.trim().split(/\s+/).filter(Boolean).length;
+  $('est-palabras').textContent = n
+    ? `${n} ${L('palabras','words')} · ~${Math.max(1, Math.round(n / 150))} min` : '';
+  estAutoGuardar();
+}
+
+function estAutoGuardar() {
+  if (!estNombre) return;
+  clearTimeout(estGuardarTimer);
+  estGuardarTimer = setTimeout(() => estGuardar(true), 900);
+}
+
+async function estGuardar(silencioso = false) {
+  if (!estNombre) {
+    const n = prompt(L('Nombre para este guión:','Name for this script:'));
+    if (!n) return;
+    estNombre = n.trim();
+  }
+  try {
+    const r = await api('/api/guiones/' + encodeURIComponent(estNombre), {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ texto: $('est-guion').value, chat: estChat }) });
+    estNombre = r.nombre;
+    localStorage.setItem('afv_guion_actual', estNombre);
+    $('est-guardado').textContent = '✓ ' + L('guardado','saved');
+    setTimeout(() => { $('est-guardado').textContent = ''; }, 1500);
+    if (!silencioso) await estLista();
+  } catch (e) { if (!silencioso) alert(e.message); }
+}
+
+async function estLista() {
+  try {
+    const gs = await api('/api/guiones');
+    $('est-sel').innerHTML = `<option value="">${L('— guiones guardados —','— saved scripts —')}</option>`
+      + gs.map(g => `<option value="${g.nombre}">${g.nombre} · ${g.palabras} ${L('palabras','words')}</option>`).join('');
+    if (estNombre) $('est-sel').value = estNombre;
+  } catch (e) { /* sin lista */ }
+}
+
+async function estCargar(nombre) {
+  if (!nombre) return;
+  try {
+    const g = await api('/api/guiones/' + encodeURIComponent(nombre));
+    estNombre = g.nombre;
+    estChat = g.chat || [];
+    $('est-guion').value = g.texto || '';
+    $('est-mensajes').innerHTML = '';
+    if (!estChat.length) estMensajeBienvenida();
+    for (const m of estChat) {
+      if (m.rol === 'usuario') {
+        estBurbuja('usuario', m.texto.replace(/^\(Guión actual[\s\S]*?\)\n\n/, ''));
+      } else {
+        const g2 = m.texto.match(/<guion>[\s\S]*?<\/guion>/);
+        estBurbuja('asistente',
+          m.texto.replace(/<guion>[\s\S]*?<\/guion>/, '').replace(/\n{3,}/g, '\n\n').trim()
+          || L('Aquí tienes el guión.','Here is your script.'), !!g2);
+      }
+    }
+    estDocCambio();
+    localStorage.setItem('afv_guion_actual', estNombre);
+    $('est-sel').value = estNombre;
+  } catch (e) { alert(e.message); }
+}
+
+async function estNuevo() {
+  const n = prompt(L('Nombre del nuevo guión:','Name for the new script:'));
+  if (!n) return;
+  estNombre = n.trim();
+  estChat = [];
+  $('est-guion').value = '';
+  estMensajeBienvenida();
+  estDocCambio();
+  await estGuardar(true);
+  await estLista();
+}
+
+async function estBorrar() {
+  if (!estNombre) return;
+  if (!confirm(L(`¿Borrar el guión "${estNombre}"?`, `Delete the script "${estNombre}"?`))) return;
+  await api('/api/guiones/' + encodeURIComponent(estNombre), { method: 'DELETE' });
+  estNombre = ''; estChat = [];
+  $('est-guion').value = '';
+  localStorage.removeItem('afv_guion_actual');
+  estMensajeBienvenida();
+  estDocCambio();
+  await estLista();
+}
+
+async function estAVoz() {
+  if (!$('est-guion').value.trim()) {
+    alert(L('El guión está vacío — pídele al asistente que lo escriba primero.',
+            'The script is empty — ask the assistant to write it first.'));
+    return;
+  }
+  await estGuardar(true);
+  cerrarEstudio();
+  await abrirModalIA();
+  if (estNombre) {
+    $('ia-guion-sel').value = estNombre;
+    await iaCargarGuion();
+  }
+}
+
+async function iaCargarGuion() {
+  const n = $('ia-guion-sel').value;
+  if (!n) return;
+  try {
+    const g = await api('/api/guiones/' + encodeURIComponent(n));
+    $('ia-guion').value = g.texto || '';
+    iaContar();
+    if (!$('ia-nombre').value) {
+      $('ia-nombre').value = n.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+    }
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
 }
 
 const SUB_TAM_PV = { s: 2.4, m: 3.1, g: 3.9 };  // tamaño en % del alto del lienzo (aprox del export)
@@ -2445,11 +2776,16 @@ async function eliminarAnimUI() {
 /* ---------------- crear historia con IA ---------------- */
 let configApp = { pexels: false, anthropic: false, minimax: false };
 
-function abrirModalIA() {
+async function abrirModalIA() {
   $('ia-error').textContent = '';
-  $('ia-guion-info').textContent = configApp.anthropic
-    ? 'Se usará Claude (premium) para el guión.'
-    : 'Se usará el generador gratuito. Para mejor calidad, agrega ANTHROPIC_API_KEY al .env.';
+  $('ia-guion-info').textContent = '';
+  try {
+    const gs = await api('/api/guiones');
+    const sel = $('ia-guion-sel');
+    sel.innerHTML = gs.length
+      ? gs.map(g => `<option value="${g.nombre}">${g.nombre} · ${g.palabras} ${L('palabras','words')}</option>`).join('')
+      : `<option value="">${L('— no hay guiones: créalos en el Estudio de guión —','— no scripts yet: create them in the Script studio —')}</option>`;
+  } catch (e) { /* sin lista */ }
   const sinMinimax = !configApp.minimax;
   $('ia-aviso-minimax').style.display = sinMinimax ? '' : 'none';
   $('ia-zona-voz').style.display = sinMinimax ? 'none' : '';
@@ -2462,28 +2798,6 @@ function iaContar() {
   if (n) $('ia-guion-info').textContent = `${n} palabras (~${Math.round(n / 145)} min narrados)`;
 }
 
-async function generarGuion() {
-  const btn = $('btn-ia-guion');
-  btn.disabled = true;
-  btn.textContent = L('📝 Escribiendo guión… (puede tardar ~1 min)','📝 Writing script… (may take ~1 min)');
-  $('ia-error').textContent = '';
-  try {
-    const r = await api('/api/ia/guion', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ tema: $('ia-tema').value, minutos: $('ia-minutos').value,
-                             estilo: $('ia-estilo').value, canal: $('ia-canal').value }) });
-    $('ia-guion').value = r.guion;
-    $('ia-guion-info').textContent =
-      `${r.palabras} palabras (~${Math.round(r.palabras / 145)} min) · generado con ${r.proveedor === 'claude' ? 'Claude (premium)' : 'el servicio gratuito'}`;
-    if (!$('ia-nombre').value) {
-      $('ia-nombre').value = $('ia-tema').value.toLowerCase()
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
-    }
-  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
-  btn.disabled = false;
-  btn.textContent = L('📝 Generar guión','📝 Generate script');
-}
 
 let audioPrueba = null;
 async function probarVoz() {

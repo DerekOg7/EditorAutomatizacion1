@@ -239,11 +239,14 @@ def config():
     env = editor.leer_env()
     return jsonify({"pexels": bool(env.get("PEXELS_API_KEY")),
                     "anthropic": bool(env.get("ANTHROPIC_API_KEY")),
-                    "minimax": bool(env.get("MINIMAX_API_KEY"))})
+                    "minimax": bool(env.get("MINIMAX_API_KEY")),
+                    "gemini": bool(env.get("GEMINI_API_KEY")),
+                    "openai": bool(env.get("OPENAI_API_KEY"))})
 
 
 CLAVES_PERMITIDAS = ("PEXELS_API_KEY", "ANTHROPIC_API_KEY",
-                     "MINIMAX_API_KEY", "MINIMAX_GROUP_ID")
+                     "MINIMAX_API_KEY", "MINIMAX_GROUP_ID",
+                     "GEMINI_API_KEY", "OPENAI_API_KEY")
 
 
 @app.get("/api/claves")
@@ -295,6 +298,68 @@ def guardar_subs(nombre):
         datos["frases"] = frases
     editor.guardar_subtitulos(PROYECTOS / nombre, datos)
     return jsonify(datos)
+
+
+
+# ------------------------------------------------------- estudio de guión
+
+@app.get("/api/guion/proveedores")
+def guion_proveedores():
+    env = editor.leer_env()
+    return jsonify({
+        "gratis": True,
+        "claude": bool(env.get("ANTHROPIC_API_KEY")),
+        "gemini": bool(env.get("GEMINI_API_KEY")),
+        "openai": bool(env.get("OPENAI_API_KEY")),
+        "local": editor.modelos_ollama(),   # None = Ollama no corre; [] = sin modelos
+    })
+
+
+@app.post("/api/guion/chat")
+def guion_chat():
+    d = request.get_json(force=True) or {}
+    mensajes = d.get("mensajes") or []
+    if not mensajes:
+        return jsonify({"error": "mensaje vacío"}), 400
+    try:
+        texto = editor.chat_guion(mensajes,
+                                  proveedor=d.get("proveedor", "gratis"),
+                                  modelo=d.get("modelo", ""))
+        return jsonify({"texto": texto})
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.get("/api/guiones")
+def guiones_lista():
+    return jsonify(editor.listar_guiones())
+
+
+@app.get("/api/guiones/<nombre>")
+def guion_leer(nombre):
+    try:
+        return jsonify(editor.leer_guion(nombre))
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 404
+
+
+@app.post("/api/guiones/<nombre>")
+def guion_guardar(nombre):
+    d = request.get_json(force=True) or {}
+    try:
+        real = editor.guardar_guion(nombre, d.get("texto", ""), d.get("chat", []))
+        return jsonify({"ok": True, "nombre": real})
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.delete("/api/guiones/<nombre>")
+def guion_borrar(nombre):
+    try:
+        editor.borrar_guion(nombre)
+        return jsonify({"ok": True})
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @app.post("/api/claves")

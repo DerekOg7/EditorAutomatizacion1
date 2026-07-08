@@ -127,6 +127,32 @@ def hilo_procesar(nombre, modelo):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
+def hilo_coherencia(nombre, proveedor, modelo):
+    """Reescribe las consultas de imagen con IA (viendo toda la historia) y
+    reemplaza las imágenes automáticas por otras más coherentes."""
+    p = PROYECTOS / nombre
+    try:
+        set_estado(nombre, fase="imagenes", progreso=0, error=None,
+                   detalle="Analizando la historia con IA…")
+        r1 = editor.sugerir_consultas_ia(
+            p, proveedor=proveedor, modelo=modelo,
+            on_progreso=lambda t, pc: set_estado(nombre, detalle=t,
+                                                 progreso=pc * 0.3))
+        set_estado(nombre, detalle="Reemplazando imágenes coherentes…", progreso=30)
+        r2 = editor.descargar_imagenes(
+            p, reemplazar_auto=True,
+            on_progreso=lambda t, pc: set_estado(nombre, detalle=t,
+                                                 progreso=30 + pc * 0.7))
+        det = (f"{r1['cambiadas']} consultas mejoradas · "
+               f"{r2['descargadas']} imágenes actualizadas"
+               + (f", {len(r2['pendientes'])} sin resultados" if r2['pendientes'] else ""))
+        set_estado(nombre, fase="listo", detalle=det, progreso=100)
+    except ErrorPipeline as e:
+        set_estado(nombre, fase="error", error=str(e))
+    except Exception as e:
+        set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
+
+
 def hilo_exportar(nombre):
     p = PROYECTOS / nombre
     try:
@@ -302,6 +328,24 @@ def guardar_subs(nombre):
 
 
 # ------------------------------------------------------- estudio de guión
+
+@app.post("/api/proyectos/<nombre>/imagenes/coherencia")
+def imagenes_coherencia(nombre):
+    p = PROYECTOS / nombre
+    if not p.is_dir():
+        return jsonify({"error": "No existe"}), 404
+    if not (p / "escenas.json").exists():
+        return jsonify({"error": "Aún no hay escenas — procesa el audio primero."}), 400
+    if not editor.leer_env().get("PEXELS_API_KEY"):
+        return jsonify({"error": "Falta la clave de Pexels (🔑 Claves API) para descargar las imágenes."}), 400
+    if ocupado(nombre):
+        return jsonify({"error": "Ya hay un proceso en curso para esta historia."}), 400
+    d = request.get_json(force=True) or {}
+    threading.Thread(target=hilo_coherencia,
+                     args=(nombre, d.get("proveedor", "gratis"), d.get("modelo", "")),
+                     daemon=True).start()
+    return jsonify({"ok": True})
+
 
 @app.get("/api/guion/proveedores")
 def guion_proveedores():

@@ -396,6 +396,7 @@
       <div style="flex:1"></div>
       <span id="aviso-desact" style="display:none;color:var(--ambar);font-size:12px" data-i18n="hdr_unsaved">⚠ hay cambios sin exportar</span>
       <button id="btn-idioma" onclick="alternarIdioma()" title="Language / Idioma">🌐 EN</button>
+      <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Reemplaza las imágenes automáticas por otras coherentes con toda la historia, usando IA">✨ Coherencia IA</button>
       <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
       <button onclick="$('modal-ayuda').classList.add('visible')" data-i18n="hdr_help" data-i18n-title="hdr_help">❓ Cómo se usa</button>
       <button id="btn-video" style="display:none" onclick="verVideo()" data-i18n="hdr_view">▶ Ver video</button>
@@ -1004,6 +1005,28 @@
   </div>
 </div>
 
+<!-- modal coherencia de imágenes -->
+<div class="modal-fondo" id="modal-coherencia">
+  <div class="modal" style="width:520px">
+    <h3 data-i18n="coh_title">✨ Coherencia de imágenes (IA)</h3>
+    <p style="color:var(--tenue);font-size:13px;margin:4px 0 14px" data-i18n="coh_intro">
+      Una IA lee TODA la historia y reescribe la búsqueda de imagen de cada escena
+      para que encajen con el video completo, no solo con su frase. Reemplaza las
+      imágenes automáticas (respeta las que elegiste a mano).</p>
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="coh_prov">IA A USAR</h4>
+      <select id="coh-prov" onchange="cohProvCambio()"></select>
+      <select id="coh-modelo" style="display:none;margin-top:6px"></select>
+      <div style="font-size:11px;color:var(--tenue);margin-top:4px" data-i18n="coh_hint">Con una IA potente (Claude/Gemini/ChatGPT) el resultado es mucho mejor. La gratuita funciona pero es más básica.</div>
+    </div>
+    <div class="botones">
+      <button onclick="cerrarModal('modal-coherencia')" data-i18n="btn_cancel">Cancelar</button>
+      <button class="primario" id="btn-coh-run" onclick="ejecutarCoherencia()" data-i18n="coh_run">✨ Mejorar imágenes</button>
+    </div>
+    <div id="coh-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
+  </div>
+</div>
+
 <!-- modal claves API -->
 <div class="modal-fondo" id="modal-claves">
   <div class="modal" style="width:560px">
@@ -1069,6 +1092,12 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  hdr_coh: "✨ Coherence AI",
+  coh_title: "✨ Image coherence (AI)",
+  coh_intro: "An AI reads the WHOLE story and rewrites each scene's image search so they fit the full video, not just their sentence. It replaces the automatic images (keeps the ones you picked by hand).",
+  coh_prov: "AI TO USE",
+  coh_hint: "With a powerful AI (Claude/Gemini/ChatGPT) the result is much better. The free one works but is more basic.",
+  coh_run: "✨ Improve images",
   side_tools: "TOOLS",
   side_script: "📝 Script studio",
   side_ai: "🎙 Voice studio",
@@ -1389,6 +1418,56 @@ async function guardarClaves() {
 }
 
 /* ==================== subtítulos (modal 💬) ==================== */
+/* ==================== coherencia de imágenes (IA) ==================== */
+async function abrirCoherencia() {
+  if (!actual || !actual.escenas.length) {
+    alert(L('Primero procesa una historia (con escenas).','Process a story first (with scenes).'));
+    return;
+  }
+  $('coh-msg').textContent = '';
+  $('modal-coherencia').classList.add('visible');
+  // reutiliza el mismo selector de proveedores del estudio de guión
+  try {
+    const p = await api('/api/guion/proveedores');
+    const op = (v, txt, ok) => `<option value="${v}" ${ok ? '' : 'disabled'}>${txt}${ok ? '' : ' · ' + L('sin clave','no key')}</option>`;
+    let html = `<option value="gratis">${L('Gratis (sin clave)','Free (no key)')}</option>`;
+    html += op('claude', 'Claude', p.claude) + op('gemini', 'Gemini', p.gemini) + op('openai', 'ChatGPT', p.openai);
+    if (p.local && p.local.length) {
+      html += `<option value="local">${L('Local (Ollama)','Local (Ollama)')}</option>`;
+      $('coh-modelo').innerHTML = p.local.map(m => `<option value="${m.nombre}">${m.nombre} · ${m.gb} GB</option>`).join('');
+    }
+    $('coh-prov').innerHTML = html;
+    const g = localStorage.getItem('afv_guion_prov');
+    if (g && [...$('coh-prov').options].some(o => o.value === g && !o.disabled)) $('coh-prov').value = g;
+    cohProvCambio();
+  } catch (e) { /* offline */ }
+}
+
+function cohProvCambio() {
+  $('coh-modelo').style.display = $('coh-prov').value === 'local' ? '' : 'none';
+}
+
+async function ejecutarCoherencia() {
+  const btn = $('btn-coh-run');
+  btn.disabled = true;
+  $('coh-msg').style.color = 'var(--tenue)';
+  $('coh-msg').textContent = L('Iniciando…','Starting…');
+  try {
+    await api(`/api/proyectos/${actual.nombre}/imagenes/coherencia`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ proveedor: $('coh-prov').value,
+                             modelo: $('coh-prov').value === 'local' ? $('coh-modelo').value : '' }) });
+    $('coh-msg').style.color = 'var(--ok)';
+    $('coh-msg').textContent = L('✓ En proceso — mira la barra de estado arriba.','✓ Running — watch the status bar above.');
+    setTimeout(() => cerrarModal('modal-coherencia'), 1400);
+    refrescarForzado();
+  } catch (e) {
+    $('coh-msg').style.color = 'var(--alerta)';
+    $('coh-msg').textContent = e.message;
+  }
+  btn.disabled = false;
+}
+
 let subsData = null;   // subtítulos del proyecto abierto (para el preview)
 
 async function cargarSubs() {

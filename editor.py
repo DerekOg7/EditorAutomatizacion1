@@ -341,6 +341,122 @@ def _concretas(texto, n):
     return [orden[b] for b in mejores]
 
 
+def _anclas_historia(textos, k=2):
+    """Términos VISUALES dominantes de TODA la historia, para que cada escena
+    mantenga coherencia con el video completo y no solo con su frase suelta.
+
+    Prefiere sustantivos comunes representables (desierto, océano, avión) sobre
+    nombres propios: un nombre propio ("Roswell") da contexto pero casi no tiene
+    fotos en bancos como Pexels, así que sería un ancla que no encuentra nada."""
+    # unidades y adjetivos frecuentes que NO representan una imagen concreta
+    no_visual = {"metros", "metro", "kilometros", "kilometro", "centimetros",
+                 "toneladas", "grados", "mundial", "mundiales", "nacional",
+                 "internacional", "oficial", "oficiales", "general", "generales",
+                 "total", "totales", "enorme", "inmenso", "extrano", "extrana",
+                 "aterrador", "aterradora", "increible", "posible", "imposible"}
+    completo = " ".join(textos)
+    candidatos = [c for c in _concretas(completo, 10)
+                  if sin_acentos(c) not in no_visual][:6]
+    comunes, propios = [], []
+    for c in candidatos:
+        # nombre propio si aparece siempre capitalizado en el texto original
+        es_propio = bool(re.search(rf"\b{re.escape(c[:1].upper() + c[1:])}\b", completo)) \
+            and not re.search(rf"\b{re.escape(c)}\b", completo)
+        (propios if es_propio else comunes).append(c)
+    anclas = comunes[:k]
+    if len(anclas) < k:                            # completa con propios si hace falta
+        for pr in propios:
+            if pr not in anclas:
+                anclas.append(pr)
+            if len(anclas) >= k:
+                break
+    return anclas[:k]
+
+
+def _combinar_consulta(claves, anclas):
+    """Une los términos de la escena con el ancla de la historia, sin duplicar,
+    para que la imagen encaje a la vez con la frase y con el video completo."""
+    generico = {"oscuridad", "misterio", "niebla"}
+    escena = [c for c in claves if sin_acentos(c) not in generico]
+    if not escena:                                 # escena sin nada concreto → manda la historia
+        base = list(anclas) or list(claves)
+    else:
+        base = escena[:2] + list(anclas[:1])       # detalle de la escena + 1 ancla de contexto
+    vistos, out = set(), []
+    for t in base:
+        k = sin_acentos(t.lower())
+        if k and k not in vistos and not any(k in v or v in k for v in vistos):
+            vistos.add(k)
+            out.append(t)
+    return out[:3] or ["oscuridad", "misterio", "niebla"]
+
+
+SISTEMA_IMAGENES = """Eres director de arte de un video narrado. Recibes el \
+guión completo dividido en escenas numeradas. Para CADA escena, escribe la mejor \
+consulta de búsqueda de imágenes de archivo (stock) que:
+- represente visualmente lo que se narra en ESA escena,
+- y encaje con el tema y la atmósfera de TODA la historia (coherencia global).
+
+Reglas de la consulta:
+- En INGLÉS (los bancos de imágenes tienen mucha más cobertura en inglés).
+- 2 a 4 palabras concretas y visuales (objetos, lugares, personas, acciones \
+representables). Nada de conceptos abstractos ni nombres propios que no existan \
+como foto (usa el objeto/lugar equivalente).
+- Mantén un hilo visual entre escenas: si la historia trata de un naufragio en \
+el Báltico, casi todas deben orbitar mar/barco/sonar/profundidad, adaptadas a \
+cada frase.
+
+Responde SOLO con una línea por escena, con este formato exacto y nada más:
+N| consulta en inglés
+(por ejemplo:  3| deep sea sonar anomaly)"""
+
+
+def sugerir_consultas_ia(p, proveedor="gratis", modelo="", on_progreso=None):
+    """Reescribe la `consulta` de cada escena con una IA que ve la historia
+    COMPLETA, para máxima coherencia. Actualiza escenas.json y devuelve cuántas
+    cambió. Requiere haber generado las escenas primero."""
+    avisar = on_progreso or (lambda *_: None)
+    escenas = leer_escenas(p)
+    if not escenas:
+        err("No hay escenas todavía.")
+    avisar("Analizando la historia con IA…", 10)
+
+    lineas = "\n".join(f"{e['n']}| {e['texto']}" for e in escenas)
+    pedido = (f"Historia en {len(escenas)} escenas. Devuelve una consulta de "
+              f"imagen (en inglés) para cada una, en el formato N| consulta.\n\n"
+              f"{lineas}")
+    crudo = chat_guion([{"rol": "usuario", "texto": pedido}],
+                       proveedor=proveedor, modelo=modelo,
+                       sistema=SISTEMA_IMAGENES)
+
+    # Parseo tolerante: "N| consulta" o "N. consulta" o "N: consulta"
+    consultas = {}
+    for linea in crudo.splitlines():
+        m = re.match(r"\s*(\d+)\s*[|.:)\-]\s*(.+)", linea)
+        if m:
+            q = re.sub(r'["*`]', "", m.group(2)).strip().strip(".")
+            if q:
+                consultas[int(m.group(1))] = q[:80]
+
+    if not consultas:
+        err("La IA no devolvió consultas en el formato esperado. Prueba con un "
+            "proveedor más potente (Claude/Gemini/ChatGPT en 🔑 Claves API).")
+
+    cambiadas = 0
+    datos = json.loads((p / "escenas.json").read_text())
+    for e in datos["escenas"]:
+        q = consultas.get(e["n"])
+        if q and q.lower() != (e.get("consulta") or "").lower():
+            e["consulta"] = q
+            e["consulta_ia"] = True
+            cambiadas += 1
+    (p / "escenas.json").write_text(
+        json.dumps(datos, ensure_ascii=False, indent=2))
+    avisar("Consultas actualizadas", 100)
+    return {"cambiadas": cambiadas, "total": len(escenas),
+            "sin_respuesta": len(escenas) - len(consultas)}
+
+
 def _palabras_clave(texto, n=2):
     """Devuelve hasta ~3 términos concretos para buscar la imagen de la escena.
     Combina la mejor entidad (nombre propio) con los sustantivos concretos, y
@@ -469,19 +585,23 @@ def generar_escenas(p):
         escenas[-1]["texto"] = (escenas[-1]["texto"] + " " + cola["texto"]).strip()
         escenas[-1]["fin_seg"] = cola["fin_seg"]
 
+    # Ancla de la historia: temas visuales de TODO el video, para dar coherencia
+    # a cada escena (que no busque solo por su frase, sino dentro de la historia).
+    anclas = _anclas_historia([e["texto"] for e in escenas])
+
     # Fronteras contiguas alineadas a fotogramas para que nada se desincronice
     resultado = []
     t = 0.0
     for n, esc in enumerate(escenas, 1):
         fin = duracion if n == len(escenas) else esc["fin_seg"]
         fin = round(fin * FPS) / FPS
-        claves = _palabras_clave(esc["texto"])
+        claves = _combinar_consulta(_palabras_clave(esc["texto"]), anclas)
         resultado.append({
             "n": n,
             "inicio": round(t, 3),
             "fin": round(fin, 3),
             "texto": esc["texto"],
-            "consulta": " ".join(claves) if claves else "misterio oscuridad",
+            "consulta": " ".join(claves),
             "prompt": prompt_ia(esc["texto"]),
             "imagen": f"{n:03d}.jpg",
         })
@@ -782,12 +902,13 @@ def _mensajes_openai(mensajes, sistema):
     return ms
 
 
-def chat_guion(mensajes, proveedor="gratis", modelo=""):
-    """Un turno del asistente de guiones. mensajes = [{rol, texto}, ...] con el
-    historial completo (el último es del usuario). Devuelve el texto de respuesta."""
+def chat_guion(mensajes, proveedor="gratis", modelo="", sistema=None):
+    """Un turno de un asistente LLM. mensajes = [{rol, texto}, ...] con el
+    historial completo (el último es del usuario). `sistema` = prompt de sistema
+    (por defecto el guionista). Despacha al proveedor elegido. Devuelve el texto."""
     import requests
     env = leer_env()
-    sistema = SISTEMA_GUIONISTA
+    sistema = sistema or SISTEMA_GUIONISTA
 
     if proveedor == "claude":
         import anthropic
@@ -1111,8 +1232,10 @@ def generar_imagen_ia(p, n, prompt, modelo="flux"):
     (p / "imagenes" / f"{n:03d}.jpg").write_bytes(r.content)
 
 
-def descargar_a_escena(p, n, url, tipo="imagen"):
-    """Descarga una imagen o video (url) como el medio de la escena n."""
+def descargar_a_escena(p, n, url, tipo="imagen", auto=False):
+    """Descarga una imagen o video (url) como el medio de la escena n. Si auto
+    es False (elección manual), marca la escena para que no la pise el
+    reemplazo automático de coherencia."""
     import requests
     (p / "imagenes").mkdir(exist_ok=True)
     r = requests.get(url, timeout=300)
@@ -1121,6 +1244,14 @@ def descargar_a_escena(p, n, url, tipo="imagen"):
     borrar_medio(p, n)
     ext = ".mp4" if tipo == "video" else ".jpg"
     (p / "imagenes" / f"{n:03d}{ext}").write_bytes(r.content)
+    if not auto:                       # el usuario la eligió: protégela
+        f = p / "escenas.json"
+        if f.exists():
+            datos = json.loads(f.read_text())
+            e = next((e for e in datos["escenas"] if e["n"] == n), None)
+            if e is not None:
+                e["medio_auto"] = False
+                f.write_text(json.dumps(datos, ensure_ascii=False, indent=2))
 
 
 def ajustar_limite(p, n, nuevo_fin):
@@ -1855,18 +1986,35 @@ def opciones_escena(p, n, efecto=None, transicion=None, prompt=None,
     f.write_text(json.dumps(datos, ensure_ascii=False, indent=2))
 
 
-def descargar_imagenes(p, on_progreso=None):
-    """Descarga de Pexels una imagen por escena (sin pisar las existentes)."""
+def _marcar_auto(p, ns):
+    """Marca en escenas.json qué escenas tienen imagen puesta AUTOMÁTICAMENTE,
+    para poder reemplazarlas luego sin pisar las que el usuario eligió a mano."""
+    if not ns:
+        return
+    f = p / "escenas.json"
+    datos = json.loads(f.read_text())
+    for e in datos["escenas"]:
+        if e["n"] in ns:
+            e["medio_auto"] = True
+    f.write_text(json.dumps(datos, ensure_ascii=False, indent=2))
+
+
+def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
+    """Descarga de Pexels una imagen por escena. Por defecto no pisa las que ya
+    tienen medio; con reemplazar_auto=True sí reemplaza las puestas
+    automáticamente (medio_auto), respetando las elegidas a mano."""
     escenas = leer_escenas(p)
     (p / "imagenes").mkdir(exist_ok=True)
     avisar = on_progreso or (lambda *_: None)
     clave_pexels()  # valida antes de empezar
 
     usadas = set()
-    pendientes, descargadas, saltadas = [], 0, 0
+    pendientes, descargadas, saltadas, nuevas_auto = [], 0, 0, []
     for i, e in enumerate(escenas):
         n = e["n"]
-        if medio_de_escena(p, n)[0] is not None:
+        tiene = medio_de_escena(p, n)[0] is not None
+        es_auto = e.get("medio_auto", False)
+        if tiene and not (reemplazar_auto and es_auto):
             saltadas += 1
         else:
             fotos = pexels_buscar(e["consulta"], 5)
@@ -1875,10 +2023,12 @@ def descargar_imagenes(p, on_progreso=None):
                 pendientes.append(n)
             else:
                 usadas.add(foto["id"])
-                descargar_a_escena(p, n, foto["grande"])
+                descargar_a_escena(p, n, foto["grande"], auto=True)
+                nuevas_auto.append(n)
                 descargadas += 1
         avisar(f"Imágenes… escena {n}/{len(escenas)}",
                (i + 1) / len(escenas) * 100)
+    _marcar_auto(p, nuevas_auto)
     return {"descargadas": descargadas, "saltadas": saltadas,
             "pendientes": pendientes}
 

@@ -97,6 +97,34 @@ y prueba el binario (`dist/.../Contents/MacOS/lanzador` y `curl /api/salud`).
    es porque el navegador ya la vio — probar en ventana privada o limpiar
    localStorage.
 
+## Coherencia de imágenes (v0.07)
+
+Problema: las imágenes automáticas por escena no eran coherentes con la historia
+(cada escena buscaba en aislamiento; escenas sin sustantivo caían en genéricos).
+Dos capas de solución en editor.py:
+- **Ancla de historia (gratis, siempre activa)**: `_anclas_historia(textos)` saca
+  los 1-2 temas visuales dominantes de TODO el video (prefiere sustantivos
+  comunes representables sobre nombres propios, que Pexels casi no tiene; filtra
+  unidades/adjetivos no visuales). `_combinar_consulta()` mezcla el término de
+  la escena + el ancla. Se aplica en `generar_escenas` → cada video NUEVO ya sale
+  más coherente sin claves.
+- **Coherencia por IA (con proveedor, botón "✨ Coherencia IA" en el header)**:
+  `sugerir_consultas_ia(p, proveedor, modelo)` manda la historia COMPLETA (todas
+  las escenas numeradas) al LLM (mismo dispatch multi-proveedor de `chat_guion`,
+  ahora con param `sistema`; SISTEMA_IMAGENES) y recibe una consulta visual EN
+  INGLÉS por escena (formato `N| query`, parseo tolerante). Endpoint
+  `/api/proyectos/<n>/imagenes/coherencia` → `hilo_coherencia`: reescribe
+  consultas y **reemplaza solo las imágenes automáticas** (respeta las manuales).
+  Tracking auto/manual: flag `medio_auto` en escenas.json (descargar_imagenes lo
+  pone; descargar_a_escena con auto=False lo limpia); `descargar_imagenes(...,
+  reemplazar_auto=True)` re-baja solo las auto. Modal con selector de proveedor
+  (reusa afv_guion_prov). Verificado: parseo, respeto de manuales, i18n.
+
+TECHO conocido: el ancla local a veces elige un término poco visual si la
+historia no tiene un sustantivo recurrente fuerte — por eso la capa IA. Mejora
+futura: correr la capa IA automáticamente en el pipeline si hay clave (con aviso
+de costo), y generar también un prompt de imagen IA rico por escena.
+
 ## Estado actual: v0.06 (todo verificado y funcionando)
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

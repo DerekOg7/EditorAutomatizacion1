@@ -125,6 +125,27 @@ historia no tiene un sustantivo recurrente fuerte — por eso la capa IA. Mejora
 futura: correr la capa IA automáticamente en el pipeline si hay clave (con aviso
 de costo), y generar también un prompt de imagen IA rico por escena.
 
+## Velocidad de exportación (v0.08)
+
+Export lento. Causa doble: (1) el ffmpeg empaquetado es **x86_64 bajo Rosetta**
+en Apple Silicon (toda codificación emulada) y (2) el 1080p se re-codificaba
+entero VARIAS veces (overlays → subtítulos → transcodificado final con preset
+`medium`). Arreglado:
+- **exportar_final ya NO re-codifica cuando no baja resolución**: el master ya es
+  1080p H.264, así que para calidades 1080p hace `ffmpeg -c copy` (re-empaquetar,
+  ~0.1s) en vez de re-encode `medium`. Medido: pase final de 31s → 0.2s (195×) en
+  un video de 44s; una re-exportación con master al día es casi instantánea. Solo
+  "ligera" (720p) re-codifica (scale + veryfast). Efecto lateral aceptado: las 3
+  calidades 1080p ahora dan el mismo archivo (el master crf18); simplificar el
+  dropdown a 1080p/720p a futuro.
+- Presets bajados a `veryfast` en subtítulos (era `fast`). Todos los pases que sí
+  codifican usan veryfast (mismo tamaño a igual CRF, ~2× más rápido que medium).
+
+PRÓXIMO GRAN SALTO (pendiente): **empaquetar un ffmpeg ARM64 nativo** (con libass
++ codecs, minos ≤ 11) para salir de Rosetta — aceleraría TODO el encode (clips por
+escena, transiciones, overlays, subtítulos) 2-4×. Es lo que más falta. Verificar
+que el build arm64 tenga los filtros `ass`/`drawtext` y arquitectura correcta.
+
 ## Estado actual: v0.06 (todo verificado y funcionando)
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

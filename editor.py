@@ -2306,7 +2306,7 @@ def _quemar_subtitulos(p, entrada, salida, clips_dir):
     ruta = str(ass).replace("\\", "\\\\").replace("'", "\\'")
     run(["ffmpeg", "-y", "-i", str(entrada),
          "-vf", f"ass='{ruta}'",
-         "-c:v", "libx264", "-preset", "fast", "-crf", "18",
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
          "-pix_fmt", "yuv420p", "-an", str(salida)])
 
 
@@ -2477,12 +2477,20 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
         err(f"La carpeta destino no existe: {destino_dir}")
     destino = destino_dir / nombre_archivo_seguro(nombre_archivo, p.name)
 
-    avisar("Ajustando calidad y guardando el archivo…", 88)
-    run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
-         "-vf", f"scale=-2:{cfg['alto']}",
-         "-c:v", "libx264", "-preset", "medium", "-crf", str(cfg["crf"]),
-         "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-         "-video_track_timescale", TIMESCALE, str(destino)])
+    # El master ya está en 1080p H.264. Si la calidad elegida NO baja la
+    # resolución, no hace falta re-codificar todo el video otra vez (que es lo
+    # lento): basta re-empaquetar (copiar) el master, casi instantáneo.
+    if cfg["alto"] >= ALTO:
+        avisar("Guardando el archivo…", 92)
+        run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
+             "-c", "copy", "-movflags", "+faststart", str(destino)])
+    else:
+        avisar("Ajustando calidad y guardando el archivo…", 88)
+        run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
+             "-vf", f"scale=-2:{cfg['alto']}",
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
+             "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+             "-video_track_timescale", TIMESCALE, str(destino)])
     avisar("Listo", 100)
     return destino
 

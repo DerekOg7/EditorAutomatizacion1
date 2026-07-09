@@ -50,7 +50,19 @@ PROYECTOS.mkdir(exist_ok=True)
 
 FPS = 30
 TIMESCALE = "15360"     # base de tiempo común en todos los clips (512*30)
-ANCHO, ALTO = 1920, 1080
+ANCHO, ALTO = 1920, 1080   # 16:9 por defecto (lado corto = 1080)
+
+# Formatos de lienzo/exportación soportados (lado corto = 1080 px)
+FORMATOS = {
+    "16:9": (1920, 1080),   # horizontal (YouTube)
+    "9:16": (1080, 1920),   # vertical (Shorts/Reels/TikTok)
+    "1:1":  (1080, 1080),   # cuadrado
+}
+
+
+def dims_formato(formato):
+    return FORMATOS.get(formato or "16:9", (ANCHO, ALTO))
+
 FUNDIDO = 0.6            # segundos de crossfade entre escenas
 FUNDIDO_HISTORIAS = 1.0  # segundos de crossfade entre historias
 ESCENA_MIN = 5.0         # las imágenes duran entre 5 y 10 segundos
@@ -652,12 +664,15 @@ def clave_pexels():
     return key
 
 
-def pexels_buscar(consulta, cantidad=8):
+ORIENTACION = {"16:9": "landscape", "9:16": "portrait", "1:1": "square"}
+
+
+def pexels_buscar(consulta, cantidad=8, orientacion="landscape"):
     """Busca fotos en Pexels. Devuelve [{id, miniatura, grande, autor}, …]."""
     import requests
     r = requests.get("https://api.pexels.com/v1/search",
                      headers={"Authorization": clave_pexels()},
-                     params={"query": consulta, "orientation": "landscape",
+                     params={"query": consulta, "orientation": orientacion,
                              "per_page": cantidad, "locale": "es-ES"},
                      timeout=30)
     if not r.ok:
@@ -669,12 +684,12 @@ def pexels_buscar(consulta, cantidad=8):
             for f in r.json().get("photos", [])]
 
 
-def pexels_buscar_videos(consulta, cantidad=8):
+def pexels_buscar_videos(consulta, cantidad=8, orientacion="landscape"):
     """Busca videos en Pexels. Devuelve [{id, miniatura, url, duracion}, …]."""
     import requests
     r = requests.get("https://api.pexels.com/videos/search",
                      headers={"Authorization": clave_pexels()},
-                     params={"query": consulta, "orientation": "landscape",
+                     params={"query": consulta, "orientation": orientacion,
                              "per_page": cantidad, "locale": "es-ES"},
                      timeout=30)
     if not r.ok:
@@ -752,6 +767,17 @@ def guardar_ajustes(p, **kw):
     ajustes = leer_ajustes(p)
     ajustes.update(kw)
     (p / "ajustes.json").write_text(json.dumps(ajustes, indent=2))
+
+
+def formato_proyecto(p):
+    """Formato de lienzo del proyecto ('16:9' | '9:16' | '1:1')."""
+    fmt = leer_ajustes(p).get("formato", "16:9")
+    return fmt if fmt in FORMATOS else "16:9"
+
+
+def dims_proyecto(p):
+    """Dimensiones (ancho, alto) del lienzo del proyecto."""
+    return dims_formato(formato_proyecto(p))
     return ajustes
 
 
@@ -1228,8 +1254,9 @@ def generar_imagen_ia(p, n, prompt, modelo="flux"):
     import requests
     from urllib.parse import quote
 
+    ancho, alto = dims_proyecto(p)      # genera en el formato del proyecto
     url = ("https://image.pollinations.ai/prompt/" + quote(prompt[:800]) +
-           f"?width={ANCHO}&height={ALTO}&model={modelo}"
+           f"?width={ancho}&height={alto}&model={modelo}"
            f"&nologo=true&seed={random.randint(0, 10**9)}")
     try:
         r = requests.get(url, timeout=180)
@@ -2020,6 +2047,7 @@ def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
     (p / "imagenes").mkdir(exist_ok=True)
     avisar = on_progreso or (lambda *_: None)
     clave_pexels()  # valida antes de empezar
+    orient = ORIENTACION.get(formato_proyecto(p), "landscape")
 
     usadas = set()
     pendientes, descargadas, saltadas, nuevas_auto = [], 0, 0, []
@@ -2030,7 +2058,7 @@ def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
         if tiene and not (reemplazar_auto and es_auto):
             saltadas += 1
         else:
-            fotos = pexels_buscar(e["consulta"], 5)
+            fotos = pexels_buscar(e["consulta"], 5, orientacion=orient)
             foto = next((f for f in fotos if f["id"] not in usadas), None)
             if foto is None:
                 pendientes.append(n)
@@ -2048,8 +2076,9 @@ def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
 
 # ---------------------------------------------------------- núcleo: ensamble
 
-def _clip_imagen(imagen, salida, dur, efecto, alterno):
+def _clip_imagen(imagen, salida, dur, efecto, alterno, dims=(ANCHO, ALTO)):
     """Renderiza una escena a partir de una imagen, con el efecto elegido."""
+    ancho, alto = dims
     frames = max(2, round(dur * FPS))
     d = frames - 1
     zoom_max = 1.13
@@ -2060,8 +2089,8 @@ def _clip_imagen(imagen, salida, dur, efecto, alterno):
     if efecto == "estatico":
         run(["ffmpeg", "-y", "-loop", "1", "-framerate", str(FPS),
              "-i", str(imagen), "-vf",
-             f"scale={ANCHO}:{ALTO}:force_original_aspect_ratio=increase,"
-             f"crop={ANCHO}:{ALTO},format=yuv420p",
+             f"scale={ancho}:{alto}:force_original_aspect_ratio=increase,"
+             f"crop={ancho}:{alto},format=yuv420p",
              "-frames:v", str(frames), "-c:v", "libx264",
              "-preset", "veryfast", "-crf", "18",
              "-video_track_timescale", TIMESCALE, str(salida)])
@@ -2080,10 +2109,12 @@ def _clip_imagen(imagen, salida, dur, efecto, alterno):
         z = f"1+{paso}*on/{d}"
         x, y = "(iw-iw/zoom)/2", "(ih-ih/zoom)/2"
 
+    # se supersamplea al doble del lienzo para que el zoompan no pixele
+    grande_w, grande_h = ancho * 2, alto * 2
     filtro = (
-        f"scale=3840:2160:force_original_aspect_ratio=increase,"
-        f"crop=3840:2160,"
-        f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={ANCHO}x{ALTO}:fps={FPS},"
+        f"scale={grande_w}:{grande_h}:force_original_aspect_ratio=increase,"
+        f"crop={grande_w}:{grande_h},"
+        f"zoompan=z='{z}':x='{x}':y='{y}':d={frames}:s={ancho}x{alto}:fps={FPS},"
         f"format=yuv420p"
     )
     run(["ffmpeg", "-y", "-i", str(imagen), "-vf", filtro,
@@ -2091,10 +2122,11 @@ def _clip_imagen(imagen, salida, dur, efecto, alterno):
          "-crf", "18", "-video_track_timescale", TIMESCALE, str(salida)])
 
 
-def _clip_video(video, salida, dur, inicio=0.0, velocidad=1.0):
+def _clip_video(video, salida, dur, inicio=0.0, velocidad=1.0, dims=(ANCHO, ALTO)):
     """Renderiza una escena a partir de un video: usa el tramo que empieza
     en `inicio`, a la `velocidad` indicada (0.5=lento, 2=rápido). Si el video
     no alcanza, se repite. Siempre sin su audio."""
+    ancho, alto = dims
     frames = max(2, round(dur * FPS))
     velocidad = max(0.25, min(4.0, float(velocidad or 1)))
     necesita = dur * velocidad          # segundos de fuente que consume
@@ -2106,8 +2138,8 @@ def _clip_video(video, salida, dur, inicio=0.0, velocidad=1.0):
             cmd += ["-ss", f"{inicio:.3f}"]
     else:
         cmd += ["-stream_loop", "-1"]
-    vf = (f"scale={ANCHO}:{ALTO}:force_original_aspect_ratio=increase,"
-          f"crop={ANCHO}:{ALTO},")
+    vf = (f"scale={ancho}:{alto}:force_original_aspect_ratio=increase,"
+          f"crop={ancho}:{alto},")
     if abs(velocidad - 1) > 0.001:
         vf += f"setpts=PTS/{velocidad:.4f},"
     vf += f"fps={FPS},format=yuv420p"
@@ -2118,19 +2150,21 @@ def _clip_video(video, salida, dur, inicio=0.0, velocidad=1.0):
     run(cmd)
 
 
-def _ajuste_fino(clip, escala=1.0, pos_x=0.0, pos_y=0.0, opacidad=1.0):
+def _ajuste_fino(clip, escala=1.0, pos_x=0.0, pos_y=0.0, opacidad=1.0,
+                 dims=(ANCHO, ALTO)):
     """Aplica escala / posición / opacidad a un clip ya renderizado.
     Solo se llama si algún parámetro se salió del valor por defecto."""
     if abs(escala - 1) < 1e-3 and abs(pos_x) < 1e-3 and abs(pos_y) < 1e-3 \
             and abs(opacidad - 1) < 1e-3:
         return
+    ancho, alto = dims
     tmp = clip.with_name(clip.stem + "_aj.mp4")
-    px = pos_x / 100 * ANCHO
-    py = pos_y / 100 * ALTO
+    px = pos_x / 100 * ancho
+    py = pos_y / 100 * alto
     filtro = (
         f"[0:v]scale=w=iw*{escala:.4f}:h=ih*{escala:.4f},"
         f"format=rgba,colorchannelmixer=aa={opacidad:.3f}[s];"
-        f"color=black:s={ANCHO}x{ALTO}[bg];"
+        f"color=black:s={ancho}x{alto}[bg];"
         f"[bg][s]overlay=x=(W-w)/2+({px:.1f}):y=(H-h)/2+({py:.1f}):shortest=1,"
         f"format=yuv420p[v]")
     run(["ffmpeg", "-y", "-i", str(clip), "-filter_complex", filtro,
@@ -2181,11 +2215,12 @@ def _concatenar_cortes(archivos, salida, tmpdir):
          "-c", "copy", str(salida)])
 
 
-def _placeholder(salida, n):
+def _placeholder(salida, n, dims=(ANCHO, ALTO)):
     """Imagen oscura de relleno para escenas sin imagen."""
+    ancho, alto = dims
     tono = 20 + (n * 7) % 30
     run(["ffmpeg", "-y", "-f", "lavfi",
-         "-i", f"gradients=s=1920x1080:c0=#0a0a{tono:02x}:c1=#000000:n=2:d=1",
+         "-i", f"gradients=s={ancho}x{alto}:c0=#0a0a{tono:02x}:c1=#000000:n=2:d=1",
          "-frames:v", "1", str(salida)])
 
 
@@ -2278,18 +2313,20 @@ def _tiempo_ass(s):
     return f"{h:d}:{m:02d}:{s % 60:05.2f}"
 
 
-def escribir_ass(p, datos, ruta):
+def escribir_ass(p, datos, ruta, dims=(ANCHO, ALTO)):
     """Genera el archivo .ass con el estilo elegido, para quemarlo con libass."""
+    ancho, alto = dims
     est = datos.get("estilo", {})
-    tam = TAM_SUBS.get(est.get("tamano", "m"), TAM_SUBS["m"])
+    # la fuente se escala con la altura para que el subtítulo se vea del mismo
+    # tamaño físico en vertical (9:16) que en horizontal
+    tam = round(TAM_SUBS.get(est.get("tamano", "m"), TAM_SUBS["m"]) * alto / 1080)
+    margen_v = round((0 if est.get("posicion") == "centro" else 64) * alto / 1080)
     color = _color_ass(est.get("color", "#ffffff"))
-    centro = est.get("posicion") == "centro"
-    alineacion = 5 if centro else 2          # 5=centro pantalla, 2=abajo centro
-    margen_v = 0 if centro else 64
+    alineacion = 5 if est.get("posicion") == "centro" else 2  # 5=centro, 2=abajo
     cab = f"""[Script Info]
 ScriptType: v4.00+
-PlayResX: {ANCHO}
-PlayResY: {ALTO}
+PlayResX: {ancho}
+PlayResY: {alto}
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 
@@ -2311,10 +2348,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     Path(ruta).write_text("".join(lineas), encoding="utf-8")
 
 
-def _quemar_subtitulos(p, entrada, salida, clips_dir):
+def _quemar_subtitulos(p, entrada, salida, clips_dir, dims=(ANCHO, ALTO)):
     datos = leer_subtitulos(p)
     ass = clips_dir / "subtitulos.ass"
-    escribir_ass(p, datos, ass)
+    escribir_ass(p, datos, ass, dims=dims)
     # dentro de comillas simples del filtro solo hay que escapar \ y '
     ruta = str(ass).replace("\\", "\\\\").replace("'", "\\'")
     run(["ffmpeg", "-y", "-i", str(entrada),
@@ -2328,6 +2365,7 @@ def ensamblar_video(p, on_progreso=None):
     escenas = leer_escenas(p)
     audio = buscar_audio(p)
     avisar = on_progreso or (lambda *_: None)
+    dims = dims_proyecto(p)              # (ancho, alto) según el formato elegido
 
     clips_dir = p / "clips"
     clips_dir.mkdir(exist_ok=True)
@@ -2341,7 +2379,7 @@ def ensamblar_video(p, on_progreso=None):
         medio, tipo = medio_de_escena(p, e["n"])
         if medio is None:
             medio, tipo = clips_dir / f"ph_{e['n']:03d}.png", "imagen"
-            _placeholder(medio, e["n"])
+            _placeholder(medio, e["n"], dims=dims)
             faltantes.append(e["n"])
         trans = e.get("transicion", "fundido")
         if trans not in TRANSICIONES:
@@ -2355,11 +2393,11 @@ def ensamblar_video(p, on_progreso=None):
         clip = clips_dir / f"{e['n']:03d}.mp4"
         if tipo == "video":
             _clip_video(medio, clip, L, e.get("video_inicio", 0.0),
-                        e.get("velocidad", 1.0))
+                        e.get("velocidad", 1.0), dims=dims)
         else:
-            _clip_imagen(medio, clip, L, e.get("efecto", "auto"), i)
+            _clip_imagen(medio, clip, L, e.get("efecto", "auto"), i, dims=dims)
         _ajuste_fino(clip, e.get("escala", 1.0), e.get("pos_x", 0.0),
-                     e.get("pos_y", 0.0), e.get("opacidad", 1.0))
+                     e.get("pos_y", 0.0), e.get("opacidad", 1.0), dims=dims)
         clips.append(clip)
         largos.append(L)
         avisar(f"Renderizando escena {e['n']}/{len(escenas)}",
@@ -2417,7 +2455,7 @@ def ensamblar_video(p, on_progreso=None):
     if subs.get("activo") and subs.get("frases"):
         avisar("Quemando subtítulos…", 96)
         con_subs = clips_dir / "video_subs.mp4"
-        _quemar_subtitulos(p, video_mudo, con_subs, clips_dir)
+        _quemar_subtitulos(p, video_mudo, con_subs, clips_dir, dims=dims)
         video_mudo = con_subs
 
     # 3) Añadir la narración (y la música de fondo si hay).
@@ -2458,12 +2496,14 @@ def ensamblar_video(p, on_progreso=None):
     return salida, faltantes
 
 
-# calidades de exportación → (alto en px, CRF, etiqueta)
+# calidades de exportación → (lado corto en px, CRF, etiqueta). El "corto" es
+# el lado menor del video (alto en 16:9, ancho en 9:16), así funciona en
+# cualquier formato: 1080 = 1080p, 720 = 720p.
 CALIDADES = {
-    "maxima":   {"alto": 1080, "crf": 16, "etiqueta": "Máxima (1080p, archivo grande)"},
-    "alta":     {"alto": 1080, "crf": 19, "etiqueta": "Alta — recomendada (1080p)"},
-    "estandar": {"alto": 1080, "crf": 23, "etiqueta": "Estándar (1080p, más ligero)"},
-    "ligera":   {"alto": 720,  "crf": 24, "etiqueta": "Ligera (720p, rápida)"},
+    "maxima":   {"corto": 1080, "crf": 16, "etiqueta": "Máxima (1080p, archivo grande)"},
+    "alta":     {"corto": 1080, "crf": 19, "etiqueta": "Alta — recomendada (1080p)"},
+    "estandar": {"corto": 1080, "crf": 23, "etiqueta": "Estándar (1080p, más ligero)"},
+    "ligera":   {"corto": 720,  "crf": 24, "etiqueta": "Ligera (720p, rápida)"},
 }
 
 
@@ -2509,17 +2549,22 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
     # Se escribe a un temporal en la misma carpeta y solo al terminar bien se
     # renombra al nombre final (así un corte no deja un archivo a medias).
     tmp = destino.with_name("." + destino.stem + ".tmp.mp4")
-    # El master ya está en 1080p H.264. Si la calidad elegida NO baja la
-    # resolución, no hace falta re-codificar todo el video otra vez (que es lo
-    # lento): basta re-empaquetar (copiar) el master, casi instantáneo.
-    if cfg["alto"] >= ALTO:
+    # El master ya está a lado-corto 1080 en el formato del proyecto. Si la
+    # calidad NO baja la resolución, no hace falta re-codificar: basta copiar
+    # (casi instantáneo). Si baja (720p), se escala manteniendo el formato.
+    ancho_m, alto_m = dims_proyecto(p)
+    corto_m = min(ancho_m, alto_m)
+    if cfg["corto"] >= corto_m:
         avisar("Guardando el archivo…", 92)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
              "-c", "copy", "-movflags", "+faststart", str(tmp)])
     else:
+        factor = cfg["corto"] / corto_m
+        w = round(ancho_m * factor / 2) * 2      # dimensiones pares
+        h = round(alto_m * factor / 2) * 2
         avisar("Ajustando calidad y guardando el archivo…", 88)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
-             "-vf", f"scale=-2:{cfg['alto']}",
+             "-vf", f"scale={w}:{h}",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
              "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
              "-video_track_timescale", TIMESCALE, str(tmp)])

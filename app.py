@@ -205,7 +205,7 @@ def hilo_unir(nombres, salida):
         set_estado("__unir__", fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_historia_ia(nombre, guion, voz, velocidad, modelo):
+def hilo_historia_ia(nombre, guion, voz, velocidad, modelo, formato="16:9"):
     """Genera la voz con MiniMax, crea el proyecto y corre el pipeline."""
     p = PROYECTOS / nombre
     try:
@@ -217,6 +217,8 @@ def hilo_historia_ia(nombre, guion, voz, velocidad, modelo):
         (p / "imagenes").mkdir(parents=True, exist_ok=True)
         (p / "audio.mp3").write_bytes(audio)
         (p / "guion.txt").write_text(guion + "\n")
+        if formato in editor.FORMATOS:
+            editor.guardar_ajustes(p, formato=formato)
         hilo_procesar(nombre, modelo)
     except ErrorPipeline as e:
         set_estado(nombre, fase="error", error=str(e))
@@ -475,6 +477,10 @@ def crear_proyecto():
     if guion:
         (p / "guion.txt").write_text(guion + "\n")
 
+    formato = request.form.get("formato", "16:9")
+    if formato in editor.FORMATOS:
+        editor.guardar_ajustes(p, formato=formato)
+
     modelo = request.form.get("modelo", "small")
     threading.Thread(target=hilo_procesar, args=(nombre, modelo),
                      daemon=True).start()
@@ -521,6 +527,7 @@ def ver_proyecto(nombre):
         "escenas": escenas,
         "video": (p / "video.mp4").exists(),
         "video_desactualizado": video_desactualizado(p),
+        "formato": editor.formato_proyecto(p),
         "overlays": editor.leer_overlays(p),
         "musica": ({"archivo": musica.name,
                     "volumen": editor.leer_ajustes(p).get("musica_volumen", 0.12)}
@@ -641,12 +648,16 @@ def generar_ia(nombre, n):
 def buscar_pexels():
     consulta = request.args.get("q", "").strip()
     tipo = request.args.get("tipo", "fotos")
+    proyecto = request.args.get("proyecto", "")
     if not consulta:
         return jsonify({"error": "Consulta vacía"}), 400
+    orient = "landscape"
+    if proyecto and (PROYECTOS / proyecto).is_dir():
+        orient = editor.ORIENTACION.get(editor.formato_proyecto(PROYECTOS / proyecto), "landscape")
     try:
         if tipo == "videos":
-            return jsonify(editor.pexels_buscar_videos(consulta, 8))
-        return jsonify(editor.pexels_buscar(consulta, 9))
+            return jsonify(editor.pexels_buscar_videos(consulta, 8, orientacion=orient))
+        return jsonify(editor.pexels_buscar(consulta, 9, orientacion=orient))
     except ErrorPipeline as e:
         return jsonify({"error": str(e)}), 400
 
@@ -884,6 +895,20 @@ def subir_musica(nombre):
     return jsonify({"ok": True})
 
 
+@app.post("/api/proyectos/<nombre>/formato")
+def cambiar_formato(nombre):
+    p = PROYECTOS / nombre
+    if not p.is_dir():
+        return jsonify({"error": "No existe"}), 404
+    fmt = (request.get_json(force=True) or {}).get("formato", "")
+    if fmt not in editor.FORMATOS:
+        return jsonify({"error": "Formato no válido"}), 400
+    editor.guardar_ajustes(p, formato=fmt)
+    # el video hay que rearmarlo con el nuevo formato
+    (p / "video.mp4").unlink(missing_ok=True)
+    return jsonify({"ok": True, "formato": fmt})
+
+
 @app.post("/api/proyectos/<nombre>/musica/volumen")
 def volumen_musica(nombre):
     v = (request.json or {}).get("volumen")
@@ -956,7 +981,7 @@ def ia_historia():
     threading.Thread(
         target=hilo_historia_ia,
         args=(nombre, guion, d.get("voz", ""), float(d.get("velocidad", 1.0)),
-              d.get("modelo", "small")),
+              d.get("modelo", "small"), d.get("formato", "16:9")),
         daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
 

@@ -165,6 +165,33 @@ corrupto). Arreglado en editor.py:
   `~/Library/Application Support/AutoFacelessVideo/proyectos/<proy>/video.mp4` y
   la carpeta `clips/`.
 
+## Formatos de lienzo/exportación 16:9 / 9:16 / 1:1 (v0.10)
+
+Antes todo estaba clavado a 1920×1080. Ahora el formato es por proyecto (lado
+corto siempre 1080). En editor.py: `FORMATOS = {"16:9":(1920,1080),
+"9:16":(1080,1920),"1:1":(1080,1080)}`, `dims_formato()`, `formato_proyecto(p)`
+(lee ajustes.json), `dims_proyecto(p)`. Las dims se pasan como PARÁMETRO `dims`
+a cada función de render (thread-safe, sin globales mutables): `_clip_imagen`
+(supersamplea a 2× las dims, no 3840×2160 fijo), `_clip_video`, `_ajuste_fino`,
+`_placeholder`, `escribir_ass`/`_quemar_subtitulos` (PlayRes + fuente escalada
+por alto/1080 para que el subtítulo se vea igual en vertical). ensamblar_video
+calcula `dims = dims_proyecto(p)` y las reparte. CLAVE: `_posicion` ya usaba las
+variables simbólicas de ffmpeg (W/H/w/h) → overlays/logos/textos se posicionan
+bien en cualquier formato sin cambios. CALIDADES ahora usa "corto" (lado menor)
+en vez de "alto"; exportar_final escala manteniendo el formato (copy si no baja
+resolución, si no scale=w:h proporcional). Pexels: `ORIENTACION` +
+`pexels_buscar(..., orientacion=)` (landscape/portrait/square) según formato.
+Pollinations genera en las dims del proyecto. app.py: crear_proyecto y
+crear_historia_ia aceptan `formato`; POST `/api/proyectos/<n>/formato` (borra
+video.mp4, hay que re-exportar); ver_proyecto devuelve `formato`; /api/pexels
+acepta `proyecto` para la orientación. Front: `#pv-lienzo{aspect-ratio:var(--fmt)}`
++ clase `.alto` (vertical limitado por altura), `aplicarFormatoLienzo(fmt)` en
+render(), selector en header (`fmt-actual` → `cambiarFormato()`) y en ambos
+modales de creación (`nuevo-formato`/`ia-formato`); i18n. Verificado: render de
+los 3 formatos con dims correctas, ensamblado 9:16 completo (transiciones+audio)
+= 1080×1920 aac, endpoint persiste, lienzo adapta en navegador. (De paso: probar
+el endpoint borró prueba/video.mp4 — regenerable.)
+
 ## Estado actual: v0.06 (todo verificado y funcionando)
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

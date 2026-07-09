@@ -192,7 +192,10 @@
   #pv-panel select { width: 100%; }
   #pv-lienzo {
     position: relative; width: 100%; margin: 0 auto;
-    aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden;
+    aspect-ratio: var(--fmt, 16/9); background: #000; border-radius: 12px; overflow: hidden;
+  }
+  #pv-lienzo.alto {   /* vertical (9:16): limitar por altura para que quepa */
+    width: auto; height: min(68vh, 860px); max-width: 100%;
   }
   .pv-capa { position: absolute; inset: 0; display: none; }
   .pv-capa img, .pv-capa video {
@@ -395,6 +398,11 @@
       <div id="chip-estado">—</div>
       <div style="flex:1"></div>
       <span id="aviso-desact" style="display:none;color:var(--ambar);font-size:12px" data-i18n="hdr_unsaved">⚠ hay cambios sin exportar</span>
+      <select id="fmt-actual" onchange="cambiarFormato(this.value)" title="Formato del lienzo / Canvas format">
+        <option value="16:9">🖥 16:9</option>
+        <option value="9:16">📱 9:16</option>
+        <option value="1:1">⬛ 1:1</option>
+      </select>
       <button id="btn-idioma" onclick="alternarIdioma()" title="Language / Idioma">🌐 EN</button>
       <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Reemplaza las imágenes automáticas por otras coherentes con toda la historia, usando IA">✨ Coherencia IA</button>
       <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
@@ -658,13 +666,23 @@
       <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_script">GUIÓN (OPCIONAL, RECOMENDADO)</h4>
       <textarea id="nuevo-guion" rows="4" placeholder="Pega aquí el guión con el que hiciste el audio. Se usa para corregir nombres y palabras, y mejora los prompts y las búsquedas de imágenes." data-i18n-ph="nm_script_ph"></textarea>
     </div>
-    <div class="campo">
-      <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_acc">PRECISIÓN DE TRANSCRIPCIÓN</h4>
-      <select id="nuevo-modelo">
-        <option value="small" selected data-i18n="nm_m_small">Normal — recomendada (modelo small)</option>
-        <option value="base" data-i18n="nm_m_base">Rápida (modelo base)</option>
-        <option value="tiny" data-i18n="nm_m_tiny">Muy rápida, solo pruebas (modelo tiny)</option>
-      </select>
+    <div class="campo" style="display:flex;gap:8px">
+      <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_format">FORMATO DEL VIDEO</h4>
+        <select id="nuevo-formato">
+          <option value="16:9" data-i18n="fmt_169">🖥 Horizontal 16:9 (YouTube)</option>
+          <option value="9:16" data-i18n="fmt_916">📱 Vertical 9:16 (Shorts/Reels)</option>
+          <option value="1:1" data-i18n="fmt_11">⬛ Cuadrado 1:1</option>
+        </select>
+      </div>
+      <div style="flex:1">
+        <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="nm_acc">PRECISIÓN DE TRANSCRIPCIÓN</h4>
+        <select id="nuevo-modelo">
+          <option value="small" selected data-i18n="nm_m_small">Normal — recomendada (modelo small)</option>
+          <option value="base" data-i18n="nm_m_base">Rápida (modelo base)</option>
+          <option value="tiny" data-i18n="nm_m_tiny">Muy rápida, solo pruebas (modelo tiny)</option>
+        </select>
+      </div>
     </div>
     <div class="botones">
       <button onclick="cerrarModal('modal-nuevo')" data-i18n="btn_cancel">Cancelar</button>
@@ -709,6 +727,12 @@
       <div class="campo" style="display:flex;gap:8px">
         <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_proj">NOMBRE DEL PROYECTO</h4>
           <input type="text" id="ia-nombre" placeholder="ej: vuelo_mh370" data-i18n-ph="ia_proj_ph"></div>
+        <div style="width:180px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_format">FORMATO</h4>
+          <select id="ia-formato">
+            <option value="16:9" data-i18n="fmt_169">🖥 Horizontal 16:9 (YouTube)</option>
+            <option value="9:16" data-i18n="fmt_916">📱 Vertical 9:16 (Shorts/Reels)</option>
+            <option value="1:1" data-i18n="fmt_11">⬛ Cuadrado 1:1</option>
+          </select></div>
         <div style="width:220px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_trans">TRANSCRIPCIÓN</h4>
           <select id="ia-modelo">
             <option value="small" selected data-i18n="ia_m_small">Normal (recomendada)</option>
@@ -1092,6 +1116,11 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  nm_format: "VIDEO FORMAT",
+  ia_format: "FORMAT",
+  fmt_169: "🖥 Horizontal 16:9 (YouTube)",
+  fmt_916: "📱 Vertical 9:16 (Shorts/Reels)",
+  fmt_11: "⬛ Square 1:1",
   hdr_coh: "✨ Coherence AI",
   coh_title: "✨ Image coherence (AI)",
   coh_intro: "An AI reads the WHOLE story and rewrites each scene's image search so they fit the full video, not just their sentence. It replaces the automatic images (keeps the ones you picked by hand).",
@@ -1902,12 +1931,46 @@ async function refrescar() {
 function urlImg(e) { return `/api/proyectos/${actual.nombre}/imagen/${e.n}?v=${e.v}`; }
 function escena(n) { return actual.escenas.find(e => e.n === n); }
 
+const FMT_RATIO = { '16:9': '16/9', '9:16': '9/16', '1:1': '1/1' };
+
+function aplicarFormatoLienzo(fmt) {
+  fmt = FMT_RATIO[fmt] ? fmt : '16:9';
+  const lienzo = $('pv-lienzo');
+  if (lienzo) {
+    lienzo.style.setProperty('--fmt', FMT_RATIO[fmt]);
+    lienzo.classList.toggle('alto', fmt === '9:16');
+  }
+  const sel = $('fmt-actual');
+  if (sel) sel.value = fmt;
+}
+
+async function cambiarFormato(fmt) {
+  if (!actual || fmt === (actual.formato || '16:9')) return;
+  if (actual.video && !confirm(L(
+      'Cambiar el formato requiere volver a exportar el video. ¿Continuar?',
+      'Changing the format requires re-exporting the video. Continue?'))) {
+    aplicarFormatoLienzo(actual.formato || '16:9');   // revierte el select
+    return;
+  }
+  try {
+    await api(`/api/proyectos/${actual.nombre}/formato`, {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ formato: fmt }) });
+    actual.formato = fmt;
+    actual.video = false;
+    actual.video_desactualizado = false;
+    aplicarFormatoLienzo(fmt);
+    render();
+  } catch (e) { alert(e.message); aplicarFormatoLienzo(actual.formato || '16:9'); }
+}
+
 function render() {
   renderEstado();
   renderTimeline();
   renderDetalle();
   renderCuadricula();
   renderMusica();
+  aplicarFormatoLienzo(actual.formato || '16:9');
   $('btn-video').style.display = actual.video ? '' : 'none';
   $('aviso-desact').style.display = (actual.video && actual.video_desactualizado) ? '' : 'none';
   $('btn-exportar').textContent = (actual.video && actual.video_desactualizado) ? L('Re-exportar video','Re-export video') : L('Exportar video','Export video');
@@ -2905,7 +2968,7 @@ async function crearHistoriaIA() {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ nombre: $('ia-nombre').value, guion: $('ia-guion').value,
                              voz: $('ia-voz').value, velocidad: $('ia-velocidad').value,
-                             modelo: $('ia-modelo').value }) });
+                             modelo: $('ia-modelo').value, formato: $('ia-formato').value }) });
     cerrarModal('modal-ia');
     setTimeout(() => abrirProyecto(r.nombre).catch(() => cargarLista()), 800);
   } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
@@ -2960,7 +3023,7 @@ async function buscarPexels() {
   try {
     const res = tipo === 'web'
       ? await api(`/api/web?q=${encodeURIComponent(q)}`)
-      : await api(`/api/pexels?q=${encodeURIComponent(q)}&tipo=${tipo}`);
+      : await api(`/api/pexels?q=${encodeURIComponent(q)}&tipo=${tipo}&proyecto=${encodeURIComponent(actual.nombre)}`);
     cont.innerHTML = res.length ? '' : '<div style="color:var(--tenue)">Sin resultados — prueba otras palabras o usa el prompt con tu IA.</div>';
     for (const f of res) {
       const caja = document.createElement('div');
@@ -3172,6 +3235,7 @@ async function crearProyecto() {
   if (archivo) fd.append('audio', archivo);
   fd.append('guion', $('nuevo-guion').value);
   fd.append('modelo', $('nuevo-modelo').value);
+  fd.append('formato', $('nuevo-formato').value);
   $('btn-crear').disabled = true;
   try {
     const r = await api('/api/proyectos', { method: 'POST', body: fd });

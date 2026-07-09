@@ -146,6 +146,25 @@ PRÓXIMO GRAN SALTO (pendiente): **empaquetar un ffmpeg ARM64 nativo** (con liba
 escena, transiciones, overlays, subtítulos) 2-4×. Es lo que más falta. Verificar
 que el build arm64 tenga los filtros `ass`/`drawtext` y arquitectura correcta.
 
+## Robustez ante falta de espacio (v0.09)
+
+Bug real: un tester se quedó sin espacio a mitad de export → el maestro
+`video.mp4` quedó truncado ("moov atom not found"), y como `master_ok` solo
+miraba existencia+mtime, la app confiaba en él y toda exportación posterior
+fallaba (con la optimización copy de v0.08, intentaba copiar el archivo
+corrupto). Arreglado en editor.py:
+- `video_valido(ruta)`: ffprobe la duración; False si no existe/está vacío/corrupto.
+- `exportar_final` reconstruye el maestro si `not video_valido(video.mp4)` (no
+  solo si falta), borrándolo antes. Y chequea espacio libre (< 1.5 GB → error
+  amable) antes de armar.
+- **Escritura atómica**: el maestro y el archivo final se escriben a un temporal
+  (`video.tmp.mp4` / `.NOMBRE.tmp.mp4` en la misma carpeta) y solo si `video_valido`
+  pasa se hace `os.replace` al nombre real. Un corte nunca deja un archivo a
+  medias que parezca completo. (requirió `import os`)
+- Remedio manual si alguien queda atascado en una build vieja: borrar
+  `~/Library/Application Support/AutoFacelessVideo/proyectos/<proy>/video.mp4` y
+  la carpeta `clips/`.
+
 ## Estado actual: v0.06 (todo verificado y funcionando)
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

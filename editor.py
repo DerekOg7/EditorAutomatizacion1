@@ -18,6 +18,7 @@ La app web (app.py) usa estas mismas funciones.
 import argparse
 import json
 import math
+import os
 import re
 import shutil
 import subprocess
@@ -155,6 +156,18 @@ def ffprobe_duracion(archivo):
     r = run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
              "-of", "csv=p=0", str(archivo)])
     return float(r.stdout.strip())
+
+
+def video_valido(ruta):
+    """True si el mp4 se puede leer (no está truncado/corrupto). Sirve para no
+    confiar en un maestro que quedó a medias, p. ej. por quedarse sin espacio."""
+    ruta = Path(ruta)
+    if not ruta.exists() or ruta.stat().st_size < 1024:
+        return False
+    try:
+        return ffprobe_duracion(ruta) > 0
+    except (ErrorPipeline, ValueError):
+        return False
 
 
 def dir_proyecto(nombre):
@@ -2408,7 +2421,11 @@ def ensamblar_video(p, on_progreso=None):
         video_mudo = con_subs
 
     # 3) Añadir la narración (y la música de fondo si hay).
+    #    Se escribe a un temporal y solo al terminar bien se renombra a
+    #    video.mp4, para que un corte (p. ej. sin espacio en disco) nunca deje
+    #    el maestro corrupto/a medias.
     salida = p / "video.mp4"
+    tmp = p / "video.tmp.mp4"
     avisar("Mezclando audio…", 97)
     musica = buscar_musica(p)
     if musica:
@@ -2426,12 +2443,17 @@ def ensamblar_video(p, on_progreso=None):
              f"[voz][mus]amix=inputs=2:duration=first:normalize=0[a]",
              "-map", "0:v", "-map", "[a]", "-c:v", "copy",
              "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-             "-t", f"{dur_total:.3f}", str(salida)])
+             "-t", f"{dur_total:.3f}", str(tmp)])
     else:
         run(["ffmpeg", "-y", "-i", str(video_mudo), "-i", str(audio),
              "-map", "0:v", "-map", "1:a", "-c:v", "copy",
              "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-             str(salida)])
+             str(tmp)])
+    if not video_valido(tmp):
+        tmp.unlink(missing_ok=True)
+        err("La exportación quedó incompleta (¿te quedaste sin espacio en el "
+            "disco?). Libera espacio y vuelve a exportar.")
+    os.replace(tmp, salida)               # renombrado atómico: maestro íntegro
     avisar("Listo", 100)
     return salida, faltantes
 
@@ -2464,7 +2486,14 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
     """Construye el master (video.mp4) si hace falta y lo transcodifica a la
     calidad/carpeta/nombre elegidos. Devuelve la ruta final."""
     avisar = on_progreso or (lambda *_: None)
-    if not master_ok or not (p / "video.mp4").exists():
+    # Reconstruir si no hay maestro, si cambió, o si el que hay está corrupto
+    # (p. ej. quedó a medias por falta de espacio en una exportación anterior).
+    if not master_ok or not video_valido(p / "video.mp4"):
+        libre = shutil.disk_usage(p).free
+        if libre < 1_500_000_000:              # armar el video necesita espacio temporal
+            err(f"Poco espacio en el disco ({libre/1e9:.1f} GB libres). Libera al "
+                f"menos 2 GB y vuelve a exportar (armar el video usa espacio temporal).")
+        (p / "video.mp4").unlink(missing_ok=True)
         ensamblar_video(p, on_progreso=lambda t, pc: avisar(t, pc * 0.82))
 
     cfg = CALIDADES.get(calidad, CALIDADES["alta"])
@@ -2477,20 +2506,28 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
         err(f"La carpeta destino no existe: {destino_dir}")
     destino = destino_dir / nombre_archivo_seguro(nombre_archivo, p.name)
 
+    # Se escribe a un temporal en la misma carpeta y solo al terminar bien se
+    # renombra al nombre final (así un corte no deja un archivo a medias).
+    tmp = destino.with_name("." + destino.stem + ".tmp.mp4")
     # El master ya está en 1080p H.264. Si la calidad elegida NO baja la
     # resolución, no hace falta re-codificar todo el video otra vez (que es lo
     # lento): basta re-empaquetar (copiar) el master, casi instantáneo.
     if cfg["alto"] >= ALTO:
         avisar("Guardando el archivo…", 92)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
-             "-c", "copy", "-movflags", "+faststart", str(destino)])
+             "-c", "copy", "-movflags", "+faststart", str(tmp)])
     else:
         avisar("Ajustando calidad y guardando el archivo…", 88)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
              "-vf", f"scale=-2:{cfg['alto']}",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
              "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
-             "-video_track_timescale", TIMESCALE, str(destino)])
+             "-video_track_timescale", TIMESCALE, str(tmp)])
+    if not video_valido(tmp):
+        tmp.unlink(missing_ok=True)
+        err("El archivo final quedó incompleto (¿te quedaste sin espacio en el "
+            "disco?). Libera espacio y vuelve a exportar.")
+    os.replace(tmp, destino)
     avisar("Listo", 100)
     return destino
 

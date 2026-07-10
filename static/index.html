@@ -39,14 +39,49 @@
   #lateral h1 small { display: block; color: var(--acento); font-weight: 500; font-size: 11px; letter-spacing: 2px; }
   #lateral .zona-nuevo { padding: 12px 16px; }
   #lista-proyectos { flex: 1; overflow-y: auto; padding: 0 10px; }
+  /* cabecera "Mis historias" */
+  #mis-historias-cab { display: flex; align-items: center; gap: 6px; padding: 4px 16px 6px; }
+  #btn-mis-historias { flex: 1; text-align: left; font-weight: 600; background: transparent;
+    border: 0; color: var(--texto); font-size: 13px; padding: 6px 4px; cursor: pointer; }
+  #btn-mis-historias:hover { color: var(--acento); }
+  #btn-nuevo-grupo { padding: 4px 10px; font-size: 13px; }
+  #lista-proyectos.oculto { display: none; }
+  /* grupo */
+  .grupo-cab { display: flex; align-items: center; gap: 4px; padding: 6px 6px 4px;
+    color: var(--tenue); font-size: 11px; letter-spacing: .5px; }
+  .grupo-cab .titulo { flex: 1; cursor: pointer; font-weight: 600; text-transform: uppercase;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grupo-cab .titulo:hover { color: var(--texto); }
+  .grupo-cab button { background: transparent; border: 0; color: var(--tenue); cursor: pointer;
+    padding: 2px 4px; font-size: 12px; border-radius: 5px; }
+  .grupo-cab button:hover { color: var(--texto); background: var(--panel2); }
+  .grupo-hist.colapsado { display: none; }
+  .grupo.arrastrando { opacity: .5; }
+  .grupo.destino > .grupo-cab { outline: 1px dashed var(--acento); border-radius: 6px; }
   .proy {
     padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 4px;
-    border: 1px solid transparent;
+    border: 1px solid transparent; position: relative;
   }
   .proy:hover { background: var(--panel2); }
   .proy.activo { background: var(--panel2); border-color: var(--acento); }
-  .proy .nombre { font-weight: 600; }
+  .proy .nombre { font-weight: 600; padding-right: 22px; }
   .proy .meta { color: var(--tenue); font-size: 12px; display: flex; gap: 10px; }
+  .proy .mas { position: absolute; top: 8px; right: 8px; opacity: 0; background: transparent;
+    border: 0; color: var(--tenue); cursor: pointer; font-size: 16px; padding: 0 4px; border-radius: 5px; }
+  .proy:hover .mas { opacity: 1; }
+  .proy .mas:hover { color: var(--texto); background: var(--borde); }
+  /* menú flotante (mover/eliminar historia) */
+  #menu-flot { position: fixed; z-index: 200; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 10px; padding: 6px; min-width: 190px; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+    display: none; }
+  #menu-flot.abierto { display: block; }
+  #menu-flot .cab { font-size: 10px; color: var(--tenue); letter-spacing: 1px; padding: 4px 8px; }
+  #menu-flot button { display: block; width: 100%; text-align: left; background: transparent;
+    border: 0; color: var(--texto); padding: 7px 8px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  #menu-flot button:hover { background: var(--panel2); }
+  #menu-flot button.sel { color: var(--acento); }
+  #menu-flot button.peligro { color: var(--alerta); }
+  #menu-flot hr { border: 0; border-top: 1px solid var(--borde); margin: 5px 4px; }
   .punto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
   #zona-unir { border-top: 1px solid var(--borde); padding: 14px 16px; }
   #zona-unir h3 { font-size: 13px; margin-bottom: 8px; color: var(--tenue); }
@@ -373,6 +408,10 @@
     <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">🎙 Estudio de voz</button>
     <button style="width:100%;margin-top:6px" id="btn-claves" onclick="abrirClaves()" data-i18n="side_keys">🔑 Claves API</button>
   </div>
+  <div id="mis-historias-cab">
+    <button id="btn-mis-historias" onclick="toggleHistorias()"><span id="hist-flecha">▾</span> <span data-i18n="side_stories">Mis historias</span></button>
+    <button id="btn-nuevo-grupo" onclick="nuevoGrupo()" title="Nuevo grupo" data-i18n-title="side_newgroup">＋ 📁</button>
+  </div>
   <div id="lista-proyectos"></div>
   <div id="zona-unir">
     <h3 data-i18n="side_join_title">UNIR HISTORIAS (video final)</h3>
@@ -382,6 +421,8 @@
     <div id="unir-estado" style="font-size:12px;color:var(--tenue);margin-top:6px"></div>
   </div>
 </aside>
+
+<div id="menu-flot"></div>
 
 <main id="principal">
   <div id="vacio">
@@ -1116,6 +1157,8 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  side_stories: "My stories",
+  side_newgroup: "New group",
   nm_format: "VIDEO FORMAT",
   ia_format: "FORMAT",
   fmt_169: "🖥 Horizontal 16:9 (YouTube)",
@@ -1871,28 +1914,179 @@ async function api(ruta, opciones) {
 
 /* ---------------- lista de proyectos ---------------- */
 
-async function cargarLista() {
-  proyectos = await api('/api/proyectos');
-  const cont = $('lista-proyectos');
-  cont.innerHTML = '';
-  for (const p of proyectos) {
-    const div = document.createElement('div');
-    div.className = 'proy' + (actual && actual.nombre === p.nombre ? ' activo' : '');
-    const fase = p.estado.fase || 'inactivo';
-    const color = fase === 'error' ? 'var(--alerta)'
-                : ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) ? 'var(--ambar)'
-                : p.video ? 'var(--ok)' : 'var(--tenue)';
-    div.innerHTML = `<div class="nombre"><span class="punto" style="background:${color}"></span>${p.nombre}</div>
-      <div class="meta"><span>${p.escenas} ${L('escenas','scenes')}</span><span>${p.imagenes}/${p.escenas} ${L('imágenes','images')}</span>${p.video ? '<span>🎬 video</span>' : ''}</div>`;
-    div.onclick = () => abrirProyecto(p.nombre);
-    cont.appendChild(div);
+let grupos = [];
+
+function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function tarjetaHistoria(p) {
+  const div = document.createElement('div');
+  div.className = 'proy' + (actual && actual.nombre === p.nombre ? ' activo' : '');
+  const fase = p.estado.fase || 'inactivo';
+  const color = fase === 'error' ? 'var(--alerta)'
+              : ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) ? 'var(--ambar)'
+              : p.video ? 'var(--ok)' : 'var(--tenue)';
+  div.innerHTML = `<div class="nombre"><span class="punto" style="background:${color}"></span>${esc(p.nombre)}</div>
+    <div class="meta"><span>${p.escenas} ${L('escenas','scenes')}</span><span>${p.imagenes}/${p.escenas} ${L('imágenes','images')}</span>${p.video ? '<span>🎬 video</span>' : ''}</div>
+    <button class="mas" title="${L('Opciones','Options')}">⋯</button>`;
+  div.onclick = ev => { if (!ev.target.classList.contains('mas')) abrirProyecto(p.nombre); };
+  div.querySelector('.mas').onclick = ev => { ev.stopPropagation(); menuHistoria(ev, p); };
+  return div;
+}
+
+function seccionGrupo(cont, grupo, historias) {
+  const wrap = document.createElement('div');
+  wrap.className = 'grupo';
+  const gid = grupo ? grupo.id : '__sin__';
+  const colapsado = localStorage.getItem('afv_grupo_' + gid) === '1';
+  const flecha = colapsado ? '▸' : '▾';
+  const nombre = grupo ? esc(grupo.nombre) : L('Sin grupo', 'Ungrouped');
+  const acciones = grupo ? `
+    <button onclick="event.stopPropagation();renombrarGrupo('${gid}')" title="${L('Renombrar','Rename')}">✏</button>
+    <button onclick="event.stopPropagation();moverGrupo('${gid}',-1)" title="${L('Subir','Move up')}">↑</button>
+    <button onclick="event.stopPropagation();moverGrupo('${gid}',1)" title="${L('Bajar','Move down')}">↓</button>
+    <button onclick="event.stopPropagation();borrarGrupo('${gid}')" title="${L('Borrar grupo','Delete group')}">🗑</button>` : '';
+  const cab = document.createElement('div');
+  cab.className = 'grupo-cab';
+  cab.innerHTML = `<span class="titulo" onclick="toggleGrupo('${gid}')">${flecha} ${nombre} (${historias.length})</span>${acciones}`;
+  wrap.appendChild(cab);
+  const cajaH = document.createElement('div');
+  cajaH.className = 'grupo-hist' + (colapsado ? ' colapsado' : '');
+  for (const p of historias) cajaH.appendChild(tarjetaHistoria(p));
+  if (!historias.length) cajaH.innerHTML = `<div style="color:var(--tenue);font-size:12px;padding:4px 12px 8px">${L('(vacío)','(empty)')}</div>`;
+  wrap.appendChild(cajaH);
+  // arrastrar grupos para reordenar
+  if (grupo) {
+    cab.draggable = true;
+    cab.ondragstart = e => { arrastreGrupo = gid; wrap.classList.add('arrastrando'); e.dataTransfer.effectAllowed = 'move'; };
+    cab.ondragend = () => { wrap.classList.remove('arrastrando'); document.querySelectorAll('.grupo.destino').forEach(g => g.classList.remove('destino')); };
+    wrap.ondragover = e => { if (arrastreGrupo && arrastreGrupo !== gid) { e.preventDefault(); wrap.classList.add('destino'); } };
+    wrap.ondragleave = () => wrap.classList.remove('destino');
+    wrap.ondrop = e => { e.preventDefault(); wrap.classList.remove('destino'); soltarGrupo(gid); };
   }
+  cont.appendChild(wrap);
+}
+
+let arrastreGrupo = null;
+async function soltarGrupo(destinoId) {
+  const ids = grupos.map(g => g.id);
+  const from = ids.indexOf(arrastreGrupo), to = ids.indexOf(destinoId);
+  if (from < 0 || to < 0) return;
+  ids.splice(to, 0, ids.splice(from, 1)[0]);
+  arrastreGrupo = null;
+  try { await api('/api/grupos/orden', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids }) }); }
+  catch (e) {}
+  cargarLista();
+}
+
+async function cargarLista() {
+  [proyectos, grupos] = await Promise.all([api('/api/proyectos'), api('/api/grupos')]);
+  const cont = $('lista-proyectos');
+  cont.classList.toggle('oculto', localStorage.getItem('afv_hist_abierto') === '0');
+  $('hist-flecha').textContent = localStorage.getItem('afv_hist_abierto') === '0' ? '▸' : '▾';
+  cont.innerHTML = '';
+  for (const g of grupos) {
+    seccionGrupo(cont, g, proyectos.filter(p => p.grupo === g.id));
+  }
+  const idsGrupos = new Set(grupos.map(g => g.id));
+  const sinGrupo = proyectos.filter(p => !p.grupo || !idsGrupos.has(p.grupo));
+  // "Sin grupo" solo como cabecera si hay grupos; si no hay grupos, lista plana
+  if (grupos.length) seccionGrupo(cont, null, sinGrupo);
+  else for (const p of sinGrupo) cont.appendChild(tarjetaHistoria(p));
+
   const lista = $('unir-lista');
   lista.innerHTML = '';
   for (const p of proyectos.filter(p => p.video)) {
-    lista.innerHTML += `<label><input type="checkbox" value="${p.nombre}"> ${p.nombre}</label>`;
+    lista.innerHTML += `<label><input type="checkbox" value="${esc(p.nombre)}"> ${esc(p.nombre)}</label>`;
   }
-  if (!lista.innerHTML) lista.innerHTML = '<div style="color:var(--tenue);font-size:12px">Exporta al menos 2 historias para unirlas.</div>';
+  if (!lista.innerHTML) lista.innerHTML = `<div style="color:var(--tenue);font-size:12px">${L('Exporta al menos 2 historias para unirlas.','Export at least 2 stories to merge them.')}</div>`;
+}
+
+function toggleHistorias() {
+  const abierto = localStorage.getItem('afv_hist_abierto') !== '0';
+  localStorage.setItem('afv_hist_abierto', abierto ? '0' : '1');
+  $('lista-proyectos').classList.toggle('oculto', abierto);
+  $('hist-flecha').textContent = abierto ? '▸' : '▾';
+}
+
+function toggleGrupo(gid) {
+  const k = 'afv_grupo_' + gid;
+  localStorage.setItem(k, localStorage.getItem(k) === '1' ? '0' : '1');
+  cargarLista();
+}
+
+async function nuevoGrupo() {
+  const nombre = prompt(L('Nombre del grupo:', 'Group name:'));
+  if (!nombre || !nombre.trim()) return;
+  try { await api('/api/grupos', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre }) }); }
+  catch (e) { alert(e.message); }
+  cargarLista();
+}
+
+async function renombrarGrupo(gid) {
+  const g = grupos.find(x => x.id === gid);
+  const nombre = prompt(L('Nuevo nombre del grupo:', 'New group name:'), g ? g.nombre : '');
+  if (!nombre || !nombre.trim()) return;
+  try { await api('/api/grupos/' + gid, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ nombre }) }); }
+  catch (e) { alert(e.message); }
+  cargarLista();
+}
+
+async function borrarGrupo(gid) {
+  const g = grupos.find(x => x.id === gid);
+  if (!confirm(L(`¿Borrar el grupo "${g ? g.nombre : ''}"? Las historias NO se borran (pasan a "Sin grupo").`,
+                 `Delete the group "${g ? g.nombre : ''}"? The stories are NOT deleted (they move to "Ungrouped").`))) return;
+  try { await api('/api/grupos/' + gid, { method:'DELETE' }); }
+  catch (e) { alert(e.message); }
+  cargarLista();
+}
+
+async function moverGrupo(gid, dir) {
+  const ids = grupos.map(g => g.id);
+  const i = ids.indexOf(gid), j = i + dir;
+  if (i < 0 || j < 0 || j >= ids.length) return;
+  [ids[i], ids[j]] = [ids[j], ids[i]];
+  try { await api('/api/grupos/orden', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ ids }) }); }
+  catch (e) {}
+  cargarLista();
+}
+
+function menuHistoria(ev, p) {
+  const m = $('menu-flot');
+  let html = `<div class="cab">${L('MOVER A GRUPO','MOVE TO GROUP')}</div>`;
+  html += `<button class="${!p.grupo ? 'sel' : ''}" data-mv="">${L('— Sin grupo —','— Ungrouped —')}</button>`;
+  for (const g of grupos) html += `<button class="${p.grupo === g.id ? 'sel' : ''}" data-mv="${g.id}">${esc(g.nombre)}</button>`;
+  html += `<hr><button class="peligro" data-del="1">🗑 ${L('Eliminar historia','Delete story')}</button>`;
+  m.innerHTML = html;
+  m.querySelectorAll('[data-mv]').forEach(b => b.onclick = () => { cerrarMenuFlot(); moverHistoria(p.nombre, b.dataset.mv); });
+  m.querySelector('[data-del]').onclick = () => { cerrarMenuFlot(); borrarHistoria(p.nombre); };
+  m.classList.add('abierto');
+  const r = m.getBoundingClientRect();
+  const x = Math.min(ev.clientX, window.innerWidth - r.width - 8);
+  const y = Math.min(ev.clientY, window.innerHeight - r.height - 8);
+  m.style.left = x + 'px'; m.style.top = y + 'px';
+}
+function cerrarMenuFlot() { $('menu-flot').classList.remove('abierto'); }
+document.addEventListener('click', e => { if (!e.target.closest('#menu-flot') && !e.target.classList.contains('mas')) cerrarMenuFlot(); });
+
+async function moverHistoria(nombre, gid) {
+  try { await api(`/api/proyectos/${encodeURIComponent(nombre)}/grupo`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ grupo: gid }) }); }
+  catch (e) { alert(e.message); }
+  cargarLista();
+}
+
+async function borrarHistoria(nombre) {
+  if (!confirm(L(`¿Eliminar la historia "${nombre}" para siempre? Esto borra su audio, imágenes y video. No se puede deshacer.`,
+                 `Delete the story "${nombre}" forever? This removes its audio, images and video. This cannot be undone.`))) return;
+  try {
+    await api(`/api/proyectos/${encodeURIComponent(nombre)}`, { method:'DELETE' });
+    if (actual && actual.nombre === nombre) {   // si estaba abierta, cerrarla
+      actual = null;
+      $('proyecto').style.display = 'none';
+      $('vacio').style.display = 'flex';
+      clearInterval(timerProyecto);
+    }
+  } catch (e) { alert(e.message); }
+  cargarLista();
 }
 
 /* ---------------- proyecto abierto ---------------- */

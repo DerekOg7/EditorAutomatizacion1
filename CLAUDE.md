@@ -192,7 +192,32 @@ los 3 formatos con dims correctas, ensamblado 9:16 completo (transiciones+audio)
 = 1080×1920 aac, endpoint persiste, lienzo adapta en navegador. (De paso: probar
 el endpoint borró prueba/video.mp4 — regenerable.)
 
-## Estado actual: v0.06 (todo verificado y funcionando)
+## Grupos de historias + "Mis historias" (v0.11)
+
+Sidebar reorganizado: cabecera colapsable "📁 Mis historias" (▾/▸, estado en
+localStorage `afv_hist_abierto`) con botón "＋ 📁" para crear grupo. Las
+historias se agrupan; grupos colapsables (localStorage `afv_grupo_<id>`).
+Backend en editor.py: `grupos.json` en DATOS = `{"grupos":[{id,nombre}...],
+"asignacion":{proyecto:grupo_id}}` (orden del array = orden visual). Funciones:
+`leer_grupos`, `crear_grupo`, `renombrar_grupo`, `borrar_grupo` (historias vuelven
+a sin grupo, NO se borran), `ordenar_grupos(ids)`, `mover_historia(proy,gid)`,
+`borrar_proyecto(nombre)` (rmtree + quita de asignación). app.py: listar_proyectos
+añade `grupo` por proyecto; GET `/api/grupos`, POST `/api/grupos` (crear), POST
+`/api/grupos/orden` {ids}, POST `/api/grupos/<gid>` (renombrar), DELETE
+`/api/grupos/<gid>`, POST `/api/proyectos/<n>/grupo` {grupo}, DELETE
+`/api/proyectos/<n>` (borra historia; guard `ocupado` → 400 si hay proceso;
+limpia ESTADOS). Front: `cargarLista()` reescrita renderiza por grupos + sección
+"Sin grupo" (si no hay grupos, lista plana); `tarjetaHistoria()` con botón "⋯"
+(hover) → `menuHistoria()` = menú flotante #menu-flot con "Mover a grupo" +
+"Eliminar historia"; grupos con ✏ renombrar / ↑↓ reordenar / 🗑 borrar y
+drag-and-drop para reordenar; `borrarHistoria()` cierra el proyecto si estaba
+abierto. i18n side_stories/side_newgroup. Verificado e2e: crear/mover/reordenar/
+borrar grupos, borrar historia (con guard ocupado), menú, toggle, inglés.
+
+## Estado actual: v0.11 (todo verificado; zip en ~/Documents/CLAUDE/)
+
+> Las secciones de arriba (v0.07–v0.11) documentan lo añadido después de v0.06.
+> Esta lista es la base v0.06. Zip vigente: `AutoFaceless-Video-v0.11-beta-macOS.zip`.
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

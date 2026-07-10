@@ -430,6 +430,7 @@ def guardar_claves():
 @app.get("/api/proyectos")
 def listar_proyectos():
     PROYECTOS.mkdir(exist_ok=True)
+    asign = editor.leer_grupos()["asignacion"]
     res = []
     for d in sorted(PROYECTOS.iterdir()):
         if not d.is_dir():
@@ -446,9 +447,65 @@ def listar_proyectos():
             "imagenes": sum(1 for e in escenas
                             if editor.medio_de_escena(d, e["n"])[0]),
             "video": (d / "video.mp4").exists(),
+            "grupo": asign.get(d.name),
             "estado": get_estado(d.name),
         })
     return jsonify(res)
+
+
+@app.get("/api/grupos")
+def grupos_lista():
+    return jsonify(editor.leer_grupos()["grupos"])
+
+
+@app.post("/api/grupos")
+def grupo_crear():
+    nombre = (request.get_json(force=True) or {}).get("nombre", "")
+    return jsonify({"id": editor.crear_grupo(nombre)})
+
+
+@app.post("/api/grupos/orden")
+def grupos_orden():
+    ids = (request.get_json(force=True) or {}).get("ids", [])
+    editor.ordenar_grupos(ids)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/grupos/<gid>")
+def grupo_renombrar(gid):
+    nombre = (request.get_json(force=True) or {}).get("nombre", "")
+    editor.renombrar_grupo(gid, nombre)
+    return jsonify({"ok": True})
+
+
+@app.delete("/api/grupos/<gid>")
+def grupo_borrar(gid):
+    editor.borrar_grupo(gid)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/proyectos/<nombre>/grupo")
+def proyecto_mover(nombre):
+    if not (PROYECTOS / nombre).is_dir():
+        return jsonify({"error": "No existe"}), 404
+    gid = (request.get_json(force=True) or {}).get("grupo") or ""
+    editor.mover_historia(nombre, gid)
+    return jsonify({"ok": True})
+
+
+@app.delete("/api/proyectos/<nombre>")
+def proyecto_borrar(nombre):
+    if not (PROYECTOS / nombre).is_dir():
+        return jsonify({"error": "No existe"}), 404
+    if ocupado(nombre):
+        return jsonify({"error": "Hay un proceso en curso — espera a que termine."}), 400
+    try:
+        editor.borrar_proyecto(nombre)
+        with LOCK:
+            ESTADOS.pop(nombre, None)
+        return jsonify({"ok": True})
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @app.post("/api/proyectos")

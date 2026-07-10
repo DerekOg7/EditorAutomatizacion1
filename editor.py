@@ -1102,6 +1102,85 @@ def borrar_guion(nombre):
         f.unlink()
 
 
+# ------------------------------------------------- grupos de historias
+
+def leer_grupos():
+    """{'grupos': [{id, nombre}, ...], 'asignacion': {proyecto: grupo_id}}.
+    El orden del array 'grupos' es el orden de visualización."""
+    f = DATOS / "grupos.json"
+    if f.exists():
+        try:
+            d = json.loads(f.read_text())
+            d.setdefault("grupos", [])
+            d.setdefault("asignacion", {})
+            return d
+        except ValueError:
+            pass
+    return {"grupos": [], "asignacion": {}}
+
+
+def _guardar_grupos(d):
+    (DATOS / "grupos.json").write_text(json.dumps(d, ensure_ascii=False, indent=2))
+
+
+def crear_grupo(nombre):
+    import secrets
+    nombre = (nombre or "").strip()[:60] or "Grupo"
+    d = leer_grupos()
+    gid = "grp_" + secrets.token_hex(4)
+    d["grupos"].append({"id": gid, "nombre": nombre})
+    _guardar_grupos(d)
+    return gid
+
+
+def renombrar_grupo(gid, nombre):
+    d = leer_grupos()
+    for g in d["grupos"]:
+        if g["id"] == gid:
+            g["nombre"] = (nombre or "").strip()[:60] or g["nombre"]
+    _guardar_grupos(d)
+
+
+def borrar_grupo(gid):
+    """Borra el grupo; sus historias vuelven a 'sin grupo' (no se borran)."""
+    d = leer_grupos()
+    d["grupos"] = [g for g in d["grupos"] if g["id"] != gid]
+    d["asignacion"] = {p: g for p, g in d["asignacion"].items() if g != gid}
+    _guardar_grupos(d)
+
+
+def ordenar_grupos(ids):
+    """Reordena los grupos según la lista de ids dada."""
+    d = leer_grupos()
+    por_id = {g["id"]: g for g in d["grupos"]}
+    d["grupos"] = [por_id[i] for i in ids if i in por_id] + \
+                  [g for g in d["grupos"] if g["id"] not in ids]
+    _guardar_grupos(d)
+
+
+def mover_historia(proyecto, gid):
+    """Asigna la historia a un grupo (gid vacío/None = sin grupo)."""
+    d = leer_grupos()
+    ids = {g["id"] for g in d["grupos"]}
+    if gid and gid in ids:
+        d["asignacion"][proyecto] = gid
+    else:
+        d["asignacion"].pop(proyecto, None)
+    _guardar_grupos(d)
+
+
+def borrar_proyecto(nombre):
+    """Elimina por completo la carpeta de la historia y su asignación."""
+    p = PROYECTOS / nombre
+    if not p.is_dir():
+        err(f"No existe la historia '{nombre}'.")
+    shutil.rmtree(p, ignore_errors=True)
+    d = leer_grupos()
+    if nombre in d["asignacion"]:
+        d["asignacion"].pop(nombre, None)
+        _guardar_grupos(d)
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")

@@ -38,14 +38,17 @@
   #lateral h1 { font-size: 15px; padding: 18px 16px 4px; }
   #lateral h1 small { display: block; color: var(--acento); font-weight: 500; font-size: 11px; letter-spacing: 2px; }
   #lateral .zona-nuevo { padding: 12px 16px; }
-  #lista-proyectos { flex: 1; overflow-y: auto; padding: 0 10px; }
-  /* cabecera "Mis historias" */
-  #mis-historias-cab { display: flex; align-items: center; gap: 6px; padding: 4px 16px 6px; }
-  #btn-mis-historias { flex: 1; text-align: left; font-weight: 600; background: transparent;
-    border: 0; color: var(--texto); font-size: 13px; padding: 6px 4px; cursor: pointer; }
-  #btn-mis-historias:hover { color: var(--acento); }
-  #btn-nuevo-grupo { padding: 4px 10px; font-size: 13px; }
+  #lista-proyectos { flex: 1; overflow-y: auto; padding: 4px 10px 0; }
+  #hist-flecha { color: var(--tenue); font-size: 11px; }
   #lista-proyectos.oculto { display: none; }
+  #btn-nuevo-grupo-lista { width: 100%; font-size: 12px; padding: 6px; margin-bottom: 6px;
+    color: var(--tenue); }
+  #barra-seleccion { display: none; align-items: center; gap: 8px; padding: 10px 16px;
+    border-top: 1px solid var(--borde); font-size: 12px; }
+  #barra-seleccion.activo { display: flex; }
+  #barra-seleccion #sel-info { flex: 1; color: var(--acento); font-weight: 600; }
+  #barra-seleccion button { font-size: 12px; padding: 4px 8px; }
+  .proy.sel { background: var(--panel2); border-color: var(--acento); box-shadow: inset 3px 0 0 var(--acento); }
   /* grupo */
   .grupo-cab { display: flex; align-items: center; gap: 4px; padding: 6px 6px 4px;
     color: var(--tenue); font-size: 11px; letter-spacing: .5px; }
@@ -408,17 +411,12 @@
     <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">🎙 Estudio de voz</button>
     <button style="width:100%;margin-top:6px" id="btn-claves" onclick="abrirClaves()" data-i18n="side_keys">🔑 Claves API</button>
   </div>
-  <div id="mis-historias-cab">
-    <button id="btn-mis-historias" onclick="toggleHistorias()"><span id="hist-flecha">▾</span> <span data-i18n="side_stories">Mis historias</span></button>
-    <button id="btn-nuevo-grupo" onclick="nuevoGrupo()" title="Nuevo grupo" data-i18n-title="side_newgroup">＋ 📁</button>
+    <button style="width:100%;margin-top:6px" id="btn-mis-historias" onclick="toggleHistorias()">📁 <span data-i18n="side_stories">Mis historias</span> <span id="hist-flecha">▾</span></button>
   </div>
   <div id="lista-proyectos"></div>
-  <div id="zona-unir">
-    <h3 data-i18n="side_join_title">UNIR HISTORIAS (video final)</h3>
-    <div id="unir-lista"></div>
-    <input type="text" id="unir-nombre" placeholder="nombre del video final" value="video_final" data-i18n-ph="side_join_ph">
-    <button class="primario" style="width:100%" id="btn-unir" onclick="unirHistorias()" data-i18n="side_join_btn">Unir en un video</button>
-    <div id="unir-estado" style="font-size:12px;color:var(--tenue);margin-top:6px"></div>
+  <div id="barra-seleccion">
+    <span id="sel-info"></span>
+    <button onclick="limpiarSeleccion()" data-i18n="sel_clear">Quitar selección</button>
   </div>
 </aside>
 
@@ -993,7 +991,7 @@
 <!-- modal exportar -->
 <div class="modal-fondo" id="modal-exportar">
   <div class="modal">
-    <h3 data-i18n="exp_title">Exportar esta historia</h3>
+    <h3 id="exp-titulo" data-i18n="exp_title">Exportar esta historia</h3>
     <div id="exp-form">
       <div class="campo">
         <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="exp_file">NOMBRE DEL ARCHIVO</h4>
@@ -1157,6 +1155,7 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  sel_clear: "Clear selection",
   side_stories: "My stories",
   side_newgroup: "New group",
   nm_format: "VIDEO FORMAT",
@@ -1915,12 +1914,15 @@ async function api(ruta, opciones) {
 /* ---------------- lista de proyectos ---------------- */
 
 let grupos = [];
+let seleccionadas = [];    // nombres seleccionados (Cmd+clic) para exportar juntos
 
 function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 function tarjetaHistoria(p) {
   const div = document.createElement('div');
-  div.className = 'proy' + (actual && actual.nombre === p.nombre ? ' activo' : '');
+  div.className = 'proy'
+    + (actual && actual.nombre === p.nombre ? ' activo' : '')
+    + (seleccionadas.includes(p.nombre) ? ' sel' : '');
   const fase = p.estado.fase || 'inactivo';
   const color = fase === 'error' ? 'var(--alerta)'
               : ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) ? 'var(--ambar)'
@@ -1928,9 +1930,36 @@ function tarjetaHistoria(p) {
   div.innerHTML = `<div class="nombre"><span class="punto" style="background:${color}"></span>${esc(p.nombre)}</div>
     <div class="meta"><span>${p.escenas} ${L('escenas','scenes')}</span><span>${p.imagenes}/${p.escenas} ${L('imágenes','images')}</span>${p.video ? '<span>🎬 video</span>' : ''}</div>
     <button class="mas" title="${L('Opciones','Options')}">⋯</button>`;
-  div.onclick = ev => { if (!ev.target.classList.contains('mas')) abrirProyecto(p.nombre); };
+  div.onclick = ev => {
+    if (ev.target.classList.contains('mas')) return;
+    if (ev.metaKey || ev.ctrlKey) {           // Cmd/Ctrl+clic = seleccionar varios
+      ev.preventDefault();
+      const i = seleccionadas.indexOf(p.nombre);
+      if (i >= 0) seleccionadas.splice(i, 1); else seleccionadas.push(p.nombre);
+      if (!actual) abrirProyecto(p.nombre);    // deja algo abierto para ver el botón
+      cargarLista();
+      actualizarSeleccion();
+    } else {
+      seleccionadas = [];
+      abrirProyecto(p.nombre);
+    }
+  };
   div.querySelector('.mas').onclick = ev => { ev.stopPropagation(); menuHistoria(ev, p); };
   return div;
+}
+
+function limpiarSeleccion() { seleccionadas = []; cargarLista(); actualizarSeleccion(); }
+
+function actualizarSeleccion() {
+  const n = seleccionadas.length;
+  const barra = $('barra-seleccion');
+  barra.classList.toggle('activo', n >= 2);
+  if (n >= 2) $('sel-info').textContent = L(`${n} historias seleccionadas`, `${n} stories selected`);
+  // el botón de exportar refleja el conteo
+  const btn = $('btn-exportar');
+  if (btn) btn.textContent = n >= 2
+    ? L(`Exportar y unir (${n})`, `Export & merge (${n})`)
+    : (actual && actual.video && actual.video_desactualizado ? L('Re-exportar video','Re-export video') : L('Exportar video','Export video'));
 }
 
 function seccionGrupo(cont, grupo, historias) {
@@ -1984,6 +2013,11 @@ async function cargarLista() {
   cont.classList.toggle('oculto', localStorage.getItem('afv_hist_abierto') === '0');
   $('hist-flecha').textContent = localStorage.getItem('afv_hist_abierto') === '0' ? '▸' : '▾';
   cont.innerHTML = '';
+  const btnGrupo = document.createElement('button');
+  btnGrupo.id = 'btn-nuevo-grupo-lista';
+  btnGrupo.textContent = L('＋ Nuevo grupo', '＋ New group');
+  btnGrupo.onclick = nuevoGrupo;
+  cont.appendChild(btnGrupo);
   for (const g of grupos) {
     seccionGrupo(cont, g, proyectos.filter(p => p.grupo === g.id));
   }
@@ -1993,12 +2027,10 @@ async function cargarLista() {
   if (grupos.length) seccionGrupo(cont, null, sinGrupo);
   else for (const p of sinGrupo) cont.appendChild(tarjetaHistoria(p));
 
-  const lista = $('unir-lista');
-  lista.innerHTML = '';
-  for (const p of proyectos.filter(p => p.video)) {
-    lista.innerHTML += `<label><input type="checkbox" value="${esc(p.nombre)}"> ${esc(p.nombre)}</label>`;
-  }
-  if (!lista.innerHTML) lista.innerHTML = `<div style="color:var(--tenue);font-size:12px">${L('Exporta al menos 2 historias para unirlas.','Export at least 2 stories to merge them.')}</div>`;
+  // limpia de la selección historias que ya no existen
+  const vivos = new Set(proyectos.map(p => p.nombre));
+  seleccionadas = seleccionadas.filter(n => vivos.has(n));
+  actualizarSeleccion();
 }
 
 function toggleHistorias() {
@@ -2169,7 +2201,9 @@ function render() {
   $('aviso-desact').style.display = (actual.video && actual.video_desactualizado) ? '' : 'none';
   $('btn-exportar').textContent = (actual.video && actual.video_desactualizado) ? L('Re-exportar video','Re-export video') : L('Exportar video','Export video');
   const fase = actual.estado.fase;
-  $('btn-exportar').disabled = ['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) || !actual.escenas.length;
+  $('btn-exportar').disabled = seleccionadas.length < 2 &&
+    (['transcribiendo','escenas','imagenes','exportando','voz','video_ia'].includes(fase) || !actual.escenas.length);
+  actualizarSeleccion();   // si hay 2+ seleccionadas, el botón muestra el conteo
 }
 
 function renderEstado() {
@@ -3319,15 +3353,31 @@ async function generarIA() {
 
 let expTimer = null;
 
+let expUnion = null;   // lista de historias si es exportación-unión, o null
+
 async function abrirExportar() {
   $('exp-error').textContent = '';
   $('exp-resultado').style.display = 'none';
   $('exp-form').style.display = '';
   $('exp-progreso').style.display = 'none';
   $('btn-exp-lanzar').disabled = false;
-  $('exp-nombre').value = actual.nombre;
-  const desact = actual.video && actual.video_desactualizado;
-  $('exp-nota-rebuild').style.display = (!actual.video || desact) ? '' : 'none';
+  expUnion = seleccionadas.length >= 2 ? [...seleccionadas] : null;
+  if (expUnion) {
+    $('exp-titulo').textContent = L(`Exportar y unir ${expUnion.length} historias`, `Export & merge ${expUnion.length} stories`);
+    $('exp-nombre').value = 'video_final';
+    $('exp-nota-rebuild').textContent = L(
+      '⚙ Se armará cada historia que falte y se unirán con un fundido (puede tardar).',
+      '⚙ Each missing story will be built and merged with a crossfade (may take a while).');
+    $('exp-nota-rebuild').style.display = '';
+  } else {
+    $('exp-titulo').textContent = L('Exportar esta historia', 'Export this story');
+    $('exp-nombre').value = actual.nombre;
+    const desact = actual.video && actual.video_desactualizado;
+    $('exp-nota-rebuild').textContent = L(
+      '⚙ Hay cambios sin renderizar: se construirá el video antes de guardar (puede tardar).',
+      '⚙ There are unrendered changes: the video will be built before saving (may take a while).');
+    $('exp-nota-rebuild').style.display = (!actual.video || desact) ? '' : 'none';
+  }
   try {
     const o = await api('/api/exportar/opciones');
     $('exp-carpeta-sel').innerHTML = o.carpetas.map(c =>
@@ -3362,12 +3412,18 @@ async function lanzarExportar() {
   $('exp-form').style.display = 'none';
   $('exp-progreso').style.display = '';
   $('exp-prog-txt').textContent = L('Iniciando…','Starting…');
-  const nombre = actual.nombre;
+  const union = expUnion;
+  const cuerpo = { carpeta, nombre_archivo: $('exp-nombre').value, calidad: $('exp-calidad').value };
+  const rutaEstado = union ? '/api/exportar_union/estado'
+                           : `/api/proyectos/${actual.nombre}/estado`;
   try {
-    await api(`/api/proyectos/${nombre}/exportar_final`,
-      { method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ carpeta, nombre_archivo: $('exp-nombre').value,
-                               calidad: $('exp-calidad').value }) });
+    if (union) {
+      await api('/api/exportar_union', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ ...cuerpo, historias: union }) });
+    } else {
+      await api(`/api/proyectos/${actual.nombre}/exportar_final`,
+        { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(cuerpo) });
+    }
   } catch (e) {
     $('exp-error').textContent = e.message;
     $('exp-form').style.display = ''; $('exp-progreso').style.display = 'none';
@@ -3375,7 +3431,7 @@ async function lanzarExportar() {
   }
   clearInterval(expTimer);
   expTimer = setInterval(async () => {
-    const est = await api(`/api/proyectos/${nombre}/estado`);
+    const est = await api(rutaEstado);
     if (est.fase === 'exportando') {
       $('exp-prog-txt').textContent = est.detalle || 'Procesando…';
       $('exp-prog-barra').style.width = (est.progreso || 0) + '%';
@@ -3440,33 +3496,6 @@ async function crearProyecto() {
     await abrirProyecto(r.nombre);
   } catch (e) { $('nuevo-error').textContent = e.message; }
   $('btn-crear').disabled = false;
-}
-
-/* ---------------- unir historias ---------------- */
-
-let timerUnir = null;
-
-async function unirHistorias() {
-  const marcadas = [...document.querySelectorAll('#unir-lista input:checked')].map(c => c.value);
-  const salida = $('unir-nombre').value.trim() || 'video_final';
-  try {
-    await api('/api/unir', { method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ historias: marcadas, salida }) });
-  } catch (e) { $('unir-estado').textContent = '✗ ' + e.message; return; }
-  $('btn-unir').disabled = true;
-  clearInterval(timerUnir);
-  timerUnir = setInterval(async () => {
-    const est = await api('/api/unir/estado');
-    if (est.fase === 'exportando') $('unir-estado').textContent = '⏳ ' + (est.detalle || L('Uniendo…','Merging…'));
-    else {
-      clearInterval(timerUnir);
-      $('btn-unir').disabled = false;
-      if (est.fase === 'error') $('unir-estado').textContent = '✗ ' + est.error;
-      else {
-        $('unir-estado').innerHTML = `✓ ${L('Listo','Done')} — <a href="/api/unir/video/${est.salida}" target="_blank" style="color:var(--ok)">${L('ver','view')} ${est.salida}.mp4</a>`;
-      }
-    }
-  }, 1500);
 }
 
 /* ---------------- arranque ---------------- */

@@ -2663,6 +2663,80 @@ def revelar_en_finder(ruta):
     subprocess.run(["open", "-R", str(ruta)])
 
 
+def _dims_video(ruta):
+    r = run(["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=width,height", "-of", "csv=p=0", str(ruta)])
+    w, h = r.stdout.strip().split(",")
+    return int(w), int(h)
+
+
+def exportar_union(nombres, carpeta, nombre_archivo, calidad="alta",
+                   on_progreso=None):
+    """Exporta VARIAS historias unidas en un solo archivo, con fundido entre
+    ellas. Arma el maestro que falte, normaliza todas al tamaño de la primera y
+    guarda en la carpeta/calidad elegidas. Devuelve la ruta final."""
+    avisar = on_progreso or (lambda *_: None)
+    if len(nombres) < 2:
+        err("Elige al menos 2 historias para unir.")
+
+    # 1) asegurar el maestro (video.mp4) de cada historia
+    masters = []
+    for i, n in enumerate(nombres):
+        p = dir_proyecto(n)
+        if not video_valido(p / "video.mp4"):
+            avisar(f"Armando «{n}»…", i / len(nombres) * 55)
+            ensamblar_video(p)
+        masters.append(p / "video.mp4")
+
+    # 2) tamaño destino: el de la primera historia, escalado a la calidad
+    w0, h0 = _dims_video(masters[0])
+    cfg = CALIDADES.get(calidad, CALIDADES["alta"])
+    corto0 = min(w0, h0)
+    factor = min(1.0, cfg["corto"] / corto0)
+    Wt = round(w0 * factor / 2) * 2
+    Ht = round(h0 * factor / 2) * 2
+
+    duraciones = [ffprobe_duracion(v) for v in masters]
+    F = FUNDIDO_HISTORIAS
+    cmd = ["ffmpeg", "-y"]
+    for v in masters:
+        cmd += ["-i", str(v)]
+    # normaliza cada entrada al mismo tamaño/tiempo (xfade lo exige)
+    fv = [f"[{k}:v]scale={Wt}:{Ht}:force_original_aspect_ratio=increase,"
+          f"crop={Wt}:{Ht},fps={FPS},settb=AVTB,setsar=1,format=yuv420p[n{k}]"
+          for k in range(len(masters))]
+    fa = []
+    pv, pa = "[n0]", "[0:a]"
+    offset = 0.0
+    for k in range(1, len(masters)):
+        offset += duraciones[k - 1] - F
+        fv.append(f"{pv}[n{k}]xfade=transition=fade:duration={F}:"
+                  f"offset={offset:.3f}[vx{k}]")
+        fa.append(f"{pa}[{k}:a]acrossfade=d={F}[ax{k}]")
+        pv, pa = f"[vx{k}]", f"[ax{k}]"
+
+    destino_dir = Path(carpeta).expanduser() if carpeta else (Path.home() / "Desktop")
+    try:
+        destino_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        err(f"No pude usar esa carpeta: {e}")
+    destino = destino_dir / nombre_archivo_seguro(nombre_archivo, "video_final")
+    tmp = destino.with_name("." + destino.stem + ".tmp.mp4")
+    avisar("Uniendo y exportando…", 60)
+    cmd += ["-filter_complex", ";".join(fv + fa), "-map", pv, "-map", pa,
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
+            "-pix_fmt", "yuv420p", "-video_track_timescale", TIMESCALE,
+            "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)]
+    run(cmd)
+    if not video_valido(tmp):
+        tmp.unlink(missing_ok=True)
+        err("La unión quedó incompleta (¿te quedaste sin espacio?). "
+            "Libera espacio y reintenta.")
+    os.replace(tmp, destino)
+    avisar("Listo", 100)
+    return destino
+
+
 def unir_videos(nombres, salida_nombre, on_progreso=None):
     """Une los video.mp4 de varios proyectos con fundido. Devuelve la ruta."""
     avisar = on_progreso or (lambda *_: None)

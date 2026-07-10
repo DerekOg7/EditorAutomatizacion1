@@ -189,20 +189,19 @@ def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_unir(nombres, salida):
+def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad):
     try:
-        set_estado("__unir__", fase="exportando", progreso=0, error=None,
-                   detalle="Uniendo historias…")
-        editor.unir_videos(
-            nombres, salida,
-            on_progreso=lambda t, pc: set_estado("__unir__", detalle=t,
-                                                 progreso=pc))
-        set_estado("__unir__", fase="listo", detalle=f"{salida}.mp4 listo",
-                   progreso=100, salida=salida)
+        set_estado("__union__", fase="exportando", progreso=0, error=None,
+                   detalle="Preparando…", destino=None)
+        destino = editor.exportar_union(
+            nombres, carpeta, nombre_archivo, calidad,
+            on_progreso=lambda t, pc: set_estado("__union__", detalle=t, progreso=pc))
+        set_estado("__union__", fase="listo", progreso=100,
+                   detalle=f"Guardado en {destino}", destino=str(destino))
     except ErrorPipeline as e:
-        set_estado("__unir__", fase="error", error=str(e))
+        set_estado("__union__", fase="error", error=str(e))
     except Exception as e:
-        set_estado("__unir__", fase="error", error=f"{type(e).__name__}: {e}")
+        set_estado("__union__", fase="error", error=f"{type(e).__name__}: {e}")
 
 
 def hilo_historia_ia(nombre, guion, voz, velocidad, modelo, formato="16:9"):
@@ -1101,31 +1100,29 @@ def video_proyecto(nombre):
     return send_file(v, conditional=True)
 
 
-@app.post("/api/unir")
-def unir():
+@app.post("/api/exportar_union")
+def exportar_union():
     datos = request.json or {}
     nombres = datos.get("historias", [])
-    salida = nombre_valido(datos.get("salida", "video_final")) or "video_final"
     if len(nombres) < 2:
         return jsonify({"error": "Elige al menos 2 historias."}), 400
-    if ocupado("__unir__"):
-        return jsonify({"error": "Ya hay una unión en curso."}), 409
-    threading.Thread(target=hilo_unir, args=(nombres, salida),
-                     daemon=True).start()
+    for n in nombres:
+        if not (PROYECTOS / n).is_dir():
+            return jsonify({"error": f"No existe la historia '{n}'."}), 404
+    if ocupado("__union__"):
+        return jsonify({"error": "Ya hay una exportación en curso."}), 409
+    threading.Thread(
+        target=hilo_exportar_union,
+        args=(nombres, datos.get("carpeta", ""),
+              datos.get("nombre_archivo", "video_final"),
+              datos.get("calidad", "alta")),
+        daemon=True).start()
     return jsonify({"ok": True})
 
 
-@app.get("/api/unir/estado")
-def unir_estado():
-    return jsonify(get_estado("__unir__"))
-
-
-@app.get("/api/unir/video/<salida>")
-def unir_video(salida):
-    v = PROYECTOS / f"{nombre_valido(salida)}.mp4"
-    if not v.exists():
-        return jsonify({"error": "No existe"}), 404
-    return send_file(v, conditional=True)
+@app.get("/api/exportar_union/estado")
+def exportar_union_estado():
+    return jsonify(get_estado("__union__"))
 
 
 if __name__ == "__main__":

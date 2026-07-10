@@ -214,10 +214,35 @@ drag-and-drop para reordenar; `borrarHistoria()` cierra el proyecto si estaba
 abierto. i18n side_stories/side_newgroup. Verificado e2e: crear/mover/reordenar/
 borrar grupos, borrar historia (con guard ocupado), menú, toggle, inglés.
 
-## Estado actual: v0.11 (todo verificado; zip en ~/Documents/CLAUDE/)
+## Multi-selección + exportar-unión (v0.12)
+
+Reemplazó la vieja sección "Unir historias" del sidebar por un flujo de
+selección múltiple. "Mis historias" ahora es un botón de herramienta normal
+(width:100%, mismo estilo que Estudio de guión/voz/Claves) que pliega/despliega
+la lista; el "＋ Nuevo grupo" pasó a ser el primer botón dentro de la lista
+(`#btn-nuevo-grupo-lista`). Multi-selección: Cmd/Ctrl+clic en una historia la
+añade/quita de `seleccionadas` (array global) y la resalta (`.proy.sel`, borde
+acento + barra izquierda); clic normal limpia la selección y abre la historia.
+Barra `#barra-seleccion` abajo (aparece con 2+) muestra "N historias
+seleccionadas" + "Quitar selección" (`limpiarSeleccion()`). El botón de exportar
+del header muestra "Exportar y unir (N)" cuando hay 2+ seleccionadas
+(`actualizarSeleccion()`; render() la llama al final para no pisar el conteo).
+Al exportar con 2+: `abrirExportar()` entra en modo unión (`expUnion=[...]`,
+título "Exportar y unir N historias", nombre default "video_final");
+`lanzarExportar()` hace POST `/api/exportar_union` y sondea
+`/api/exportar_union/estado`. Backend: `editor.exportar_union(nombres, carpeta,
+nombre_archivo, calidad)` arma el maestro que falte (video_valido→ensamblar),
+normaliza todas al tamaño de la 1ª (scale+crop, así mezcla formatos distintos),
+une con xfade+acrossfade, escala a la calidad y escribe atómico a la carpeta.
+app.py: `hilo_exportar_union` + estado key "__union__"; se quitaron
+/api/unir*, hilo_unir, unir_videos sigue en editor.py pero sin uso en la UI.
+Verificado: unión de 2 maestros de formatos distintos → 1 archivo con audio y
+fundido; UI multi-select, contador, modo unión del modal, limpiar, bilingüe.
+
+## Estado actual: v0.12 (todo verificado; zip en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.11) documentan lo añadido después de v0.06.
-> Esta lista es la base v0.06. Zip vigente: `AutoFaceless-Video-v0.11-beta-macOS.zip`.
+> Esta lista es la base v0.06. Zip vigente: `AutoFaceless-Video-v0.12-beta-macOS.zip`.
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

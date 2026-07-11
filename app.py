@@ -204,14 +204,17 @@ def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad):
         set_estado("__union__", fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_historia_ia(nombre, guion, voz, velocidad, modelo, formato="16:9"):
-    """Genera la voz con MiniMax, crea el proyecto y corre el pipeline."""
+def hilo_historia_ia(nombre, guion, voz, velocidad, modelo, formato="16:9",
+                     proveedor="edge"):
+    """Genera la voz con el proveedor elegido, crea el proyecto y corre el pipeline."""
     p = PROYECTOS / nombre
+    nombres_prov = {"edge": "voces neuronales gratis", "sistema": "voz del sistema",
+                    "minimax": "MiniMax", "elevenlabs": "ElevenLabs"}
     try:
         set_estado(nombre, fase="voz", progreso=0, error=None,
-                   detalle="Generando la voz con MiniMax…")
-        audio = editor.minimax_voz(
-            guion, voz, velocidad,
+                   detalle=f"Generando la voz ({nombres_prov.get(proveedor, proveedor)})…")
+        audio = editor.sintetizar_voz(
+            guion, proveedor, voz, velocidad,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
         (p / "imagenes").mkdir(parents=True, exist_ok=True)
         (p / "audio.mp3").write_bytes(audio)
@@ -267,12 +270,20 @@ def config():
     return jsonify({"pexels": bool(env.get("PEXELS_API_KEY")),
                     "anthropic": bool(env.get("ANTHROPIC_API_KEY")),
                     "minimax": bool(env.get("MINIMAX_API_KEY")),
+                    "elevenlabs": bool(env.get("ELEVENLABS_API_KEY")),
                     "gemini": bool(env.get("GEMINI_API_KEY")),
                     "openai": bool(env.get("OPENAI_API_KEY"))})
 
 
+@app.get("/api/voz/proveedores")
+def voz_proveedores():
+    """Proveedores de narración (2 gratis + MiniMax/ElevenLabs) con sus voces."""
+    return jsonify(editor.proveedores_voz())
+
+
 CLAVES_PERMITIDAS = ("PEXELS_API_KEY", "ANTHROPIC_API_KEY",
                      "MINIMAX_API_KEY", "MINIMAX_GROUP_ID",
+                     "ELEVENLABS_API_KEY",
                      "GEMINI_API_KEY", "OPENAI_API_KEY")
 
 
@@ -1016,8 +1027,9 @@ def ia_voz_prueba():
     if not texto:
         return jsonify({"error": "No hay texto para probar."}), 400
     try:
-        audio = editor.minimax_voz(texto, d.get("voz", ""),
-                                   float(d.get("velocidad", 1.0)))
+        audio = editor.sintetizar_voz(texto, d.get("proveedor", "edge"),
+                                      d.get("voz", ""),
+                                      float(d.get("velocidad", 1.0)))
         return app.response_class(audio, mimetype="audio/mpeg")
     except ErrorPipeline as e:
         return jsonify({"error": str(e)}), 400
@@ -1037,7 +1049,8 @@ def ia_historia():
     threading.Thread(
         target=hilo_historia_ia,
         args=(nombre, guion, d.get("voz", ""), float(d.get("velocidad", 1.0)),
-              d.get("modelo", "small"), d.get("formato", "16:9")),
+              d.get("modelo", "small"), d.get("formato", "16:9"),
+              d.get("proveedor", "edge")),
         daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
 

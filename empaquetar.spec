@@ -17,7 +17,10 @@ nombre_app = "AutoFaceless Video"
 # faster-whisper / ctranslate2 traen binarios y datos que PyInstaller no
 # detecta solo — se recolectan explícitamente.
 datas, binarios, ocultos = [], [], []
-for paquete in ("faster_whisper", "ctranslate2", "onnxruntime", "tokenizers"):
+# edge_tts/aiohttp: la voz gratuita se importa de forma perezosa dentro de una
+# función, así que PyInstaller no la detecta solo — se recolecta explícitamente.
+for paquete in ("faster_whisper", "ctranslate2", "onnxruntime", "tokenizers",
+                "edge_tts", "aiohttp"):
     d, b, h = collect_all(paquete)
     datas += d
     binarios += b

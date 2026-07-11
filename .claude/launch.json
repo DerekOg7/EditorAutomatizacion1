@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "editor-web",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["app.py"],
+      "runtimeExecutable": "/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/.venv/bin/python",
+      "runtimeArgs": ["/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/app.py"],
       "port": 5178
     }
   ]

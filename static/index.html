@@ -522,6 +522,18 @@
   /* ---------- página Voz ---------- */
   .voz-cols { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
   .voz-card { display: flex; flex-direction: column; }
+  .voz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .voz-tarjeta { display: flex; align-items: center; gap: 10px; border: 2px solid var(--borde);
+    border-radius: 12px; padding: 10px 12px; cursor: pointer; background: #fff; transition: border-color .12s; }
+  .voz-tarjeta:hover { border-color: var(--acento); }
+  .voz-tarjeta.sel { border-color: var(--acento); }
+  .voz-tarjeta .av { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; color: #fff; font: 700 14px 'Roboto', sans-serif; flex: none; }
+  .voz-tarjeta .nom { font: 700 13.5px 'Roboto', sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .voz-tarjeta .ds { font: 400 11.5px 'Roboto', sans-serif; color: var(--tenue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .voz-tarjeta .chk { margin-left: auto; color: var(--acento); font-size: 16px; opacity: 0; flex: none; }
+  .voz-tarjeta.sel .chk { opacity: 1; }
+  #voz-voces { display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto; }
   .voz-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
   .voz-lbl { font: 500 12px 'Roboto', sans-serif; color: var(--tenue); margin-bottom: 5px; letter-spacing: .3px; }
   .badge-min { background: #f2f2f2; border-radius: 12px; padding: 3px 10px;
@@ -720,11 +732,7 @@
   <section id="pg-voz" class="pagina">
     <div class="pg-pad">
       <h1 class="pg-tit" data-i18n="vz_title">Paso 3 · Genera la voz en off</h1>
-      <p class="pg-desc" data-i18n="vz_desc">Elige la voz de MiniMax y la IA narrará tu guión completo. Puedes escuchar una muestra antes de generarlo todo.</p>
-
-      <p id="ia-aviso-minimax" style="display:none;color:var(--ambar);font-size:13px;background:#fdf6e3;border:1px solid #f0e0b0;border-radius:12px;padding:12px 16px;margin-bottom:16px">
-        <span data-i18n="ia_nokey">⚠ Falta la clave de MiniMax en el .env (MINIMAX_API_KEY y MINIMAX_GROUP_ID). Puedes generar el guión, copiarlo, hacer la voz en la web de MiniMax y crear la historia con "＋ Nueva historia" como siempre.</span>
-      </p>
+      <p class="pg-desc" data-i18n="vz_desc">Elige una voz y la IA narrará tu guión completo. Hay voces gratis (sin clave) y voces premium con tu propia clave. Escucha una muestra antes de generarlo todo.</p>
 
       <div class="voz-cols">
         <!-- Columna principal -->
@@ -733,22 +741,24 @@
             <div class="card voz-card">
               <div class="card-cab">
                 <span class="tt" data-i18n="vz_voice_h">Voz de la narración</span>
-                <span class="badge-min" data-i18n="vz_provider">MiniMax · más proveedores pronto</span>
+                <select id="voz-prov" onchange="cambiarProvVoz(this.value)" style="width:auto;margin-left:auto;border-radius:16px;padding:6px 12px;font-size:12.5px"></select>
               </div>
               <div class="voz-body">
-                <div>
-                  <div class="voz-lbl" data-i18n="ia_voice">VOZ DE MINIMAX (voice_id)</div>
-                  <div style="display:flex;gap:8px">
-                    <input type="text" id="ia-voz" placeholder="pega tu voice_id (sirven voces clonadas)" data-i18n-ph="ia_voice_ph">
-                    <button id="btn-ia-probar" onclick="probarVoz()" style="flex:none;white-space:nowrap" data-i18n="ia_testvoice">▶ Probar voz</button>
-                  </div>
+                <div id="voz-nota" style="display:none;font-size:12.5px;color:var(--ambar);background:#fdf6e3;border:1px solid #f0e0b0;border-radius:10px;padding:8px 12px">
+                  <span id="voz-nota-txt"></span>
+                  <a href="#" onclick="abrirClaves();return false" style="color:var(--acento);font-weight:600" data-i18n="vz_addkey">Agregar clave →</a>
                 </div>
-                <div style="display:flex;gap:14px;align-items:center">
-                  <span class="voz-lbl" style="margin:0;width:90px" data-i18n="vz_speed">Velocidad</span>
+                <div id="voz-voces"></div>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                  <button id="btn-ia-probar" onclick="probarVoz()" style="white-space:nowrap" data-i18n="vz_listen">▶ Escuchar muestra</button>
+                  <span style="flex:1"></span>
+                  <span class="voz-lbl" style="margin:0" data-i18n="vz_speed">Velocidad</span>
                   <select id="ia-velocidad" style="width:auto">
+                    <option value="0.85">0.85×</option>
                     <option value="0.9">0.9×</option>
                     <option value="1" selected>1× (normal)</option>
                     <option value="1.1">1.1×</option>
+                    <option value="1.15">1.15×</option>
                   </select>
                 </div>
               </div>
@@ -803,7 +813,7 @@
     </div>
     <div class="barra-inf">
       <button class="btn-pill" onclick="irA('guion')" data-i18n="tb_back">← Atrás</button>
-      <div class="hint" id="vz-hint" data-i18n="vz_hint">Pega tu voice_id de MiniMax y pulsa «Generar» — creamos la narración y las escenas.</div>
+      <div class="hint" id="vz-hint" data-i18n="vz_hint">Elige una voz y pulsa «Generar» — creamos la narración y las escenas automáticamente.</div>
     </div>
   </section>
 
@@ -1484,6 +1494,12 @@
     </div>
     <div style="font-size:11px;color:var(--tenue);margin-top:-6px" data-i18n-html="cl_h_minimax">Voz y video con IA · en tu cuenta de <a href="https://www.minimax.io/" target="_blank" style="color:var(--acento)">minimax.io</a> → API keys</div>
 
+    <div class="campo" style="margin-top:12px">
+      <h4 style="font-size:11px;color:var(--tenue)">ELEVENLABS <span id="cl-est-elevenlabs" style="font-weight:400"></span></h4>
+      <input type="text" id="cl-elevenlabs" autocomplete="off" spellcheck="false">
+      <div style="font-size:11px;color:var(--tenue);margin-top:3px" data-i18n-html="cl_h_elevenlabs">Voz en off premium (opcional: hay voces gratis sin clave) · en tu cuenta de <a href="https://elevenlabs.io/" target="_blank" style="color:var(--acento)">elevenlabs.io</a> → API Keys</div>
+    </div>
+
     <div class="botones">
       <button onclick="cerrarModal('modal-claves')" data-i18n="btn_cancel">Cancelar</button>
       <button class="primario" id="btn-cl-guardar" onclick="guardarClaves()" data-i18n="btn_save">Guardar</button>
@@ -1540,13 +1556,15 @@ const EN = {
   side_script_s: "Script studio", side_ai_s: "Voice studio",
   // --- Voz ---
   vz_title: "Step 3 · Generate the voice-over",
-  vz_desc: "Choose the MiniMax voice and the AI will narrate your whole script. You can hear a sample before generating everything.",
-  vz_voice_h: "Narration voice", vz_provider: "MiniMax · more providers soon",
+  vz_desc: "Pick a voice and the AI will narrate your whole script. There are free voices (no key) and premium voices with your own key. Hear a sample before generating everything.",
+  vz_voice_h: "Narration voice",
+  vz_listen: "▶ Hear sample", vz_addkey: "Add key →",
   vz_speed: "Speed", vz_proj_h: "Video details",
   vz_generate: "🎙 Generate voice-over and create the video",
   vz_generating: "Generating narration and building the story… this may take a moment.",
   vz_script: "Your script",
-  vz_hint: "Paste your MiniMax voice_id and press «Generate» — we create the narration and the scenes.",
+  vz_hint: "Pick a voice and press «Generate» — we create the narration and the scenes automatically.",
+  cl_h_elevenlabs: 'Premium voice-over (optional: there are free voices without a key) · in your <a href="https://elevenlabs.io/" target="_blank" style="color:var(--acento)">elevenlabs.io</a> account → API Keys',
   // --- Editor ---
   ed_step: "Step 4 · Edit & export",
   sel_clear: "Clear selection",
@@ -1837,7 +1855,7 @@ function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bie
 /* ==================== claves API (modal 🔑) ==================== */
 async function abrirClaves() {
   $('cl-msg').textContent = '';
-  ['cl-pexels','cl-anthropic','cl-minimax','cl-group','cl-gemini','cl-openai'].forEach(id => { $(id).value = ''; });
+  ['cl-pexels','cl-anthropic','cl-minimax','cl-group','cl-elevenlabs','cl-gemini','cl-openai'].forEach(id => { $(id).value = ''; });
   $('modal-claves').classList.add('visible');
   try {
     const c = await api('/api/claves');
@@ -1854,6 +1872,7 @@ async function abrirClaves() {
     pinta('cl-anthropic','cl-est-anthropic', c.ANTHROPIC_API_KEY);
     pinta('cl-minimax','cl-est-minimax', c.MINIMAX_API_KEY);
     pinta('cl-group','cl-est-group', c.MINIMAX_GROUP_ID);
+    pinta('cl-elevenlabs','cl-est-elevenlabs', c.ELEVENLABS_API_KEY);
     pinta('cl-gemini','cl-est-gemini', c.GEMINI_API_KEY);
     pinta('cl-openai','cl-est-openai', c.OPENAI_API_KEY);
   } catch (e) { /* sin red no pasa: es local */ }
@@ -1870,6 +1889,7 @@ async function guardarClaves() {
         ANTHROPIC_API_KEY: $('cl-anthropic').value.trim(),
         MINIMAX_API_KEY: $('cl-minimax').value.trim(),
         MINIMAX_GROUP_ID: $('cl-group').value.trim(),
+        ELEVENLABS_API_KEY: $('cl-elevenlabs').value.trim(),
         GEMINI_API_KEY: $('cl-gemini').value.trim(),
         OPENAI_API_KEY: $('cl-openai').value.trim(),
       })
@@ -3592,13 +3612,87 @@ async function abrirVozPagina() {
       ? gs.map(g => `<option value="${g.nombre}">${g.nombre} · ${g.palabras} ${L('palabras','words')}</option>`).join('')
       : `<option value="">${L('— no hay guiones —','— no scripts yet —')}</option>`;
   } catch (e) { /* sin lista */ }
-  const sinMinimax = !configApp.minimax;
-  $('ia-aviso-minimax').style.display = sinMinimax ? '' : 'none';
-  $('ia-zona-voz').style.display = sinMinimax ? 'none' : '';
-  $('btn-ia-crear').style.display = sinMinimax ? 'none' : '';
+  await cargarProveedoresVoz();
 }
 // compat: la barra lateral del editor llama abrirModalIA()
 async function abrirModalIA() { await abrirVozPagina(); }
+
+/* ---- proveedores y voces ---- */
+let vozProvs = [];
+let vozProvSel = localStorage.getItem('afv_voz_prov') || 'edge';
+let vozSel = {};        // proveedor -> id de voz de preset elegido
+let vozCustom = {};     // proveedor -> voice_id escrito a mano
+const VOZ_HUES = ['#3b4a6b', '#6b3b5e', '#3b6b52', '#6b5a3b', '#4a3b6b', '#6b4a3b'];
+
+function etqProv(id) {
+  return ({ edge:      L('🆓 Gratis · voces neuronales', '🆓 Free · neural voices'),
+            sistema:   L('🆓 Gratis · del sistema (sin internet)', '🆓 Free · system (offline)'),
+            minimax:   L('MiniMax (tu clave)', 'MiniMax (your key)'),
+            elevenlabs:L('ElevenLabs (tu clave)', 'ElevenLabs (your key)') }[id]) || id;
+}
+
+async function cargarProveedoresVoz() {
+  try { vozProvs = await api('/api/voz/proveedores'); }
+  catch (e) { vozProvs = []; }
+  if (!vozProvs.some(p => p.id === vozProvSel)) vozProvSel = (vozProvs[0] || {}).id || 'edge';
+  $('voz-prov').innerHTML = vozProvs.map(p =>
+    `<option value="${p.id}">${etqProv(p.id)}${p.disponible ? '' : ' · ' + L('requiere clave','needs key')}</option>`).join('');
+  $('voz-prov').value = vozProvSel;
+  renderVocesProv();
+}
+
+function provActual() { return vozProvs.find(p => p.id === vozProvSel) || { voces: [], custom: true, disponible: false, gratis: false }; }
+
+function cambiarProvVoz(id) { vozProvSel = id; localStorage.setItem('afv_voz_prov', id); renderVocesProv(); }
+
+function elegirVoz(id) { vozSel[vozProvSel] = id; renderVocesProv(); }
+
+function renderVocesProv() {
+  const p = provActual();
+  // aviso si es de pago y falta la clave
+  if (!p.gratis && !p.disponible) {
+    $('voz-nota').style.display = '';
+    $('voz-nota-txt').textContent = L(
+      `Agrega tu clave de ${p.id === 'minimax' ? 'MiniMax' : 'ElevenLabs'} para usar estas voces. `,
+      `Add your ${p.id === 'minimax' ? 'MiniMax' : 'ElevenLabs'} key to use these voices. `);
+  } else { $('voz-nota').style.display = 'none'; }
+
+  let html = '';
+  if (p.voces && p.voces.length) {
+    if (!vozSel[p.id]) vozSel[p.id] = p.voces[0].id;
+    html += '<div class="voz-grid">';
+    p.voces.forEach((v, i) => {
+      const sel = vozSel[p.id] === v.id;
+      html += `<div class="voz-tarjeta${sel ? ' sel' : ''}" onclick="elegirVoz('${v.id.replace(/'/g, "\\'")}')">
+        <div class="av" style="background:${VOZ_HUES[i % VOZ_HUES.length]}">${esc(v.nombre[0] || '?')}</div>
+        <div style="min-width:0"><div class="nom">${esc(v.nombre)}</div><div class="ds">${esc(v.desc)}</div></div>
+        <span class="chk">✓</span></div>`;
+    });
+    html += '</div>';
+  }
+  if (p.custom) {
+    const lbl = p.id === 'minimax'
+      ? L('VOZ DE MINIMAX (voice_id)', 'MINIMAX VOICE (voice_id)')
+      : L('O PEGA UN VOICE_ID PROPIO (opcional)', 'OR PASTE YOUR OWN VOICE_ID (optional)');
+    const ph = p.id === 'minimax'
+      ? L('pega tu voice_id (sirven voces clonadas)', 'paste your voice_id (cloned voices work)')
+      : L('voice_id de tu cuenta', 'voice_id from your account');
+    html += `<div style="margin-top:${p.voces && p.voces.length ? '4px' : '0'}">
+      <div class="voz-lbl">${lbl}</div>
+      <input type="text" id="ia-voz" value="${esc(vozCustom[p.id] || '')}"
+             oninput="vozCustom[vozProvSel]=this.value" placeholder="${ph}"></div>`;
+  }
+  $('voz-voces').innerHTML = html;
+}
+
+function vozEfectiva() {
+  const p = provActual();
+  if (p.custom) {
+    const inp = $('ia-voz');
+    return (inp && inp.value.trim()) || vozSel[p.id] || '';
+  }
+  return vozSel[p.id] || ((p.voces[0] || {}).id) || '';
+}
 
 function iaContar() {
   const n = $('ia-guion').value.trim().split(/\s+/).filter(Boolean).length;
@@ -3609,19 +3703,21 @@ function iaContar() {
 let audioPrueba = null;
 async function probarVoz() {
   const btn = $('btn-ia-probar');
+  const orig = btn.textContent;
   btn.disabled = true; btn.textContent = '…';
   $('ia-error').textContent = '';
   try {
     const texto = ($('ia-guion').value || 'Esta es una prueba de la voz para tu canal de YouTube.').slice(0, 200);
     const r = await fetch('/api/ia/voz_prueba', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ texto, voz: $('ia-voz').value, velocidad: $('ia-velocidad').value }) });
+      body: JSON.stringify({ texto, proveedor: vozProvSel, voz: vozEfectiva(),
+                             velocidad: $('ia-velocidad').value }) });
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || `Error ${r.status}`); }
     if (audioPrueba) audioPrueba.pause();
     audioPrueba = new Audio(URL.createObjectURL(await r.blob()));
     audioPrueba.play();
   } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
-  btn.disabled = false; btn.textContent = L('▶ Probar voz','▶ Test voice');
+  btn.disabled = false; btn.textContent = orig;
 }
 
 async function crearHistoriaIA() {
@@ -3633,7 +3729,8 @@ async function crearHistoriaIA() {
     const r = await api('/api/ia/historia', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ nombre: $('ia-nombre').value, guion: $('ia-guion').value,
-                             voz: $('ia-voz').value, velocidad: $('ia-velocidad').value,
+                             proveedor: vozProvSel, voz: vozEfectiva(),
+                             velocidad: $('ia-velocidad').value,
                              modelo: $('ia-modelo').value, formato: $('ia-formato').value }) });
     setTimeout(() => abrirHistoriaEnEditor(r.nombre).catch(() => { cargarLista(); irA('editor'); }), 600);
   } catch (e) { $('ia-error').textContent = '✗ ' + e.message; $('voz-generando').style.display = 'none'; }

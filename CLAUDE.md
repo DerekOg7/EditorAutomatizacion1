@@ -293,11 +293,51 @@ tipografía y la estructura de navegación. Puntos clave para no romperlo:
   historia, hand-off Guión→Voz. Sin errores de consola. Backup del dark theme en
   el scratchpad de la sesión (`index.dark.backup.html`).
 
-## Estado actual: v0.13 (rediseño verificado en navegador; falta re-empaquetar)
+## Voz en off multi-proveedor + voces gratis (v0.14)
 
-> Las secciones de arriba (v0.07–v0.13) documentan lo añadido después de v0.06.
-> Esta lista es la base v0.06. Último zip empaquetado: v0.12 — hay que rehacerlo
-> tras el rediseño (`AutoFaceless-Video-v0.12-beta-macOS.zip`).
+La página de Voz pasó de "solo MiniMax" a **4 proveedores**, con dos gratis para
+que cualquiera pueda narrar sin pagar ni configurar claves:
+
+- **`edge` — Gratis · voces neuronales** (edge-tts, voces de Microsoft): online,
+  sin clave, calidad alta. Es el proveedor **por defecto**. Catálogo `VOCES_EDGE`
+  (es-MX/es-ES/es-AR/es-CO + en-US). La velocidad se aplica con el `rate` nativo
+  de edge-tts (`+/-N%`).
+- **`sistema` — Gratis · del sistema (sin internet)**: macOS `say` → aiff → mp3.
+  Offline, sin clave. `voces_sistema()` enumera en runtime las voces es/en
+  instaladas (`say -v ?`). Velocidad vía `atempo`.
+- **`minimax`** (BYOK): la función `minimax_voz` de siempre; el usuario pega su
+  `voice_id`.
+- **`elevenlabs`** (BYOK, NUEVO): `elevenlabs_voz` (POST a
+  `api.elevenlabs.io/v1/text-to-speech/{voice_id}`, header `xi-api-key`, modelo
+  `eleven_multilingual_v2`, trocea a ~2200 y concatena). Voces premade en
+  `VOCES_ELEVEN` (Rachel/Domi/Bella/Antoni/Adam/Josh) + campo para voice_id propio.
+
+Arquitectura: `editor.sintetizar_voz(texto, proveedor, voz, velocidad, on_progreso)`
+despacha a cada proveedor y **todos devuelven bytes de mp3**, así el pipeline
+(guardar `audio.mp3` → transcribir) no cambió. Helpers nuevos: `_concat_mp3`,
+`_atempo_mp3` (velocidad sin cambiar tono, filtro `atempo`, para say/eleven).
+`editor.proveedores_voz()` lista proveedores con `disponible` (según claves) y sus
+voces. app.py: `GET /api/voz/proveedores`; `ia_voz_prueba` e `ia_historia`/
+`hilo_historia_ia` aceptan `proveedor`; `ELEVENLABS_API_KEY` en `CLAVES_PERMITIDAS`
+y `config()`. Frontend: selector `#voz-prov` + `#voz-voces` (tarjetas `.voz-tarjeta`
+para proveedores con presets, o input `#ia-voz` para custom); `vozEfectiva()` decide
+la voz; `probarVoz`/`crearHistoriaIA` mandan `proveedor`+`voz`. Campo ElevenLabs en
+el modal 🔑. Nota inline "requiere clave" para proveedores de pago sin clave.
+
+**Empaquetado**: `edge_tts` y `aiohttp` se importan de forma perezosa, así que se
+añadieron al `collect_all` del spec (si no, PyInstaller no los detecta). Sus wheels
+nativos (aiohttp `_http_parser`/`_websocket`, frozenlist/multidict/propcache/yarl)
+son todos **macosx_11_0** → el piso de macOS sigue en 11 (verificado: 0 binarios
+con minos>=13 tras la build). Verificado e2e: las 4 voces en el navegador (edge y
+sistema generan mp3 real), y el `.app` congelado sirve `/api/voz/proveedores` con
+`edge` disponible y genera una muestra edge de 21 KB.
+
+## Estado actual: v0.14 (rediseño + voz multi-proveedor; zip v0.14 en ~/Documents/CLAUDE/)
+
+> Las secciones de arriba (v0.07–v0.14) documentan lo añadido después de v0.06.
+> Esta lista es la base v0.06. Zip vigente:
+> `AutoFaceless-Video-v0.14-beta-macOS.zip`. Dependencia nueva: `edge-tts`
+> (instálala en el venv con `pip install edge-tts` si recreas el entorno).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

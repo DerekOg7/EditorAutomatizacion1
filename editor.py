@@ -1268,6 +1268,234 @@ def minimax_voz(texto, voz, velocidad=1.0, on_progreso=None):
         return salida.read_bytes()
 
 
+# ==================== voz multi-proveedor ====================
+# Proveedores de narración: dos gratuitos (edge-tts neuronal y las voces del
+# sistema macOS) y dos con clave propia (MiniMax y ElevenLabs). Todos devuelven
+# bytes de mp3, así el resto del pipeline (guardar audio.mp3 + transcribir) no cambia.
+
+VOCES_EDGE = [
+    {"id": "es-MX-JorgeNeural",   "nombre": "Jorge",   "desc": "Grave y serio · México"},
+    {"id": "es-MX-DaliaNeural",   "nombre": "Dalia",   "desc": "Cálida y clara · México"},
+    {"id": "es-ES-AlvaroNeural",  "nombre": "Álvaro",  "desc": "Serio · España"},
+    {"id": "es-ES-ElviraNeural",  "nombre": "Elvira",  "desc": "Clara · España"},
+    {"id": "es-AR-TomasNeural",   "nombre": "Tomás",   "desc": "Neutro · Argentina"},
+    {"id": "es-CO-GonzaloNeural", "nombre": "Gonzalo", "desc": "Cálido · Colombia"},
+    {"id": "en-US-GuyNeural",     "nombre": "Guy",     "desc": "Deep · English (US)"},
+    {"id": "en-US-JennyNeural",   "nombre": "Jenny",   "desc": "Clear · English (US)"},
+]
+
+# Voces "premade" de ElevenLabs disponibles en cualquier cuenta (modelo multilingüe).
+VOCES_ELEVEN = [
+    {"id": "21m00Tcm4TlvDq8ikWAM", "nombre": "Rachel",  "desc": "Serena · multilingüe"},
+    {"id": "AZnzlk1XvdvUeBnXmlld", "nombre": "Domi",    "desc": "Firme · multilingüe"},
+    {"id": "EXAVITQu4vr4xnSDxMaL", "nombre": "Bella",   "desc": "Suave · multilingüe"},
+    {"id": "ErXwobaYiN019PkySvjV", "nombre": "Antoni",  "desc": "Cálido · multilingüe"},
+    {"id": "pNInz6obpgDQGcFmaJgB", "nombre": "Adam",    "desc": "Grave · multilingüe"},
+    {"id": "TxGEqnHWrfWFTfGW9XjX", "nombre": "Josh",    "desc": "Joven · multilingüe"},
+]
+
+
+def _concat_mp3(partes):
+    """Une varios mp3 en uno solo con ffmpeg (tiempos limpios)."""
+    if len(partes) == 1:
+        return partes[0]
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        lista = tmp / "lista.txt"
+        lineas = []
+        for i, parte in enumerate(partes):
+            f = tmp / f"p{i:03d}.mp3"
+            f.write_bytes(parte)
+            lineas.append(f"file '{f}'\n")
+        lista.write_text("".join(lineas))
+        salida = tmp / "voz.mp3"
+        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
+             "-c:a", "libmp3lame", "-q:a", "2", str(salida)])
+        return salida.read_bytes()
+
+
+def _atempo_mp3(data, velocidad):
+    """Ajusta la velocidad de un mp3 sin cambiar el tono (filtro atempo)."""
+    velocidad = float(velocidad)
+    if abs(velocidad - 1.0) < 0.01:
+        return data
+    velocidad = max(0.5, min(2.0, velocidad))
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        ent, sal = tmp / "i.mp3", tmp / "o.mp3"
+        ent.write_bytes(data)
+        run(["ffmpeg", "-y", "-i", str(ent), "-filter:a", f"atempo={velocidad}",
+             "-c:a", "libmp3lame", "-q:a", "2", str(sal)])
+        return sal.read_bytes()
+
+
+def edge_voz(texto, voz, velocidad=1.0, on_progreso=None):
+    """Voz gratuita de alta calidad con edge-tts (voces neuronales de Microsoft).
+    Necesita internet, no necesita clave. Devuelve bytes de mp3."""
+    import asyncio
+    import tempfile
+    try:
+        import edge_tts
+    except ImportError:
+        err("Las voces neuronales gratuitas no están disponibles en esta "
+            "instalación (falta edge-tts). Usa las voces del sistema o MiniMax.")
+    voz = voz or "es-MX-JorgeNeural"
+    avisar = on_progreso or (lambda *_: None)
+    avisar("Generando la voz (gratis)…", 25)
+    pct = round((float(velocidad) - 1) * 100)
+    rate = f"{'+' if pct >= 0 else ''}{pct}%"
+
+    async def _gen(destino):
+        com = edge_tts.Communicate(texto, voz, rate=rate)
+        await com.save(destino)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        mp3 = Path(tmp) / "voz.mp3"
+        try:
+            asyncio.run(_gen(str(mp3)))
+        except Exception as e:
+            err(f"No pude generar la voz gratuita (¿sin conexión a internet?). "
+                f"Detalle: {e}")
+        avisar("Voz lista", 90)
+        data = mp3.read_bytes() if mp3.exists() else b""
+    if not data:
+        err("La voz gratuita no devolvió audio — intenta de nuevo.")
+    return data
+
+
+def voces_sistema():
+    """Voces de macOS `say` instaladas (español e inglés), para el proveedor 'sistema'."""
+    import subprocess
+    try:
+        salida = subprocess.run(["say", "-v", "?"], capture_output=True,
+                                 text=True, timeout=10).stdout
+    except Exception:
+        return []
+    voces, vistos = [], set()
+    for linea in salida.splitlines():
+        m = re.match(r"^(.+?)\s+([a-z]{2}_[A-Z]{2})\s+#", linea)
+        if not m:
+            continue
+        nombre, loc = m.group(1).strip(), m.group(2)
+        if not (loc.startswith("es") or loc.startswith("en")):
+            continue
+        if nombre in vistos:
+            continue
+        vistos.add(nombre)
+        voces.append({"id": nombre, "nombre": nombre, "desc": loc.replace("_", "-")})
+    voces.sort(key=lambda v: (0 if v["desc"].startswith("es") else 1, v["nombre"]))
+    return voces
+
+
+def say_voz(texto, voz, velocidad=1.0, on_progreso=None):
+    """Voz gratuita del sistema macOS (`say`). Offline, sin clave. mp3."""
+    import subprocess
+    import tempfile
+    avisar = on_progreso or (lambda *_: None)
+    voz = voz or "Paulina"
+    avisar("Generando la voz del sistema…", 30)
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        aiff, mp3 = tmp / "voz.aiff", tmp / "voz.mp3"
+        try:
+            subprocess.run(["say", "-v", voz, "-o", str(aiff), texto],
+                           check=True, capture_output=True, text=True)
+        except FileNotFoundError:
+            err("Las voces del sistema solo están disponibles en macOS.")
+        except subprocess.CalledProcessError as e:
+            err(f"No pude usar la voz del sistema '{voz}' (¿no está instalada?). "
+                f"Instala más voces en Ajustes → Accesibilidad → Contenido "
+                f"hablado. Detalle: {(e.stderr or '')[:200]}")
+        run(["ffmpeg", "-y", "-i", str(aiff), "-c:a", "libmp3lame",
+             "-q:a", "2", str(mp3)])
+        data = mp3.read_bytes()
+    avisar("Voz lista", 90)
+    return _atempo_mp3(data, velocidad)
+
+
+def _elevenlabs_key():
+    k = leer_env().get("ELEVENLABS_API_KEY")
+    if not k:
+        err("Falta ELEVENLABS_API_KEY en el .env. En tu cuenta de ElevenLabs "
+            "(elevenlabs.io) ve a tu perfil → API Keys, copia la clave y pégala "
+            "en el botón 🔑 Claves API.")
+    return k
+
+
+def elevenlabs_voz(texto, voz, velocidad=1.0, on_progreso=None):
+    """Voz con ElevenLabs (clave propia). Devuelve bytes de mp3."""
+    import requests
+    key = _elevenlabs_key()
+    voz = voz or "21m00Tcm4TlvDq8ikWAM"
+    modelo = leer_env().get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+    avisar = on_progreso or (lambda *_: None)
+    trozos = _trocear_texto(texto, 2200)
+    partes = []
+    for i, trozo in enumerate(trozos):
+        avisar(f"Generando voz (ElevenLabs)… parte {i + 1}/{len(trozos)}",
+               (i + 1) / len(trozos) * 90)
+        try:
+            r = requests.post(
+                f"https://api.elevenlabs.io/v1/text-to-speech/{voz}", timeout=300,
+                headers={"xi-api-key": key, "Content-Type": "application/json",
+                         "Accept": "audio/mpeg"},
+                json={"text": trozo, "model_id": modelo,
+                      "voice_settings": {"stability": 0.5, "similarity_boost": 0.75}})
+        except requests.RequestException as e:
+            err(f"No pude conectar con ElevenLabs: {e}")
+        if not r.ok:
+            detalle = ""
+            try:
+                j = r.json()
+                detalle = (j.get("detail", {}) or {})
+                detalle = detalle.get("message") if isinstance(detalle, dict) else str(detalle)
+            except Exception:
+                detalle = r.text[:300]
+            err(f"ElevenLabs rechazó la petición ({r.status_code}): {detalle}\n"
+                f"Revisa ELEVENLABS_API_KEY y que la voz '{voz}' exista en tu cuenta.")
+        partes.append(r.content)
+    return _atempo_mp3(_concat_mp3(partes), velocidad)
+
+
+def sintetizar_voz(texto, proveedor="edge", voz="", velocidad=1.0, on_progreso=None):
+    """Enruta la generación de narración al proveedor elegido. mp3 bytes."""
+    proveedor = (proveedor or "edge").lower()
+    if proveedor == "minimax":
+        return minimax_voz(texto, voz, velocidad, on_progreso)
+    if proveedor == "elevenlabs":
+        return elevenlabs_voz(texto, voz, velocidad, on_progreso)
+    if proveedor == "sistema":
+        return say_voz(texto, voz, velocidad, on_progreso)
+    return edge_voz(texto, voz, velocidad, on_progreso)   # gratis por defecto
+
+
+def proveedores_voz():
+    """Lista de proveedores de voz para la interfaz, con disponibilidad y voces."""
+    import sys as _sys
+    env = leer_env()
+    try:
+        import edge_tts  # noqa: F401
+        edge_ok = True
+    except ImportError:
+        edge_ok = False
+    provs = []
+    if edge_ok:
+        provs.append({"id": "edge", "gratis": True, "disponible": True,
+                      "custom": False, "voces": VOCES_EDGE})
+    if _sys.platform == "darwin":
+        provs.append({"id": "sistema", "gratis": True, "disponible": True,
+                      "custom": False, "voces": voces_sistema()})
+    provs.append({"id": "minimax", "gratis": False,
+                  "disponible": bool(env.get("MINIMAX_API_KEY")),
+                  "custom": True, "voces": []})
+    provs.append({"id": "elevenlabs", "gratis": False,
+                  "disponible": bool(env.get("ELEVENLABS_API_KEY")),
+                  "custom": True, "voces": VOCES_ELEVEN})
+    return provs
+
+
 def minimax_video(p, n, prompt, on_progreso=None):
     """Genera un clip de video con IA (MiniMax Hailuo) y lo pone en la
     escena n. Tarda varios minutos y consume créditos de MiniMax."""

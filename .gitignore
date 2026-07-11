@@ -12,3 +12,8 @@ error.log
 # llave privada de licencias — NUNCA subir
 LLAVE_PRIVADA_NO_COMPARTIR.hex
 licencia.txt
+
+# binarios de ffmpeg (los descarga el CI; localmente se conservan)
+empaquetado/ffmpeg/
+empaquetado/ffmpeg-win/
+licencias_emitidas.json

@@ -6,6 +6,12 @@
       "runtimeExecutable": "/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/.venv/bin/python",
       "runtimeArgs": ["/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/app.py"],
       "port": 5178
+    },
+    {
+      "name": "panel-licencias",
+      "runtimeExecutable": "/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/.venv/bin/python",
+      "runtimeArgs": ["/Users/derekogfilms/Documents/CLAUDE/EditorAutomatizacion/admin_licencias.py"],
+      "port": 5179
     }
   ]
 }

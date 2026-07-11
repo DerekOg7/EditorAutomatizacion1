@@ -3,41 +3,204 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AutoFaceless Video — Editor</title>
+<title>AutoFaceless Studio — Editor</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
   :root {
-    --bg: #0c0c13; --panel: #15151f; --panel2: #1c1c29; --borde: #2a2a3d;
-    --texto: #e7e7f2; --tenue: #9a9ab0; --acento: #8b5cf6; --acento2: #6d4bc4;
-    --ok: #34d399; --alerta: #f87171; --ambar: #fbbf24;
+    /* Tema claro — AutoFaceless Studio */
+    --bg: #f9f9f9; --panel: #ffffff; --panel2: #f2f2f2; --borde: #e5e5e5;
+    --borde2: #d9d9d9; --texto: #0f0f0f; --tenue: #606060; --tenue2: #909090;
+    --acento: #c4231b; --acento2: #a81d16; --acento-suave: #fdecea;
+    --ok: #1a8f3c; --alerta: #d33; --ambar: #b7791f;
+    --oscuro: #141414; --oscuro2: #0f0f0f;
+    --sombra-rojo: 0 4px 14px rgba(196,35,27,.3);
   }
   * { box-sizing: border-box; margin: 0; }
   body {
     background: var(--bg); color: var(--texto); height: 100vh; display: flex;
-    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden;
+    flex-direction: column;
+    font: 14px/1.5 'Roboto', -apple-system, "Segoe UI", sans-serif; overflow: hidden;
   }
   button {
-    font: inherit; border: 0; border-radius: 8px; cursor: pointer;
-    background: var(--panel2); color: var(--texto); padding: 8px 14px;
+    font: inherit; border: 1px solid var(--borde2); border-radius: 18px; cursor: pointer;
+    background: #fff; color: var(--texto); padding: 8px 14px; font-weight: 500;
+    transition: background .12s, border-color .12s;
   }
-  button:hover { filter: brightness(1.2); }
-  button.primario { background: var(--acento); font-weight: 600; }
-  button.primario:disabled { background: #3a3a52; color: var(--tenue); cursor: default; }
+  button:hover { background: #f2f2f2; }
+  button.primario {
+    background: var(--acento); color: #fff; font-weight: 500; border-color: var(--acento);
+    box-shadow: var(--sombra-rojo);
+  }
+  button.primario:hover { background: var(--acento2); border-color: var(--acento2); }
+  button.primario:disabled { background: #e9e9e9; color: #9a9a9a; border-color: #e9e9e9;
+    cursor: default; box-shadow: none; }
   input, select, textarea {
-    font: inherit; background: var(--bg); color: var(--texto);
-    border: 1px solid var(--borde); border-radius: 8px; padding: 8px 10px; width: 100%;
+    font: inherit; background: #fff; color: var(--texto);
+    border: 1px solid var(--borde2); border-radius: 8px; padding: 8px 10px; width: 100%;
   }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acento); }
   textarea { resize: vertical; }
+  a { color: var(--acento); text-decoration: none; }
   ::-webkit-scrollbar { height: 10px; width: 10px; }
-  ::-webkit-scrollbar-thumb { background: #33334a; border-radius: 5px; }
+  ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 5px; }
+  @keyframes afPulse { 0%,100% { opacity: .35 } 50% { opacity: 1 } }
+  @keyframes afSpin { to { transform: rotate(360deg) } }
 
-  /* ---- barra lateral ---- */
-  #lateral {
-    width: 270px; min-width: 270px; background: var(--panel); height: 100%;
-    border-right: 1px solid var(--borde); display: flex; flex-direction: column;
+  /* ============ isotipo faceless ============ */
+  .iso { position: relative; border-radius: 26%; background: var(--acento); flex: none; overflow: hidden; }
+  .iso .cabeza { position: absolute; left: 50%; transform: translateX(-50%); border-radius: 50%; background: #fff; }
+  .iso .hombros { position: absolute; left: 50%; transform: translateX(-50%); background: #fff; }
+  /* 34px */
+  .iso-34 { width: 34px; height: 34px; border-radius: 9px; }
+  .iso-34 .cabeza { top: 6px; width: 12px; height: 12px; }
+  .iso-34 .hombros { top: 21px; width: 22px; height: 14px; border-radius: 11px 11px 0 0; }
+  /* 96px */
+  .iso-96 { width: 96px; height: 96px; border-radius: 26px; box-shadow: 0 12px 32px rgba(196,35,27,.28); }
+  .iso-96 .cabeza { top: 17px; width: 34px; height: 34px; }
+  .iso-96 .hombros { top: 59px; width: 62px; height: 40px; border-radius: 31px 31px 0 0; }
+
+  /* ============ barra superior compartida ============ */
+  #topbar {
+    display: flex; align-items: center; gap: 16px; padding: 10px 24px;
+    background: #fff; border-bottom: 1px solid var(--borde); position: sticky; top: 0;
+    z-index: 50; flex: none;
   }
-  #lateral h1 { font-size: 15px; padding: 18px 16px 4px; }
+  #tb-atras { display: none; }
+  #tb-atras.visible { display: inline-flex; align-items: center; gap: 8px; }
+  #tb-marca { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  #tb-marca .nombre { font: 900 16px/1 'Roboto', sans-serif; letter-spacing: -.3px; }
+  #tb-marca .nombre span { color: var(--acento); }
+  #tb-marca .sub { font: 400 10.5px/1.4 'Roboto', sans-serif; color: var(--tenue); }
+  #tb-der { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .seg { display: flex; border: 1px solid var(--borde2); border-radius: 18px; overflow: hidden; }
+  .seg button { border: none; border-radius: 0; background: #fff; color: var(--tenue);
+    font: 500 12px 'Roboto', sans-serif; padding: 7px 13px; box-shadow: none; }
+  .seg button.on { background: var(--oscuro2); color: #fff; }
+  .seg button:hover { background: #f2f2f2; }
+  .seg button.on:hover { background: var(--oscuro2); }
+  #tb-ayuda { border-radius: 18px; padding: 7px 14px; font-size: 13px; }
+
+  /* ============ contenedor de páginas ============ */
+  #paginas { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; }
+  .pagina { display: none; flex: 1; min-width: 0; overflow-y: auto; }
+  .pagina.activa { display: flex; }
+  /* páginas con scroll vertical de columna */
+  #pg-home, #pg-historias, #pg-guion, #pg-voz { flex-direction: column; }
+  #pg-editor { flex-direction: row; overflow: hidden; }
+
+  /* ============ Principal (home) ============ */
+  .home-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 56px 24px 80px; }
+  .home-hero { display: flex; flex-direction: column; align-items: center; gap: 18px; margin-bottom: 12px; }
+  .home-hero h1 { margin: 0; font: 900 52px/1.05 'Roboto', sans-serif; letter-spacing: -1.5px; text-align: center; }
+  .home-hero h1 span { color: var(--acento); }
+  .home-tagline { margin: 0; font: 400 18px/1.5 'Roboto', sans-serif; color: var(--tenue);
+    text-align: center; max-width: 560px; }
+  .home-mapa { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+    margin: 24px 0 32px; font: 500 13px 'Roboto', sans-serif; color: var(--tenue); }
+  .home-mapa .chip { background: #fff; border: 1px solid var(--borde); border-radius: 16px; padding: 6px 14px; }
+  .home-mapa .flecha { color: #c9c9c9; }
+  .home-seccion { width: 100%; max-width: 1060px; }
+  .home-seccion-cab { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .home-seccion-cab h2 { margin: 0 0 4px; font: 700 22px 'Roboto', sans-serif; }
+  .home-seccion-cab p { margin: 0; font: 400 14px 'Roboto', sans-serif; color: var(--tenue); }
+  .home-nichos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+  .nicho {
+    background: var(--oscuro); border-radius: 16px; overflow: hidden; cursor: pointer;
+    border: 2px solid transparent; transition: transform .15s ease, box-shadow .15s ease, border-color .15s;
+  }
+  .nicho:hover { transform: translateY(-4px); box-shadow: 0 16px 36px rgba(0,0,0,.22); border-color: var(--acento); }
+  .nicho .foto { height: 150px; background: repeating-linear-gradient(45deg,#1e1e1e 0 10px,#262626 10px 20px);
+    display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+  /* portada cinematográfica del nicho activo (autocontenida) */
+  .nicho .foto.misterio {
+    background:
+      radial-gradient(120% 90% at 50% 8%, rgba(196,35,27,.28), transparent 55%),
+      radial-gradient(90% 120% at 82% 118%, rgba(60,70,110,.35), transparent 60%),
+      linear-gradient(180deg, #0b0d16 0%, #12131c 55%, #05060a 100%);
+  }
+  .nicho .foto.misterio::before {   /* niebla/textura sutil */
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(40% 60% at 20% 30%, rgba(255,255,255,.05), transparent 70%),
+      radial-gradient(50% 70% at 70% 60%, rgba(255,255,255,.04), transparent 70%);
+    mix-blend-mode: screen;
+  }
+  .nicho .foto.misterio::after {   /* viñeta inferior */
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(transparent 40%, rgba(0,0,0,.55));
+  }
+  .nicho .foto .badge { position: absolute; top: 12px; left: 12px; background: var(--acento); color: #fff;
+    font: 700 11px 'Roboto', sans-serif; border-radius: 12px; padding: 4px 10px; letter-spacing: .4px; }
+  .nicho .cuerpo { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
+  .nicho h3 { margin: 0; font: 700 19px 'Roboto', sans-serif; color: #fff; }
+  .nicho p { margin: 0; font: 400 13.5px/1.5 'Roboto', sans-serif; color: #aaa; }
+  .nicho .pie { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .nicho .pie .tiempo { font: 400 12px 'Roboto', sans-serif; color: #8a8a8a; }
+  .nicho .pie .cta { background: var(--acento); color: #fff; font: 500 14px 'Roboto', sans-serif;
+    border-radius: 20px; padding: 9px 20px; }
+  .nicho.bloq { background: #fff; border: 1px dashed var(--borde2); opacity: .75; cursor: default; }
+  .nicho.bloq:hover { transform: none; box-shadow: none; border-color: var(--borde2); }
+  .nicho.bloq .foto { background: repeating-linear-gradient(45deg,#f0f0f0 0 10px,#f7f7f7 10px 20px); }
+  .nicho.bloq .foto .badge { background: #eee; color: var(--tenue); }
+  .nicho.bloq h3 { color: var(--tenue); }
+  .nicho.bloq p { color: var(--tenue2); }
+  .home-ayuda { margin-top: 28px; display: flex; align-items: center; gap: 14px; background: #fff;
+    border: 1px solid var(--borde); border-radius: 14px; padding: 16px 20px; }
+  .home-ayuda .q { width: 38px; height: 38px; border-radius: 50%; background: var(--acento-suave);
+    display: flex; align-items: center; justify-content: center; font: 700 16px 'Roboto', sans-serif;
+    color: var(--acento); flex: none; }
+  .home-ayuda .txt { flex: 1; }
+  .home-ayuda .txt b { font: 700 14px 'Roboto', sans-serif; }
+  .home-ayuda .txt div { font: 400 13px/1.5 'Roboto', sans-serif; color: var(--tenue); }
+  .btn-pill { border-radius: 22px; padding: 11px 20px; }
+  .conteo-pill { background: var(--acento-suave); color: var(--acento); border-radius: 10px;
+    padding: 2px 8px; font: 700 12px 'Roboto', sans-serif; }
+
+  /* ============ Mis historias (página) ============ */
+  .hist-wrap { flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 28px 24px 96px; }
+  .hist-cab h1 { margin: 0 0 6px; font: 900 30px 'Roboto', sans-serif; letter-spacing: -.5px; }
+  .hist-cab p { margin: 0 0 22px; font: 400 15px 'Roboto', sans-serif; color: var(--tenue); }
+  .hist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
+  .hist-card { background: #fff; border: 2px solid var(--borde); border-radius: 14px; overflow: hidden;
+    cursor: pointer; transition: border-color .12s, box-shadow .12s; user-select: none; }
+  .hist-card:hover { box-shadow: 0 8px 20px rgba(0,0,0,.08); }
+  .hist-card.sel { border-color: var(--acento); }
+  .hist-card .mini { aspect-ratio: 16/9; background: #e8e8e8 center/cover no-repeat; position: relative;
+    display: flex; align-items: center; justify-content: center; color: var(--tenue2);
+    font: 400 11px ui-monospace, Menlo, monospace; }
+  .hist-card .mini .dur { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.75);
+    color: #fff; border-radius: 6px; padding: 2px 7px; font: 500 11.5px ui-monospace, monospace; }
+  .hist-card .cuerpo { padding: 13px 15px; display: flex; flex-direction: column; gap: 4px; }
+  .hist-card .nom { font: 700 14.5px 'Roboto', sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hist-card .met { font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue); }
+  /* barra inferior fija de páginas */
+  .barra-inf { position: absolute; left: 0; right: 0; bottom: 0; background: #fff;
+    border-top: 1px solid var(--borde); padding: 14px 24px; display: flex; align-items: center;
+    gap: 12px; z-index: 40; }
+  .barra-inf .hint { flex: 1; font: 400 13px 'Roboto', sans-serif; color: var(--tenue); }
+
+  /* ---- barra lateral del editor (retráctil) ---- */
+  #lateral {
+    width: 250px; min-width: 250px; background: var(--panel); height: 100%;
+    border-right: 1px solid var(--borde); display: flex; flex-direction: column;
+    transition: width .2s ease, min-width .2s ease; overflow: hidden;
+  }
+  #lateral.colapsado { width: 58px; min-width: 58px; }
+  #lat-cab { display: flex; align-items: center; padding: 12px 12px 6px; }
+  #lat-colapsar { width: 30px; height: 30px; padding: 0; border-radius: 8px; font-size: 12px;
+    color: var(--tenue); flex: none; margin-left: auto; }
+  #lateral.colapsado #lat-cab { justify-content: center; }
+  .lat-nav { display: flex; align-items: center; gap: 10px; border: none; background: transparent;
+    border-radius: 10px; padding: 10px 12px; font: 500 13.5px 'Roboto', sans-serif; color: var(--texto);
+    cursor: pointer; text-align: left; white-space: nowrap; width: calc(100% - 16px); margin: 0 8px; }
+  .lat-nav:hover { background: #f2f2f2; }
+  .lat-nav .ico { width: 20px; text-align: center; flex: none; font-size: 16px; }
+  #lateral.colapsado .lat-nav { width: 40px; margin: 0 auto; justify-content: center; padding: 10px 0; }
+  #lateral.colapsado .lat-txt, #lateral.colapsado .zona-nuevo, #lateral.colapsado #lista-proyectos,
+  #lateral.colapsado #barra-seleccion, #lateral.colapsado .lat-caret { display: none; }
+  #lateral h1 { font-size: 15px; padding: 18px 16px 4px; display: none; }
   #lateral h1 small { display: block; color: var(--acento); font-weight: 500; font-size: 11px; letter-spacing: 2px; }
-  #lateral .zona-nuevo { padding: 12px 16px; }
+  #lateral .zona-nuevo { padding: 6px 12px 10px; }
   #lista-proyectos { flex: 1; overflow-y: auto; padding: 4px 10px 0; }
   #hist-flecha { color: var(--tenue); font-size: 11px; }
   #lista-proyectos.oculto { display: none; }
@@ -126,7 +289,7 @@
   }
   .mini-btn { padding: 2px 7px; font-size: 11px; background: var(--panel2); }
   .pista-ov { position: relative; height: 26px; margin-bottom: 4px; border-radius: 6px; }
-  #pista-texto { background: rgba(139,92,246,.06); }
+  #pista-texto { background: rgba(196,35,27,.06); }
   #pista-imagen { background: rgba(52,211,153,.06); }
   #pista-anim { background: rgba(251,191,36,.06); }
   .an-pl { display: none; }
@@ -144,17 +307,17 @@
   .an-barra-fila button { padding: 4px 10px; }
   .ov-item {
     position: absolute; top: 2px; bottom: 2px; border-radius: 6px; cursor: grab;
-    background: rgba(139,92,246,.45); border: 1px solid var(--acento);
+    background: rgba(196,35,27,.6); border: 1px solid var(--acento);
     font-size: 10px; color: #fff; padding: 2px 6px; overflow: hidden;
     white-space: nowrap; text-overflow: ellipsis; user-select: none;
   }
   .ov-item:active { cursor: grabbing; }
-  #onda-narra { display: block; margin-bottom: 4px; cursor: pointer; background: rgba(139,92,246,.05); border-radius: 6px; }
+  #onda-narra { display: block; margin-bottom: 4px; cursor: pointer; background: rgba(196,35,27,.05); border-radius: 6px; }
   #onda-musica { display: block; background: rgba(52,211,153,.05); border-radius: 6px; }
   #timeline { position: relative; height: 92px; display: flex; gap: 2px; }
   .bloque {
     position: relative; height: 100%; border-radius: 8px; cursor: pointer; overflow: hidden;
-    background: #23233a center/cover no-repeat; border: 2px solid transparent; flex-shrink: 0;
+    background: #e8e8e8 center/cover no-repeat; border: 2px solid transparent; flex-shrink: 0;
   }
   .bloque.sel { border-color: var(--acento); }
   .bloque.sin-imagen { border-color: var(--alerta); border-style: dashed; }
@@ -168,7 +331,7 @@
     position: absolute; right: -2px; top: 0; bottom: 0; width: 10px;
     cursor: col-resize; z-index: 3;
   }
-  .bloque .asa:hover, .bloque .asa.activa { background: rgba(139,92,246,.55); }
+  .bloque .asa:hover, .bloque .asa.activa { background: rgba(196,35,27,.55); }
   .bloque .badge-video {
     position: absolute; top: 3px; left: 5px; font-size: 12px; z-index: 1;
     text-shadow: 0 0 4px #000; pointer-events: none;
@@ -191,7 +354,7 @@
   #detalle.visible { display: flex; }
   #det-izq { width: 46%; min-width: 320px; }
   #det-img {
-    width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: #23233a center/cover no-repeat;
+    width: 100%; aspect-ratio: 16/9; border-radius: 12px; background: #e8e8e8 center/cover no-repeat;
     display: flex; align-items: center; justify-content: center; color: var(--tenue);
   }
   #det-izq .acciones { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
@@ -273,7 +436,7 @@
   #cuadricula.visible { display: grid; }
   .tarjeta { background: var(--panel2); border-radius: 12px; overflow: hidden; cursor: pointer; border: 1px solid var(--borde); }
   .tarjeta:hover { border-color: var(--acento); }
-  .tarjeta .mini { width: 100%; aspect-ratio: 16/9; background: #23233a center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--tenue); font-size: 12px; }
+  .tarjeta .mini { width: 100%; aspect-ratio: 16/9; background: #e8e8e8 center/cover no-repeat; display: flex; align-items: center; justify-content: center; color: var(--tenue); font-size: 12px; }
   .tarjeta .cuerpo { padding: 10px 12px; }
   .tarjeta .titulo { font-weight: 600; font-size: 13px; display: flex; justify-content: space-between; }
   .tarjeta .narr { color: var(--tenue); font-size: 12px; margin: 4px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -315,48 +478,76 @@
   .bienv-start { width: 100%; padding: 14px; font-size: 15px; }
   #btn-idioma { padding: 8px 12px; }
 
-  /* ---------- estudio de guión ---------- */
-  #estudio { display: none; position: fixed; inset: 0; z-index: 90; background: var(--bg);
-             flex-direction: column; }
-  #estudio.visible { display: flex; }
-  #est-cab { display: flex; align-items: center; gap: 10px; padding: 10px 16px;
-             border-bottom: 1px solid var(--borde); background: var(--panel); flex-wrap: wrap; }
-  #est-cab h2 { font-size: 15px; margin: 0 8px 0 0; }
-  #est-cuerpo { flex: 1; display: flex; min-height: 0; }
-  #est-chat { width: 46%; min-width: 340px; display: flex; flex-direction: column;
-              border-right: 1px solid var(--borde); }
-  #est-mensajes { flex: 1; overflow-y: auto; padding: 16px; display: flex;
-                  flex-direction: column; gap: 10px; }
-  .est-msg { max-width: 88%; padding: 10px 14px; border-radius: 14px; font-size: 14px;
-             line-height: 1.55; white-space: pre-wrap; word-wrap: break-word; }
-  .est-msg.usuario { align-self: flex-end; background: var(--acento); color: #fff;
-                     border-bottom-right-radius: 4px; }
-  .est-msg.asistente { align-self: flex-start; background: var(--panel2);
-                       border: 1px solid var(--borde); border-bottom-left-radius: 4px; }
-  .est-msg.pensando { color: var(--tenue); font-style: italic; }
-  .est-chip-guion { display: inline-block; margin-top: 8px; font-size: 12px;
-                    color: var(--ok); border: 1px solid var(--ok); border-radius: 8px;
-                    padding: 2px 10px; }
-  #est-entrada { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--borde); }
-  #est-texto { flex: 1; resize: none; height: 64px; }
-  #est-doc { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  #est-doc-cab { display: flex; align-items: center; gap: 10px; padding: 8px 16px;
-                 border-bottom: 1px solid var(--borde); font-size: 12px; color: var(--tenue); }
-  #est-guion { flex: 1; resize: none; border: 0; border-radius: 0; padding: 18px 22px;
-               font-size: 15px; line-height: 1.7; background: var(--bg); }
-  #est-guion:focus { outline: none; }
-  @media (max-width: 900px) { #est-cuerpo { flex-direction: column; }
-    #est-chat { width: 100%; min-width: 0; height: 50%; border-right: 0;
-                border-bottom: 1px solid var(--borde); } }
+  /* ---------- páginas de contenido (guión/voz) ---------- */
+  .pg-pad { flex: 1; width: 100%; max-width: 1240px; margin: 0 auto; padding: 28px 24px 96px; }
+  .pg-tit { margin: 0 0 6px; font: 900 30px 'Roboto', sans-serif; letter-spacing: -.5px; }
+  .pg-desc { margin: 0 0 20px; font: 400 15px/1.5 'Roboto', sans-serif; color: var(--tenue); max-width: 640px; }
+  .card { background: #fff; border: 1px solid var(--borde); border-radius: 16px; }
+  .card-cab { padding: 14px 18px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 10px; }
+  .card-cab .tt { font: 700 14px 'Roboto', sans-serif; }
+  .ia-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--acento); color: #fff;
+    display: flex; align-items: center; justify-content: center; font: 700 12px 'Roboto', sans-serif; flex: none; }
+  .en-linea { font: 400 12px 'Roboto', sans-serif; color: var(--ok); margin-left: auto; }
+
+  /* ---------- página Guión ---------- */
+  .guion-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  .guion-card { display: flex; flex-direction: column; height: 560px; overflow: hidden; }
+  .guion-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
+    font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue); }
+  .guion-toolbar select { width: auto; max-width: 210px; border-radius: 18px; padding: 7px 12px; }
+  .guion-toolbar button { padding: 7px 12px; font-size: 12.5px; }
+  #est-mensajes { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .est-msg { max-width: 82%; padding: 11px 15px; border-radius: 16px; font: 400 14px/1.55 'Roboto', sans-serif;
+    white-space: pre-wrap; word-wrap: break-word; }
+  .est-msg.usuario { align-self: flex-end; background: var(--acento); color: #fff; border-radius: 16px 16px 4px 16px; }
+  .est-msg.asistente { align-self: flex-start; background: #f2f2f2; color: var(--texto); border-radius: 16px 16px 16px 4px; }
+  .est-msg.pensando { color: var(--tenue); animation: afPulse 1.2s infinite; }
+  .est-chip-guion { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--ok);
+    border: 1px solid var(--ok); border-radius: 8px; padding: 2px 10px; }
+  #est-entrada { display: flex; gap: 10px; padding: 14px; border-top: 1px solid #eee; }
+  #est-texto { flex: 1; resize: none; height: 44px; border-radius: 22px; padding: 11px 18px; line-height: 1.4; }
+  #est-guion { flex: 1; resize: none; border: 0; border-radius: 0; padding: 20px;
+    font: 400 14.5px/1.7 'Roboto', sans-serif; background: #fff; }
+  #est-guion:focus { outline: none; border-color: transparent; }
+  .guion-card .cab-foot { padding: 12px 18px; border-top: 1px solid #eee;
+    font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue); }
+  .guion-vacio { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; padding: 30px; text-align: center; }
+  .guion-vacio .ico { width: 56px; height: 56px; border-radius: 14px;
+    background: repeating-linear-gradient(45deg,#f0f0f0 0 8px,#f7f7f7 8px 16px); display: flex;
+    align-items: center; justify-content: center; font: 400 20px ui-monospace, monospace; color: var(--tenue2); }
+  .guion-vacio p { margin: 0; font: 400 14px/1.6 'Roboto', sans-serif; color: var(--tenue2); max-width: 300px; }
+  @media (max-width: 900px) { .guion-cols { grid-template-columns: 1fr; } }
+
+  /* ---------- página Voz ---------- */
+  .voz-cols { display: grid; grid-template-columns: 1fr 380px; gap: 20px; align-items: start; }
+  .voz-card { display: flex; flex-direction: column; }
+  .voz-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .voz-lbl { font: 500 12px 'Roboto', sans-serif; color: var(--tenue); margin-bottom: 5px; letter-spacing: .3px; }
+  .badge-min { background: #f2f2f2; border-radius: 12px; padding: 3px 10px;
+    font: 400 11.5px 'Roboto', sans-serif; color: var(--tenue); margin-left: auto; }
+  .voz-gen { border: none; background: var(--acento); color: #fff; border-radius: 24px; padding: 15px 0;
+    font: 500 16px 'Roboto', sans-serif; cursor: pointer; box-shadow: var(--sombra-rojo); width: 100%; }
+  .voz-gen:hover { background: var(--acento2); }
+  .voz-gen:disabled { background: #e9e9e9; color: #9a9a9a; box-shadow: none; cursor: default; }
+  .voz-generando { display: flex; align-items: center; gap: 12px; background: #fff;
+    border: 1px solid var(--borde); border-radius: 24px; padding: 14px 22px;
+    font: 500 14px 'Roboto', sans-serif; color: var(--tenue); }
+  .voz-spin { width: 18px; height: 18px; border: 3px solid #f0d0ce; border-top-color: var(--acento);
+    border-radius: 50%; animation: afSpin .8s linear infinite; flex: none; }
+  .voz-aside { display: flex; flex-direction: column; max-height: 620px; overflow: hidden; }
+  #ia-guion { flex: 1; min-height: 320px; border: 0; border-radius: 0; padding: 16px 18px;
+    font: 400 13.5px/1.7 'Roboto', sans-serif; }
+  @media (max-width: 900px) { .voz-cols { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
 <div id="bienvenida">
   <div class="bienv-caja">
-    <div class="bienv-logo">🎬</div>
-    <div class="bienv-marca">AutoFaceless <span>Video</span></div>
-    <p class="bienv-tagline" data-i18n="welcome_tagline">De la idea al video de YouTube, sin editar a mano.</p>
+    <div class="iso iso-96" style="margin:0 auto 20px"><div class="cabeza"></div><div class="hombros"></div></div>
+    <div class="bienv-marca">AutoFaceless <span>Studio</span></div>
+    <p class="bienv-tagline" data-i18n="welcome_tagline">Crea videos faceless completos sin saber editar. Te guiamos paso a paso.</p>
     <div class="bienv-lbl" data-i18n="welcome_lang">ELIGE TU IDIOMA</div>
     <div class="bienv-idiomas">
       <button class="bi-lang" data-lang="es" onclick="elegirIdioma('es')">Español</button>
@@ -367,51 +558,271 @@
 </div>
 
 
-<!-- estudio de guión -->
-<div id="estudio">
-  <div id="est-cab">
-    <button onclick="cerrarEstudio()" data-i18n="est_back">← Volver</button>
-    <h2 data-i18n="est_title">📝 Estudio de guión</h2>
-    <select id="est-sel" style="max-width:200px" onchange="estCargar(this.value)"></select>
-    <button onclick="estNuevo()" data-i18n="est_new">＋ Nuevo</button>
-    <button onclick="estBorrar()" title="Borrar este guión" data-i18n-title="est_del_t">🗑</button>
-    <div style="flex:1"></div>
-    <span style="font-size:11px;color:var(--tenue)" data-i18n="est_ai">ASISTENTE:</span>
-    <select id="est-prov" style="max-width:190px" onchange="estProvCambio()"></select>
-    <select id="est-modelo" style="max-width:200px;display:none"></select>
-    <button class="primario" onclick="estAVoz()" data-i18n="est_tovoice">🎙 Usar en Estudio de voz</button>
+<!-- ============ BARRA SUPERIOR COMPARTIDA ============ -->
+<header id="topbar">
+  <button id="tb-atras" class="btn-pill" onclick="irAtras()" data-i18n="tb_back">← Atrás</button>
+  <div id="tb-marca" onclick="irA('home')">
+    <div class="iso iso-34"><div class="cabeza"></div><div class="hombros"></div></div>
+    <div>
+      <div class="nombre">AutoFaceless <span>Studio</span></div>
+      <div class="sub" id="tb-sub">Videos faceless automáticos</div>
+    </div>
   </div>
-  <div id="est-cuerpo">
-    <div id="est-chat">
-      <div id="est-mensajes"></div>
-      <div id="est-entrada">
-        <textarea id="est-texto" data-i18n-ph="est_ph" placeholder="Cuéntale tu idea… ej: quiero un guión de 10 min sobre el Triángulo de las Bermudas"></textarea>
-        <button class="primario" id="est-enviar" onclick="estEnviar()" data-i18n="est_send">Enviar ➤</button>
+  <div id="tb-der">
+    <div class="seg">
+      <button id="tb-es" class="on" onclick="fijarIdioma('es')">ES</button>
+      <button id="tb-en" onclick="fijarIdioma('en')">EN</button>
+    </div>
+    <button id="tb-claves" onclick="abrirClaves()" title="Claves API" data-i18n-title="side_keys">🔑</button>
+    <button id="tb-ayuda" onclick="$('modal-ayuda').classList.add('visible')" data-i18n="tb_help">? Ayuda</button>
+  </div>
+</header>
+
+<div id="paginas">
+
+  <!-- ============ PÁGINA · PRINCIPAL ============ -->
+  <section id="pg-home" class="pagina activa">
+    <div class="home-wrap">
+      <div class="home-hero">
+        <div class="iso iso-96"><div class="cabeza"></div><div class="hombros"></div></div>
+        <h1>AutoFaceless <span>Studio</span></h1>
+        <p class="home-tagline" data-i18n="home_tagline">Crea videos faceless completos sin saber editar. Elige un nicho y te guiamos paso a paso: guión, voz en off y video final listo para exportar.</p>
+      </div>
+      <div class="home-mapa">
+        <span class="chip" data-i18n="home_step1">1 · Elige tu nicho</span>
+        <span class="flecha">→</span>
+        <span class="chip" data-i18n="home_step2">2 · Guión con IA</span>
+        <span class="flecha">→</span>
+        <span class="chip" data-i18n="home_step3">3 · Voz en off</span>
+        <span class="flecha">→</span>
+        <span class="chip" data-i18n="home_step4">4 · Edita y exporta</span>
+      </div>
+      <div class="home-seccion">
+        <div class="home-seccion-cab">
+          <div style="flex:1">
+            <h2 data-i18n="home_pick">Elige tu nicho</h2>
+            <p data-i18n="home_pick_sub">Cada nicho tiene sus propias herramientas y estilo. Haz clic para empezar.</p>
+          </div>
+          <button class="btn-pill" onclick="irA('historias')" style="display:flex;align-items:center;gap:8px;flex:none">
+            📁 <span data-i18n="side_stories">Mis historias</span> <span class="conteo-pill" id="home-conteo">0</span> →
+          </button>
+        </div>
+        <div class="home-nichos">
+          <div class="nicho" onclick="empezarNicho()">
+            <div class="foto misterio"><span class="badge" data-i18n="home_available">DISPONIBLE</span></div>
+            <div class="cuerpo">
+              <h3 data-i18n="home_niche_title">Misterio · True Crime · Conspiración</h3>
+              <p data-i18n="home_niche_desc">Historias con narración en off, atmósfera oscura e imágenes cinematográficas generadas por IA.</p>
+              <div class="pie">
+                <span class="tiempo" data-i18n="home_niche_time">≈ 15 min de tu tiempo</span>
+                <span class="cta" data-i18n="home_start">Empezar →</span>
+              </div>
+            </div>
+          </div>
+          <div class="nicho bloq">
+            <div class="foto"><span class="badge" data-i18n="home_soon">PRÓXIMAMENTE</span></div>
+            <div class="cuerpo">
+              <h3 data-i18n="home_niche2">Terror · Creepypastas</h3>
+              <p data-i18n="home_niche2_desc">Relatos de horror narrados con ambientación sonora.</p>
+            </div>
+          </div>
+          <div class="nicho bloq">
+            <div class="foto"><span class="badge" data-i18n="home_soon">PRÓXIMAMENTE</span></div>
+            <div class="cuerpo">
+              <h3 data-i18n="home_niche3">Historia · Documental</h3>
+              <p data-i18n="home_niche3_desc">Eventos históricos contados en formato documental.</p>
+            </div>
+          </div>
+        </div>
+        <div class="home-ayuda">
+          <div class="q">?</div>
+          <div class="txt">
+            <b data-i18n="home_help_t">¿Primera vez aquí?</b>
+            <div data-i18n="home_help_d">No necesitas saber nada de edición. El programa te lleva de la mano en cada paso y siempre puedes volver atrás.</div>
+          </div>
+          <button class="btn-pill" style="flex:none" onclick="$('modal-ayuda').classList.add('visible')" data-i18n="home_tutorial">Ver cómo funciona</button>
+        </div>
       </div>
     </div>
-    <div id="est-doc">
-      <div id="est-doc-cab">
-        <span data-i18n="est_doc">GUIÓN (editable — lo que se narrará)</span>
+  </section>
+
+  <!-- ============ PÁGINA · MIS HISTORIAS ============ -->
+  <section id="pg-historias" class="pagina">
+    <div class="hist-wrap">
+      <div class="hist-cab">
+        <h1 data-i18n="hist_title">Mis historias</h1>
+        <p data-i18n="hist_sub">Un clic para seleccionar · doble clic para abrirla en el editor y seguir editando.</p>
+      </div>
+      <div class="hist-grid" id="hist-grid"></div>
+    </div>
+    <div class="barra-inf">
+      <button class="btn-pill" onclick="irA('home')" data-i18n="tb_back">← Atrás</button>
+      <div class="hint" id="hist-hint" data-i18n="hist_none_sel">Aquí viven todos los videos que has creado.</div>
+      <span id="hist-sin-sel" style="font:400 13px 'Roboto';color:var(--tenue2)" data-i18n="hist_pick_opt">Selecciona una historia para ver opciones</span>
+      <button id="hist-exportar" class="btn-pill" style="display:none" onclick="exportarSeleccionHist()">⬇ <span data-i18n="hist_export">Exportar</span></button>
+      <button id="hist-abrir" class="primario btn-pill" style="display:none" onclick="abrirSeleccionHist()" data-i18n="hist_open">Abrir en el editor →</button>
+    </div>
+  </section>
+
+  <!-- ============ PÁGINA · GUIÓN ============ -->
+  <section id="pg-guion" class="pagina">
+    <div class="pg-pad">
+      <h1 class="pg-tit" data-i18n="gu_title">Paso 2 · Crea tu guión</h1>
+      <p class="pg-desc" data-i18n="gu_desc">Cuéntale a la IA de qué quieres tu video. Te hará un par de preguntas y escribirá el guión por ti. Cuando te guste, pasa al siguiente paso.</p>
+
+      <div class="guion-toolbar">
+        <span data-i18n="gu_saved">Guión guardado:</span>
+        <select id="est-sel" onchange="estCargar(this.value)"></select>
+        <button onclick="estNuevo()" data-i18n="est_new">＋ Nuevo</button>
+        <button onclick="estBorrar()" title="Borrar este guión" data-i18n-title="est_del_t">🗑</button>
         <div style="flex:1"></div>
-        <span id="est-palabras"></span>
-        <button style="padding:3px 10px;font-size:11px" onclick="navigator.clipboard.writeText($('est-guion').value)" data-i18n="est_copy">copiar</button>
-        <span id="est-guardado" style="color:var(--ok)"></span>
+        <span data-i18n="est_ai">ASISTENTE:</span>
+        <select id="est-prov" onchange="estProvCambio()"></select>
+        <select id="est-modelo" style="display:none"></select>
       </div>
-      <textarea id="est-guion" data-i18n-ph="est_doc_ph" placeholder="Aquí aparecerá el guión que escriba el asistente. También puedes escribir o pegar el tuyo y pedirle mejoras en el chat." oninput="estDocCambio()"></textarea>
+
+      <div class="guion-cols">
+        <!-- Chat con la IA -->
+        <section class="card guion-card">
+          <div class="card-cab">
+            <div class="ia-avatar">IA</div>
+            <span class="tt" data-i18n="gu_assistant">Asistente de guión</span>
+            <span class="en-linea" data-i18n="gu_online">● en línea</span>
+          </div>
+          <div id="est-mensajes"></div>
+          <div id="est-entrada">
+            <textarea id="est-texto" data-i18n-ph="est_ph" placeholder="Cuéntale tu idea… ej: quiero un guión de 10 min sobre el Triángulo de las Bermudas"></textarea>
+            <button class="primario btn-pill" id="est-enviar" onclick="estEnviar()" data-i18n="gu_send">Enviar</button>
+          </div>
+        </section>
+
+        <!-- Tu guión -->
+        <section class="card guion-card">
+          <div class="card-cab">
+            <span class="tt" data-i18n="gu_your">Tu guión</span>
+            <span id="est-palabras" style="margin-left:auto;font:400 12px 'Roboto';color:var(--tenue)"></span>
+            <button style="padding:3px 10px;font-size:11px" onclick="navigator.clipboard.writeText($('est-guion').value)" data-i18n="est_copy">copiar</button>
+            <span id="est-guardado" style="color:var(--ok);font-size:12px"></span>
+          </div>
+          <textarea id="est-guion" data-i18n-ph="est_doc_ph" placeholder="Aquí aparecerá el guión que escriba el asistente. También puedes escribir o pegar el tuyo y pedirle mejoras en el chat." oninput="estDocCambio()"></textarea>
+          <div class="cab-foot" data-i18n="gu_editnote">✓ Puedes editar el texto directamente antes de continuar</div>
+        </section>
+      </div>
     </div>
-  </div>
-</div>
+    <div class="barra-inf">
+      <button class="btn-pill" onclick="irA('home')" data-i18n="tb_back">← Atrás</button>
+      <div class="hint" id="gu-hint" data-i18n="gu_hint">El botón se activará cuando tengas un guión escrito.</div>
+      <button id="gu-siguiente" class="primario btn-pill" onclick="estAVoz()" data-i18n="gu_next">Siguiente: Voz en off →</button>
+    </div>
+  </section>
+
+  <!-- ============ PÁGINA · VOZ EN OFF ============ -->
+  <section id="pg-voz" class="pagina">
+    <div class="pg-pad">
+      <h1 class="pg-tit" data-i18n="vz_title">Paso 3 · Genera la voz en off</h1>
+      <p class="pg-desc" data-i18n="vz_desc">Elige la voz de MiniMax y la IA narrará tu guión completo. Puedes escuchar una muestra antes de generarlo todo.</p>
+
+      <p id="ia-aviso-minimax" style="display:none;color:var(--ambar);font-size:13px;background:#fdf6e3;border:1px solid #f0e0b0;border-radius:12px;padding:12px 16px;margin-bottom:16px">
+        <span data-i18n="ia_nokey">⚠ Falta la clave de MiniMax en el .env (MINIMAX_API_KEY y MINIMAX_GROUP_ID). Puedes generar el guión, copiarlo, hacer la voz en la web de MiniMax y crear la historia con "＋ Nueva historia" como siempre.</span>
+      </p>
+
+      <div class="voz-cols">
+        <!-- Columna principal -->
+        <section style="display:flex;flex-direction:column;gap:16px">
+          <div id="ia-zona-voz" style="display:flex;flex-direction:column;gap:16px">
+            <div class="card voz-card">
+              <div class="card-cab">
+                <span class="tt" data-i18n="vz_voice_h">Voz de la narración</span>
+                <span class="badge-min" data-i18n="vz_provider">MiniMax · más proveedores pronto</span>
+              </div>
+              <div class="voz-body">
+                <div>
+                  <div class="voz-lbl" data-i18n="ia_voice">VOZ DE MINIMAX (voice_id)</div>
+                  <div style="display:flex;gap:8px">
+                    <input type="text" id="ia-voz" placeholder="pega tu voice_id (sirven voces clonadas)" data-i18n-ph="ia_voice_ph">
+                    <button id="btn-ia-probar" onclick="probarVoz()" style="flex:none;white-space:nowrap" data-i18n="ia_testvoice">▶ Probar voz</button>
+                  </div>
+                </div>
+                <div style="display:flex;gap:14px;align-items:center">
+                  <span class="voz-lbl" style="margin:0;width:90px" data-i18n="vz_speed">Velocidad</span>
+                  <select id="ia-velocidad" style="width:auto">
+                    <option value="0.9">0.9×</option>
+                    <option value="1" selected>1× (normal)</option>
+                    <option value="1.1">1.1×</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-cab"><span class="tt" data-i18n="vz_proj_h">Datos del video</span></div>
+              <div class="voz-body" style="flex-direction:row;flex-wrap:wrap;gap:14px">
+                <div style="flex:1;min-width:180px">
+                  <div class="voz-lbl" data-i18n="ia_proj">NOMBRE DEL PROYECTO</div>
+                  <input type="text" id="ia-nombre" placeholder="ej: vuelo_mh370" data-i18n-ph="ia_proj_ph">
+                </div>
+                <div style="width:190px">
+                  <div class="voz-lbl" data-i18n="ia_format">FORMATO</div>
+                  <select id="ia-formato">
+                    <option value="16:9" data-i18n="fmt_169">🖥 Horizontal 16:9 (YouTube)</option>
+                    <option value="9:16" data-i18n="fmt_916">📱 Vertical 9:16 (Shorts/Reels)</option>
+                    <option value="1:1" data-i18n="fmt_11">⬛ Cuadrado 1:1</option>
+                  </select>
+                </div>
+                <div style="width:210px">
+                  <div class="voz-lbl" data-i18n="ia_trans">TRANSCRIPCIÓN</div>
+                  <select id="ia-modelo">
+                    <option value="small" selected data-i18n="ia_m_small">Normal (recomendada)</option>
+                    <option value="base" data-i18n="ia_m_base">Rápida</option>
+                    <option value="tiny" data-i18n="ia_m_tiny">Muy rápida (pruebas)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <button class="voz-gen" id="btn-ia-crear" onclick="crearHistoriaIA()" data-i18n="vz_generate">🎙 Generar voz en off y crear el video</button>
+          <div class="voz-generando" id="voz-generando" style="display:none">
+            <div class="voz-spin"></div>
+            <span data-i18n="vz_generating">Generando narración y armando la historia… esto puede tardar un poco.</span>
+          </div>
+          <div id="ia-error" style="color:var(--alerta);font-size:13px"></div>
+        </section>
+
+        <!-- Aside: guión de referencia (editable) -->
+        <aside class="card voz-aside">
+          <div class="card-cab">
+            <span class="tt" data-i18n="vz_script">Tu guión</span>
+            <select id="ia-guion-sel" style="width:auto;max-width:150px;margin-left:auto;border-radius:16px;padding:5px 10px;font-size:12px" onchange="iaCargarGuion()"></select>
+            <button style="padding:5px 10px;font-size:11px" onclick="iaCargarGuion()" data-i18n="ia_load">📥</button>
+          </div>
+          <textarea id="ia-guion" placeholder="Genera el guión en el paso anterior, o pega aquí uno tuyo." data-i18n-ph="ia_script_ph" oninput="iaContar()"></textarea>
+          <div class="cab-foot" id="ia-guion-info"></div>
+        </aside>
+      </div>
+    </div>
+    <div class="barra-inf">
+      <button class="btn-pill" onclick="irA('guion')" data-i18n="tb_back">← Atrás</button>
+      <div class="hint" id="vz-hint" data-i18n="vz_hint">Pega tu voice_id de MiniMax y pulsa «Generar» — creamos la narración y las escenas.</div>
+    </div>
+  </section>
+
+  <!-- ============ PÁGINA · EDITOR ============ -->
+  <div id="pg-editor" class="pagina">
 
 <aside id="lateral">
-  <h1><small>AUTOFACELESS VIDEO</small> <span data-i18n="side_editor">Editor de historias</span></h1>
+  <div id="lat-cab">
+    <button id="lat-colapsar" onclick="toggleSidebar()" title="Contraer / expandir">◀</button>
+  </div>
+  <button class="lat-nav" onclick="abrirGuionPagina()" title="Estudio de guión">
+    <span class="ico">✎</span><span class="lat-txt" data-i18n="side_script_s">Estudio de guión</span></button>
+  <button class="lat-nav" onclick="abrirVozPagina()" title="Estudio de voz">
+    <span class="ico">🎙</span><span class="lat-txt" data-i18n="side_ai_s">Estudio de voz</span></button>
+  <button class="lat-nav" id="btn-mis-historias" onclick="toggleHistorias()" title="Mis historias">
+    <span class="ico">📁</span><span class="lat-txt" data-i18n="side_stories">Mis historias</span>
+    <span class="lat-caret" id="hist-flecha" style="margin-left:auto;color:var(--tenue2)">▾</span></button>
   <div class="zona-nuevo">
     <button class="primario" style="width:100%" onclick="abrirModalNuevo()" data-i18n="side_new">＋ Nueva historia</button>
-    <div style="font-size:10px;letter-spacing:1.5px;color:var(--tenue);margin:12px 0 4px" data-i18n="side_tools">HERRAMIENTAS</div>
-    <button style="width:100%" onclick="abrirEstudio()" data-i18n="side_script">📝 Estudio de guión</button>
-    <button style="width:100%;margin-top:6px" onclick="abrirModalIA()" data-i18n="side_ai">🎙 Estudio de voz</button>
-    <button style="width:100%;margin-top:6px" id="btn-claves" onclick="abrirClaves()" data-i18n="side_keys">🔑 Claves API</button>
-  </div>
-    <button style="width:100%;margin-top:6px" id="btn-mis-historias" onclick="toggleHistorias()">📁 <span data-i18n="side_stories">Mis historias</span> <span id="hist-flecha">▾</span></button>
   </div>
   <div id="lista-proyectos"></div>
   <div id="barra-seleccion">
@@ -433,21 +844,22 @@
 
   <div id="proyecto">
     <div id="cabecera">
-      <h2 id="p-nombre"></h2>
+      <div style="min-width:0">
+        <div style="font:400 11.5px 'Roboto',sans-serif;color:var(--tenue)" data-i18n="ed_step">Paso 4 · Edita y exporta</div>
+        <h2 id="p-nombre"></h2>
+      </div>
       <div id="chip-estado">—</div>
       <div style="flex:1"></div>
       <span id="aviso-desact" style="display:none;color:var(--ambar);font-size:12px" data-i18n="hdr_unsaved">⚠ hay cambios sin exportar</span>
-      <select id="fmt-actual" onchange="cambiarFormato(this.value)" title="Formato del lienzo / Canvas format">
-        <option value="16:9">🖥 16:9</option>
-        <option value="9:16">📱 9:16</option>
+      <select id="fmt-actual" style="width:auto;border-radius:18px" onchange="cambiarFormato(this.value)" title="Formato del lienzo / Canvas format">
+        <option value="16:9">🖥 16:9 · YouTube</option>
+        <option value="9:16">📱 9:16 · Shorts</option>
         <option value="1:1">⬛ 1:1</option>
       </select>
-      <button id="btn-idioma" onclick="alternarIdioma()" title="Language / Idioma">🌐 EN</button>
       <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Reemplaza las imágenes automáticas por otras coherentes con toda la historia, usando IA">✨ Coherencia IA</button>
       <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
-      <button onclick="$('modal-ayuda').classList.add('visible')" data-i18n="hdr_help" data-i18n-title="hdr_help">❓ Cómo se usa</button>
       <button id="btn-video" style="display:none" onclick="verVideo()" data-i18n="hdr_view">▶ Ver video</button>
-      <button class="primario" id="btn-exportar" onclick="abrirExportar()">Exportar video</button>
+      <button class="primario" id="btn-exportar" onclick="abrirExportar()">⬇ Exportar video</button>
     </div>
     <div id="barra-prog"></div>
     <div id="aviso-pexels"></div>
@@ -685,6 +1097,8 @@
     </div>
   </div>
 </main>
+  </div><!-- /#pg-editor -->
+</div><!-- /#paginas -->
 
 <!-- modal nueva historia -->
 <div class="modal-fondo" id="modal-nuevo">
@@ -728,67 +1142,6 @@
       <button class="primario" id="btn-crear" onclick="crearProyecto()" data-i18n="nm_create">Crear y procesar</button>
     </div>
     <div id="nuevo-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
-  </div>
-</div>
-
-<!-- modal crear historia con IA -->
-<div class="modal-fondo" id="modal-ia">
-  <div class="modal" style="width:640px">
-    <h3 data-i18n="ia_title">🎙 Estudio de voz (guión → narración)</h3>
-
-    <div class="campo" style="display:flex;gap:8px;align-items:flex-end">
-      <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_saved">GUIÓN GUARDADO (del Estudio de guión)</h4>
-        <select id="ia-guion-sel"></select></div>
-      <button onclick="iaCargarGuion()" data-i18n="ia_load">📥 Cargar</button>
-    </div>
-    <p id="ia-guion-info" style="font-size:11px;color:var(--tenue);margin:4px 0"></p>
-
-    <div class="campo">
-      <h4 style="font-size:11px;color:var(--tenue)"><span data-i18n="ia_script_lbl">GUIÓN (editable)</span>
-        <button style="padding:2px 10px;font-size:11px" onclick="navigator.clipboard.writeText($('ia-guion').value)" data-i18n="ia_copy">copiar</button>
-      </h4>
-      <textarea id="ia-guion" rows="9" placeholder="Genera el guión arriba, o pega aquí uno tuyo." data-i18n-ph="ia_script_ph" oninput="iaContar()"></textarea>
-    </div>
-
-    <div id="ia-zona-voz">
-      <div class="campo" style="display:flex;gap:8px">
-        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_voice">VOZ DE MINIMAX (voice_id)</h4>
-          <input type="text" id="ia-voz" placeholder="pega tu voice_id (sirven voces clonadas)" data-i18n-ph="ia_voice_ph"></div>
-        <div style="width:110px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_speed">VELOCIDAD</h4>
-          <select id="ia-velocidad">
-            <option value="0.9">0.9×</option>
-            <option value="1" selected>1×</option>
-            <option value="1.1">1.1×</option>
-          </select></div>
-        <div style="width:120px;display:flex;align-items:flex-end">
-          <button style="width:100%" id="btn-ia-probar" onclick="probarVoz()" data-i18n="ia_testvoice">▶ Probar voz</button></div>
-      </div>
-      <div class="campo" style="display:flex;gap:8px">
-        <div style="flex:1"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_proj">NOMBRE DEL PROYECTO</h4>
-          <input type="text" id="ia-nombre" placeholder="ej: vuelo_mh370" data-i18n-ph="ia_proj_ph"></div>
-        <div style="width:180px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_format">FORMATO</h4>
-          <select id="ia-formato">
-            <option value="16:9" data-i18n="fmt_169">🖥 Horizontal 16:9 (YouTube)</option>
-            <option value="9:16" data-i18n="fmt_916">📱 Vertical 9:16 (Shorts/Reels)</option>
-            <option value="1:1" data-i18n="fmt_11">⬛ Cuadrado 1:1</option>
-          </select></div>
-        <div style="width:220px"><h4 style="font-size:11px;color:var(--tenue)" data-i18n="ia_trans">TRANSCRIPCIÓN</h4>
-          <select id="ia-modelo">
-            <option value="small" selected data-i18n="ia_m_small">Normal (recomendada)</option>
-            <option value="base" data-i18n="ia_m_base">Rápida</option>
-            <option value="tiny" data-i18n="ia_m_tiny">Muy rápida (pruebas)</option>
-          </select></div>
-      </div>
-    </div>
-    <p id="ia-aviso-minimax" style="display:none;color:var(--ambar);font-size:12px">
-      <span data-i18n="ia_nokey">⚠ Falta la clave de MiniMax en el .env (MINIMAX_API_KEY y MINIMAX_GROUP_ID). Puedes generar el guión, copiarlo, hacer la voz en la web de MiniMax y crear la historia con "＋ Nueva historia" como siempre.</span>
-    </p>
-
-    <div class="botones">
-      <button onclick="cerrarModal('modal-ia')" data-i18n="btn_cancel">Cancelar</button>
-      <button class="primario" id="btn-ia-crear" onclick="crearHistoriaIA()" data-i18n="ia_create">🎙 Crear historia (genera la voz)</button>
-    </div>
-    <div id="ia-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
   </div>
 </div>
 
@@ -1155,6 +1508,47 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  // --- rediseño: barra superior ---
+  tb_back: "← Back", tb_help: "? Help",
+  // --- Principal ---
+  home_tagline: "Create complete faceless videos without knowing how to edit. Pick a niche and we guide you step by step: script, voice-over and a final video ready to export.",
+  home_step1: "1 · Pick your niche", home_step2: "2 · Script with AI",
+  home_step3: "3 · Voice-over", home_step4: "4 · Edit & export",
+  home_pick: "Pick your niche", home_pick_sub: "Each niche has its own tools and style. Click to start.",
+  home_available: "AVAILABLE", home_soon: "COMING SOON",
+  home_niche_title: "Mystery · True Crime · Conspiracy",
+  home_niche_desc: "Stories with voice-over narration, dark atmosphere and cinematic AI-generated images.",
+  home_niche_time: "≈ 15 min of your time", home_start: "Start →",
+  home_niche2: "Horror · Creepypastas", home_niche2_desc: "Horror tales narrated with sound design.",
+  home_niche3: "History · Documentary", home_niche3_desc: "Historical events told documentary-style.",
+  home_help_t: "First time here?",
+  home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
+  home_tutorial: "See how it works",
+  // --- Mis historias ---
+  hist_title: "My stories", hist_sub: "One click to select · double-click to open it in the editor and keep editing.",
+  hist_none_sel: "All the videos you have created live here.",
+  hist_pick_opt: "Select a story to see options",
+  hist_export: "Export", hist_open: "Open in editor →",
+  // --- Guión ---
+  gu_title: "Step 2 · Create your script",
+  gu_desc: "Tell the AI what your video is about. It'll ask a couple of questions and write the script for you. When you like it, move to the next step.",
+  gu_saved: "Saved script:", gu_assistant: "Script assistant", gu_online: "● online",
+  gu_send: "Send", gu_your: "Your script",
+  gu_editnote: "✓ You can edit the text directly before continuing",
+  gu_hint: "The button activates once you have a script.",
+  gu_next: "Next: Voice-over →",
+  side_script_s: "Script studio", side_ai_s: "Voice studio",
+  // --- Voz ---
+  vz_title: "Step 3 · Generate the voice-over",
+  vz_desc: "Choose the MiniMax voice and the AI will narrate your whole script. You can hear a sample before generating everything.",
+  vz_voice_h: "Narration voice", vz_provider: "MiniMax · more providers soon",
+  vz_speed: "Speed", vz_proj_h: "Video details",
+  vz_generate: "🎙 Generate voice-over and create the video",
+  vz_generating: "Generating narration and building the story… this may take a moment.",
+  vz_script: "Your script",
+  vz_hint: "Paste your MiniMax voice_id and press «Generate» — we create the narration and the scenes.",
+  // --- Editor ---
+  ed_step: "Step 4 · Edit & export",
   sel_clear: "Clear selection",
   side_stories: "My stories",
   side_newgroup: "New group",
@@ -1365,7 +1759,7 @@ const EN = {
   pos_cd: "Center right",
   pos_ii: "Bottom left",
   pos_id: "Bottom right",
-  welcome_tagline: 'From script to finished YouTube video, without editing by hand.',
+  welcome_tagline: 'Create complete faceless videos without knowing how to edit. We guide you step by step.',
   welcome_lang: 'CHOOSE YOUR LANGUAGE', welcome_start: 'Get started',
   side_editor: 'Story editor', side_new: '＋ New story',
   side_join_title: 'MERGE STORIES (final video)', side_join_btn: 'Merge into one video',
@@ -1426,6 +1820,9 @@ function aplicarIdioma() {
   pon('[data-i18n-title]', 'title', 'origTitle', el => ({ key: el.dataset.i18nTitle, orig: el.title }));
   pon('[data-i18n-html]', 'innerHTML', 'origHtml', el => ({ key: el.dataset.i18nHtml, orig: el.innerHTML }));
   const lb = $('btn-idioma'); if (lb) lb.textContent = en ? '🌐 ES' : '🌐 EN';
+  if ($('tb-es')) { $('tb-es').classList.toggle('on', !en); $('tb-en').classList.toggle('on', en); }
+  if ($('tb-sub') && typeof pagina !== 'undefined') $('tb-sub').textContent = (SUBS[pagina] || SUBS.home)();
+  if (typeof pagina !== 'undefined' && pagina === 'historias') renderHistorias();
   if (actual) render();
 }
 
@@ -1435,7 +1832,7 @@ function elegirIdioma(x) {
   fijarIdioma(x);
   document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === x));
 }
-function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bienvenida').style.display = 'none'; }
+function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bienvenida').style.display = 'none'; irA('home'); }
 
 /* ==================== claves API (modal 🔑) ==================== */
 async function abrirClaves() {
@@ -1646,19 +2043,29 @@ let estNombre = '';        // guión abierto
 let estOcupado = false;
 let estGuardarTimer = null;
 
-async function abrirEstudio() {
-  $('estudio').classList.add('visible');
+let estIniciado = false;
+async function abrirGuionPagina() {
+  irA('guion');
+  await estInit();
+}
+// compat: la barra lateral del editor sigue llamando abrirEstudio()
+async function abrirEstudio() { await abrirGuionPagina(); }
+
+async function estInit() {
   await estProveedores();
   await estLista();
+  if (estIniciado) { estDocCambio(); return; }
+  estIniciado = true;
   const ultimo = localStorage.getItem('afv_guion_actual');
   if (ultimo && [...$('est-sel').options].some(o => o.value === ultimo)) {
     await estCargar(ultimo);
   } else if (!estNombre && !estChat.length) {
     estMensajeBienvenida();
   }
+  estDocCambio();
 }
 
-function cerrarEstudio() { $('estudio').classList.remove('visible'); }
+function cerrarEstudio() { irA('home'); }
 
 function estMensajeBienvenida() {
   $('est-mensajes').innerHTML = '';
@@ -1762,9 +2169,17 @@ async function estEnviar() {
 }
 
 function estDocCambio() {
-  const n = $('est-guion').value.trim().split(/\s+/).filter(Boolean).length;
+  const txt = $('est-guion').value.trim();
+  const n = txt.split(/\s+/).filter(Boolean).length;
   $('est-palabras').textContent = n
-    ? `${n} ${L('palabras','words')} · ~${Math.max(1, Math.round(n / 150))} min` : '';
+    ? `${n} ${L('palabras','words')} · ~${Math.max(1, Math.round(n / 150))} min` : L('sin guión todavía','no script yet');
+  const btn = $('gu-siguiente');
+  if (btn) {
+    btn.disabled = !txt;
+    $('gu-hint').textContent = txt
+      ? L('✓ Guión listo. Puedes seguir puliéndolo o continuar.', '✓ Script ready. Keep polishing or continue.')
+      : L('El botón se activará cuando tengas un guión escrito.', 'The button activates once you have a script.');
+  }
   estAutoGuardar();
 }
 
@@ -1774,11 +2189,16 @@ function estAutoGuardar() {
   estGuardarTimer = setTimeout(() => estGuardar(true), 900);
 }
 
+function slugGuion(texto) {
+  const linea = (texto || '').trim().split('\n').find(l => l.trim()) || '';
+  return linea.slice(0, 50).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+}
+
 async function estGuardar(silencioso = false) {
   if (!estNombre) {
-    const n = prompt(L('Nombre para este guión:','Name for this script:'));
-    if (!n) return;
-    estNombre = n.trim();
+    // en el flujo guiado no interrumpimos con un prompt: se autonombra desde el guión
+    estNombre = slugGuion($('est-guion').value) || ('guion_' + new Date().toISOString().slice(0, 10));
   }
   try {
     const r = await api('/api/guiones/' + encodeURIComponent(estNombre), {
@@ -1857,11 +2277,13 @@ async function estAVoz() {
     return;
   }
   await estGuardar(true);
-  cerrarEstudio();
-  await abrirModalIA();
-  if (estNombre) {
+  await abrirVozPagina();
+  if (estNombre && [...$('ia-guion-sel').options].some(o => o.value === estNombre)) {
     $('ia-guion-sel').value = estNombre;
     await iaCargarGuion();
+  } else {
+    $('ia-guion').value = $('est-guion').value;
+    iaContar();
   }
 }
 
@@ -2031,9 +2453,21 @@ async function cargarLista() {
   const vivos = new Set(proyectos.map(p => p.nombre));
   seleccionadas = seleccionadas.filter(n => vivos.has(n));
   actualizarSeleccion();
+  // refresca la página Principal y Mis historias
+  if ($('home-conteo')) $('home-conteo').textContent = proyectos.length;
+  renderSidebarStories();
+  if (pagina === 'historias') renderHistorias();
 }
 
+function toggleSidebar() {
+  const lat = $('lateral');
+  const col = lat.classList.toggle('colapsado');
+  localStorage.setItem('afv_sidebar_col', col ? '1' : '0');
+  $('lat-colapsar').textContent = col ? '▶' : '◀';
+}
 function toggleHistorias() {
+  // si la barra está colapsada, primero expándela
+  if ($('lateral').classList.contains('colapsado')) { toggleSidebar(); return; }
   const abierto = localStorage.getItem('afv_hist_abierto') !== '0';
   localStorage.setItem('afv_hist_abierto', abierto ? '0' : '1');
   $('lista-proyectos').classList.toggle('oculto', abierto);
@@ -2880,7 +3314,7 @@ $('audio').addEventListener('timeupdate', () => {
 const ondasCache = {};   // clave → picos [0..1]
 
 async function renderOndas() {
-  await dibujarOnda('onda-narra', 'narracion', '#8b5cf6',
+  await dibujarOnda('onda-narra', 'narracion', 'rgba(196,35,27,.55)',
                     `${actual.nombre}|narracion`);
   const claveM = `${actual.nombre}|musica|${actual.musica ? actual.musica.archivo : ''}`;
   if (actual.musica) {
@@ -3146,22 +3580,25 @@ async function eliminarAnimUI() {
 /* ---------------- crear historia con IA ---------------- */
 let configApp = { pexels: false, anthropic: false, minimax: false };
 
-async function abrirModalIA() {
+async function abrirVozPagina() {
+  irA('voz');
   $('ia-error').textContent = '';
   $('ia-guion-info').textContent = '';
+  $('voz-generando').style.display = 'none';
   try {
     const gs = await api('/api/guiones');
     const sel = $('ia-guion-sel');
     sel.innerHTML = gs.length
       ? gs.map(g => `<option value="${g.nombre}">${g.nombre} · ${g.palabras} ${L('palabras','words')}</option>`).join('')
-      : `<option value="">${L('— no hay guiones: créalos en el Estudio de guión —','— no scripts yet: create them in the Script studio —')}</option>`;
+      : `<option value="">${L('— no hay guiones —','— no scripts yet —')}</option>`;
   } catch (e) { /* sin lista */ }
   const sinMinimax = !configApp.minimax;
   $('ia-aviso-minimax').style.display = sinMinimax ? '' : 'none';
   $('ia-zona-voz').style.display = sinMinimax ? 'none' : '';
   $('btn-ia-crear').style.display = sinMinimax ? 'none' : '';
-  $('modal-ia').classList.add('visible');
 }
+// compat: la barra lateral del editor llama abrirModalIA()
+async function abrirModalIA() { await abrirVozPagina(); }
 
 function iaContar() {
   const n = $('ia-guion').value.trim().split(/\s+/).filter(Boolean).length;
@@ -3191,15 +3628,15 @@ async function crearHistoriaIA() {
   $('ia-error').textContent = '';
   const btn = $('btn-ia-crear');
   btn.disabled = true;
+  $('voz-generando').style.display = '';
   try {
     const r = await api('/api/ia/historia', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ nombre: $('ia-nombre').value, guion: $('ia-guion').value,
                              voz: $('ia-voz').value, velocidad: $('ia-velocidad').value,
                              modelo: $('ia-modelo').value, formato: $('ia-formato').value }) });
-    cerrarModal('modal-ia');
-    setTimeout(() => abrirProyecto(r.nombre).catch(() => cargarLista()), 800);
-  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
+    setTimeout(() => abrirHistoriaEnEditor(r.nombre).catch(() => { cargarLista(); irA('editor'); }), 600);
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; $('voz-generando').style.display = 'none'; }
   btn.disabled = false;
 }
 
@@ -3498,12 +3935,97 @@ async function crearProyecto() {
   $('btn-crear').disabled = false;
 }
 
+/* ---------------- router de páginas ---------------- */
+let pagina = 'home';
+const SUBS = {
+  home:      () => L('Videos faceless automáticos','Automatic faceless videos'),
+  guion:     () => L('Paso 2 de 4 · Guión','Step 2 of 4 · Script'),
+  voz:       () => L('Paso 3 de 4 · Voz en off','Step 3 of 4 · Voice-over'),
+  editor:    () => L('Paso 4 de 4 · Editor de video','Step 4 of 4 · Video editor'),
+  historias: () => L('Mis historias','My stories'),
+};
+function irA(p) {
+  pagina = p;
+  document.querySelectorAll('.pagina').forEach(s => s.classList.remove('activa'));
+  const el = $('pg-' + p);
+  if (el) el.classList.add('activa');
+  if ($('tb-sub')) $('tb-sub').textContent = (SUBS[p] || SUBS.home)();
+  if ($('tb-atras')) $('tb-atras').classList.toggle('visible', p !== 'home');
+  if (p === 'historias') renderHistorias();
+  cerrarMenuFlot();
+}
+function irAtras() {
+  if (pagina === 'guion' || pagina === 'historias') return irA('home');
+  const orden = ['home', 'guion', 'voz', 'editor'];
+  const i = orden.indexOf(pagina);
+  irA(orden[Math.max(0, i - 1)]);
+}
+// El nicho activo arranca el flujo guiado en el Estudio de guión
+function empezarNicho() { irA('guion'); if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio(); }
+
+/* ---- página Mis historias ---- */
+let histSel = null;
+function renderHistorias() {
+  const cont = $('hist-grid');
+  if (!cont) return;
+  cont.innerHTML = '';
+  if (!proyectos.length) {
+    cont.innerHTML = `<p style="color:var(--tenue);grid-column:1/-1">${L('Aún no has creado historias. Empieza desde la Principal.','No stories yet. Start from Home.')}</p>`;
+  }
+  for (const p of proyectos) {
+    const card = document.createElement('div');
+    card.className = 'hist-card' + (histSel === p.nombre ? ' sel' : '');
+    const thumb = `/api/proyectos/${encodeURIComponent(p.nombre)}/imagen/1`;
+    card.innerHTML = `
+      <div class="mini">
+        <img src="${thumb}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'">
+        ${p.video ? `<span class="dur">🎬 ${L('listo','ready')}</span>` : ''}
+      </div>
+      <div class="cuerpo">
+        <div class="nom">${esc(p.nombre)}</div>
+        <div class="met">${p.escenas} ${L('escenas','scenes')} · ${p.imagenes}/${p.escenas} ${L('imágenes','images')}</div>
+      </div>`;
+    card.onclick = () => { histSel = (histSel === p.nombre ? null : p.nombre); renderHistorias(); };
+    card.ondblclick = () => { histSel = p.nombre; abrirHistoriaEnEditor(p.nombre); };
+    cont.appendChild(card);
+  }
+  actualizarBarraHist();
+}
+function actualizarBarraHist() {
+  const hay = !!histSel;
+  if (!$('hist-abrir')) return;
+  $('hist-sin-sel').style.display = hay ? 'none' : '';
+  $('hist-exportar').style.display = hay ? '' : 'none';
+  $('hist-abrir').style.display = hay ? '' : 'none';
+  $('hist-hint').textContent = hay
+    ? L('✓ ' + histSel + ' seleccionada', '✓ ' + histSel + ' selected')
+    : L('Aquí viven todos los videos que has creado.', 'All the videos you have created live here.');
+}
+async function abrirHistoriaEnEditor(nombre) {
+  seleccionadas = [];
+  await abrirProyecto(nombre);
+  irA('editor');
+}
+function abrirSeleccionHist() { if (histSel) abrirHistoriaEnEditor(histSel); }
+async function exportarSeleccionHist() {
+  if (!histSel) return;
+  await abrirProyecto(histSel);
+  irA('editor');
+  abrirExportar();
+}
+// stub: se completa en la barra lateral del editor
+function renderSidebarStories() { if (typeof pintarSidebarStories === 'function') pintarSidebarStories(); }
+
 /* ---------------- arranque ---------------- */
 
 (async function init() {
   // idioma + bienvenida
   aplicarIdioma();
   document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === idioma));
+  if (localStorage.getItem('afv_sidebar_col') === '1') {
+    $('lateral').classList.add('colapsado'); $('lat-colapsar').textContent = '▶';
+  }
+  irA('home');
   if (localStorage.getItem('afv_bienvenida_vista')) {
     $('bienvenida').style.display = 'none';
   }

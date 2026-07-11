@@ -239,10 +239,65 @@ app.py: `hilo_exportar_union` + estado key "__union__"; se quitaron
 Verificado: unión de 2 maestros de formatos distintos → 1 archivo con audio y
 fundido; UI multi-select, contador, modo unión del modal, limpiar, bilingüe.
 
-## Estado actual: v0.12 (todo verificado; zip en ~/Documents/CLAUDE/)
+## Rediseño visual/UX — flujo guiado (v0.13)
 
-> Las secciones de arriba (v0.07–v0.11) documentan lo añadido después de v0.06.
-> Esta lista es la base v0.06. Zip vigente: `AutoFaceless-Video-v0.12-beta-macOS.zip`.
+Rediseño completo de `static/index.html` según `~/Downloads/design_handoff_autofaceless_rediseno/`
+(README.md + `AutoFaceless Studio.dc.html`). Objetivo: usuarios sin conocimiento
+de edición. **Se conservó TODO el motor JS y los endpoints**; solo cambió tema,
+tipografía y la estructura de navegación. Puntos clave para no romperlo:
+
+- **Tema claro + Roboto**: `:root` remapeado (bg `#f9f9f9`, superficies `#fff`,
+  acento rojo `#c4231b`/`#a81d16`/tinte `#fdecea`, bordes `#e5e5e5`/`#d9d9d9`,
+  ok `#1a8f3c`). `@import` de Roboto. Botones = píldora blanca con borde;
+  `.primario` = rojo con sombra. Se cambiaron literales morados (`139,92,246`) y
+  placeholders oscuros (`#23233a`→`#e8e8e8`); la onda de narración se dibuja en
+  rojo (`dibujarOnda('onda-narra', ... 'rgba(196,35,27,.55)')`).
+- **Isotipo faceless** (NO triángulo play): `.iso .iso-34/.iso-96` con `.cabeza`
+  + `.hombros` (divs). Reemplazó el emoji 🎬 en bienvenida y da el logo de la
+  barra superior/portada. Marca renombrada a **AutoFaceless Studio**.
+- **`body` ahora es `flex-direction:column`**: `#topbar` (barra superior sticky
+  compartida: Atrás/logo/subtítulo de paso/segmento ES-EN/🔑/Ayuda) + `#paginas`
+  (contenedor flex). Router: `let pagina`, `irA(page)` (togglea `.pagina.activa`,
+  actualiza `#tb-sub` y visibilidad de `#tb-atras`), `irAtras()`. Páginas:
+  `#pg-home`, `#pg-historias`, `#pg-guion`, `#pg-voz`, `#pg-editor` (esta última
+  envuelve el `#lateral`+`#principal` de siempre). `.pagina{display:none}` /
+  `.activa{display:flex}`. **Ojo**: había un `</div>` de más en `#lateral` (bug
+  histórico inocuo) que aquí cerraba `#pg-editor` antes de tiempo — se eliminó.
+- **Principal** (`#pg-home`): hero + mapa de proceso (4 chips) + card de nicho
+  activo (Misterio, `empezarNicho()`→`abrirGuionPagina()`) + 2 nichos
+  "PRÓXIMAMENTE" + botón "Mis historias (N)" (`#home-conteo`) + barra de ayuda.
+- **Guión** (`#pg-guion`): antes era el overlay `#estudio` (ELIMINADO); su
+  contenido se movió a una página de 2 columnas (chat `#est-mensajes`/`#est-texto`
+  + guión `#est-guion`). Se conservan todos los IDs `est-*` y funciones `est*`.
+  `abrirEstudio()`→`abrirGuionPagina()` (alias), `cerrarEstudio()`→`irA('home')`.
+  `estDocCambio()` habilita `#gu-siguiente`. Barra inferior Atrás/Siguiente.
+- **Voz** (`#pg-voz`): antes era el modal `#modal-ia` (ELIMINADO); ahora página
+  con card de voz (voice_id real de MiniMax `#ia-voz` + Probar + velocidad) +
+  datos del video (`#ia-nombre/#ia-formato/#ia-modelo`) + botón grande
+  `crearHistoriaIA()` (con `#voz-generando`) + aside guión `#ia-guion`.
+  `abrirModalIA()`→`abrirVozPagina()` (alias). Al crear historia →
+  `abrirHistoriaEnEditor()` (abre proyecto + `irA('editor')`).
+- **Editor** (`#pg-editor`): `#lateral` convertido en **barra retráctil**
+  (250/58px, `.colapsado`, `toggleSidebar()`, persiste en `afv_sidebar_col`):
+  ✎ Estudio de guión, 🎙 Estudio de voz, 📁 Mis historias (togglea
+  `#lista-proyectos`), ＋ Nueva historia, lista de grupos, `#barra-seleccion`.
+  Header con "Paso 4 · Edita y exporta" + nombre; se quitaron los botones
+  redundantes 🌐 idioma y "❓ Cómo se usa" (ya están en la barra superior).
+- **Mis historias** (`#pg-historias`): grid `renderHistorias()` (miniatura =
+  `/api/proyectos/<n>/imagen/1`), 1 clic selecciona (`histSel`), doble clic o
+  "Abrir en el editor" → `abrirHistoriaEnEditor()`. `cargarLista()` refresca
+  `#home-conteo` y, si toca, el grid.
+- **i18n**: strings nuevas añadidas al dict `EN`. El `aplicarIdioma()` de siempre;
+  el segmento ES/EN llama `fijarIdioma()` (marca `#tb-es/#tb-en`, refresca subtítulo).
+- Verificado en navegador: las 5 páginas, ES/EN, colapso de sidebar, apertura de
+  historia, hand-off Guión→Voz. Sin errores de consola. Backup del dark theme en
+  el scratchpad de la sesión (`index.dark.backup.html`).
+
+## Estado actual: v0.13 (rediseño verificado en navegador; falta re-empaquetar)
+
+> Las secciones de arriba (v0.07–v0.13) documentan lo añadido después de v0.06.
+> Esta lista es la base v0.06. Último zip empaquetado: v0.12 — hay que rehacerlo
+> tras el rediseño (`AutoFaceless-Video-v0.12-beta-macOS.zip`).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

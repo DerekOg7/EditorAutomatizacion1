@@ -314,7 +314,7 @@
   .ov-item:active { cursor: grabbing; }
   #onda-narra { display: block; margin-bottom: 4px; cursor: pointer; background: rgba(196,35,27,.05); border-radius: 6px; }
   #onda-musica { display: block; background: rgba(52,211,153,.05); border-radius: 6px; }
-  #timeline { position: relative; height: 92px; display: flex; gap: 2px; }
+  #timeline { position: relative; height: 64px; display: flex; gap: 2px; }
   .bloque {
     position: relative; height: 100%; border-radius: 8px; cursor: pointer; overflow: hidden;
     background: #e8e8e8 center/cover no-repeat; border: 2px solid transparent; flex-shrink: 0;
@@ -348,6 +348,25 @@
   }
   .pestana.activa { background: var(--panel); color: var(--texto); font-weight: 600; }
   #contenido { flex: 1; overflow-y: auto; padding: 16px 20px; background: var(--panel); }
+
+  /* ---- editor reestructurado: centro (preview + timeline) + panel derecho ---- */
+  #ed-cuerpo { flex: 1; display: flex; min-height: 0; background: var(--bg); }
+  #ed-centro { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 14px 20px 24px; overflow-y: auto; }
+  #ed-derecha { width: 366px; min-width: 366px; border-left: 1px solid var(--borde); background: #fff;
+    overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  #ed-centro #pv-izq { flex: none; }
+  #ed-centro #pv-lienzo { width: auto; height: min(46vh, 600px); max-width: 100%; margin: 0 auto; }
+  #ed-centro #pv-lienzo.alto { height: min(58vh, 760px); }
+  #tl-cab { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; flex-wrap: wrap; }
+  #musica-fila { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tenue); margin-top: 8px; }
+  #ed-derecha #detalle { display: none; }
+  #ed-derecha #detalle.visible { display: block; }
+  #ed-derecha #pv-panel { width: auto; background: transparent; border: 0; padding: 0; }
+  #ed-derecha .pnl-cab { margin-bottom: 10px; }
+  #ed-derecha .pnl-cab h4 { font: 700 15px 'Roboto', sans-serif; color: var(--texto); text-transform: none; letter-spacing: 0; }
+  #ed-derecha #det-img { margin-bottom: 8px; }
+  #ed-derecha .acciones { margin-bottom: 6px; }
+  #ed-derecha #ef-titulo { font: 700 13px 'Roboto', sans-serif; text-transform: none; letter-spacing: 0; }
 
   /* detalle de escena */
   #detalle { display: none; gap: 20px; }
@@ -891,6 +910,7 @@
         <option value="9:16">📱 9:16 · Shorts</option>
         <option value="1:1">⬛ 1:1</option>
       </select>
+      <button id="btn-todas" onclick="abrirCuadricula()" title="Ver todas las escenas y sus prompts" data-i18n="hdr_all">▦ Todas</button>
       <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Busca en Pexels (fotos/videos) y la web y elige el mejor medio por escena, mezclando foto y video">✨ Imágenes IA</button>
       <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
       <button id="btn-video" style="display:none" onclick="verVideo()" data-i18n="hdr_view">▶ Ver video</button>
@@ -899,61 +919,10 @@
     <div id="barra-prog"></div>
     <div id="aviso-pexels"></div>
 
-    <div id="zona-audio">
-      <audio id="audio" controls></audio>
-      <div class="fila-busqueda" style="align-items:center;margin-top:6px;font-size:12px;color:var(--tenue)">
-        <span data-i18n="mus_bg">🎵 Música de fondo:</span>
-        <span id="musica-nombre">ninguna</span>
-        <button style="padding:4px 10px;font-size:12px" onclick="document.getElementById('archivo-musica').click()" data-i18n="mus_upload">Subir música</button>
-        <input type="file" id="archivo-musica" accept="audio/*,.mp3,.wav,.m4a" style="display:none" onchange="subirMusica(this)">
-        <span id="musica-controles" style="display:none;align-items:center;gap:8px">
-          <label><span data-i18n="mus_vol">volumen</span> <input type="range" id="musica-vol" min="2" max="40" step="1" style="width:110px;padding:0;vertical-align:middle" onchange="guardarVolumen()"> <span id="musica-vol-txt"></span></label>
-          <button style="padding:4px 10px;font-size:12px" onclick="quitarMusica()" title="Quitar música" data-i18n-title="mus_remove_t">✕</button>
-        </span>
-      </div>
-    </div>
-
-    <div id="timeline-caja">
-      <div style="display:flex;gap:8px">
-        <div id="pistas-etiquetas">
-          <div class="etq" style="height:26px">
-            <button class="mini-btn" onclick="abrirOverlay(null,'texto')" title="Añadir texto" data-i18n="trk_text" data-i18n-title="trk_text_t">Texto +T</button>
-          </div>
-          <div class="etq" style="height:26px">
-            <button class="mini-btn" onclick="abrirOverlay(null,'logo')" title="Añadir imagen/logo" data-i18n="trk_image" data-i18n-title="trk_image_t">Imagen +🖼</button>
-          </div>
-          <div class="etq" style="height:26px">
-            <button class="mini-btn" onclick="abrirAnim(null)" title="Añadir animación" data-i18n="trk_anim" data-i18n-title="trk_anim_t">Animación +📊</button>
-          </div>
-          <div class="etq" style="height:92px" data-i18n="trk_video">Video</div>
-          <div class="etq" style="height:46px" data-i18n="trk_narration">Narración</div>
-          <div class="etq" style="height:24px" data-i18n="trk_music">Música</div>
-        </div>
-        <div id="timeline-scroll">
-          <div id="pistas">
-            <div id="pista-texto" class="pista-ov"></div>
-            <div id="pista-imagen" class="pista-ov"></div>
-            <div id="pista-anim" class="pista-ov"></div>
-            <div id="timeline"></div>
-            <canvas id="onda-narra" height="46" title="Clic para saltar a ese punto"></canvas>
-            <canvas id="onda-musica" height="24"></canvas>
-            <div id="aguja" style="left:0"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div id="regla"><span>0:00</span><span id="regla-fin">—</span></div>
-    <div id="pista-timeline" data-i18n="tl_hint">Arrastra el borde derecho de una escena para cambiar su duración · arrastra una miniatura sobre otra para intercambiar · Texto e Imagen tienen su propia capa (+T / +🖼) encima del video · ⌘Z deshace, ⇧⌘Z rehace</div>
-
-    <div id="pestanas">
-      <button class="pestana activa" id="tab-detalle" onclick="verTab('detalle')" data-i18n="tab_scene">Escena</button>
-      <button class="pestana" id="tab-preview" onclick="verTab('preview')" data-i18n="tab_preview">▶ Previsualización</button>
-      <button class="pestana" id="tab-todas" onclick="verTab('todas')" data-i18n="tab_all">Todas las escenas y prompts</button>
-    </div>
-
-    <div id="contenido">
-      <div id="previsualizacion">
-        <div id="pv-fila">
+    <div id="ed-cuerpo">
+      <!-- ===== columna central: previsualización + línea de tiempo ===== -->
+      <div id="ed-centro">
+        <div id="previsualizacion" class="visible">
           <div id="pv-izq">
             <div id="pv-lienzo">
               <div class="pv-capa" id="pv-0"></div>
@@ -971,137 +940,70 @@
               <span style="color:var(--tenue);font-size:12px" data-i18n="pv_approx">vista aproximada · exporta para el final</span>
             </div>
           </div>
-          <div id="pv-panel">
-            <div id="ef-cab">
-              <h4 id="ef-titulo" data-i18n="pv_effects">Efectos</h4>
-              <button class="mini-btn" onclick="resetAjustes()" title="Volver a los valores por defecto" data-i18n-title="pv_reset_t">↺ reset</button>
-            </div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_scale">Escala</span> <b id="ef-escala-v">1.00×</b></label>
-              <input type="range" id="ef-escala" min="0.3" max="3" step="0.05" value="1"
-                     oninput="ajustePreview('escala', this.value)">
-            </div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_posx">Posición X</span> <b id="ef-posx-v">0%</b></label>
-              <input type="range" id="ef-posx" min="-80" max="80" step="1" value="0"
-                     oninput="ajustePreview('pos_x', this.value)">
-            </div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_posy">Posición Y</span> <b id="ef-posy-v">0%</b></label>
-              <input type="range" id="ef-posy" min="-80" max="80" step="1" value="0"
-                     oninput="ajustePreview('pos_y', this.value)">
-            </div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_opac">Opacidad</span> <b id="ef-opac-v">100%</b></label>
-              <input type="range" id="ef-opac" min="0" max="1" step="0.05" value="1"
-                     oninput="ajustePreview('opacidad', this.value)">
-            </div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_speed">Velocidad (solo video)</span> <b id="ef-vel-v">1×</b></label>
-              <div id="ef-vel-btns">
-                <button data-v="0.5" onclick="ajusteVel(0.5)">0.5×</button>
-                <button data-v="1" onclick="ajusteVel(1)">1×</button>
-                <button data-v="1.5" onclick="ajusteVel(1.5)">1.5×</button>
-                <button data-v="2" onclick="ajusteVel(2)">2×</button>
-              </div>
-            </div>
-            <p id="ef-nota" style="color:var(--tenue);font-size:11px;margin:8px 0 0">
-              <span data-i18n="pv_note">Mueve los controles y míralos en el lienzo. Pausa para ajustar con calma.</span>
-            </p>
 
-            <div class="pf-sep"></div>
-            <div class="ef-ctl">
-              <label><span data-i18n="pv_dur">Duración</span> <b id="pf-dur">—</b></label>
-              <div style="display:flex;gap:6px">
-                <button style="flex:1" id="pf-menos" onclick="pfDur(-0.5)">−0.5s</button>
-                <button style="flex:1" id="pf-mas" onclick="pfDur(0.5)">+0.5s</button>
+          <!-- audio (reloj maestro) — oculto; controla la barra de arriba -->
+          <audio id="audio" style="display:none"></audio>
+
+          <!-- línea de tiempo -->
+          <div id="tl-cab">
+            <span data-i18n="tl_title" style="font:700 14px 'Roboto';">Línea de tiempo</span>
+            <span style="font:400 12px 'Roboto';color:var(--tenue)" data-i18n="tl_hint2">Clic en una escena para verla · arrastra el borde para cambiar su duración</span>
+            <div style="flex:1"></div>
+            <button class="mini-btn" onclick="abrirOverlay(null,'texto')" title="Añadir texto" data-i18n="trk_text" data-i18n-title="trk_text_t">+ Texto</button>
+            <button class="mini-btn" onclick="abrirOverlay(null,'logo')" title="Añadir imagen/logo" data-i18n="trk_image" data-i18n-title="trk_image_t">+ Imagen</button>
+            <button class="mini-btn" onclick="abrirAnim(null)" title="Añadir animación" data-i18n="trk_anim" data-i18n-title="trk_anim_t">+ Animación</button>
+            <button class="mini-btn" onclick="document.getElementById('archivo-musica').click()" title="Música de fondo" data-i18n="trk_music_add">♪ Música</button>
+            <input type="file" id="archivo-musica" accept="audio/*,.mp3,.wav,.m4a" style="display:none" onchange="subirMusica(this)">
+          </div>
+          <div id="timeline-caja">
+            <div style="display:flex;gap:8px">
+              <div id="pistas-etiquetas">
+                <div class="etq" style="height:26px" data-i18n="trk_text_lbl">Texto</div>
+                <div class="etq" style="height:26px" data-i18n="trk_image_lbl">Imagen</div>
+                <div class="etq" style="height:26px" data-i18n="trk_anim_lbl">Animación</div>
+                <div class="etq" style="height:64px" data-i18n="trk_video">Video</div>
+                <div class="etq" style="height:40px" data-i18n="trk_narration">Narración</div>
+                <div class="etq" style="height:24px" data-i18n="trk_music">Música</div>
+              </div>
+              <div id="timeline-scroll">
+                <div id="pistas">
+                  <div id="pista-texto" class="pista-ov"></div>
+                  <div id="pista-imagen" class="pista-ov"></div>
+                  <div id="pista-anim" class="pista-ov"></div>
+                  <div id="timeline"></div>
+                  <canvas id="onda-narra" height="40" title="Clic para saltar a ese punto"></canvas>
+                  <canvas id="onda-musica" height="24"></canvas>
+                  <div id="aguja" style="left:0"></div>
+                </div>
               </div>
             </div>
-            <div class="ef-ctl">
-              <label data-i18n="pv_motion">Efecto de movimiento</label>
-              <select id="pf-efecto" onchange="pfOpciones()">
-                <option value="auto" data-i18n="ef_auto">Automático</option>
-                <option value="zoom_in" data-i18n="ef_in">Acercar (zoom in)</option>
-                <option value="zoom_out" data-i18n="ef_out">Alejar (zoom out)</option>
-                <option value="pan_h" data-i18n="ef_panh">Paneo horizontal</option>
-                <option value="pan_v" data-i18n="ef_panv">Paneo vertical</option>
-                <option value="estatico" data-i18n="ef_static">Estático</option>
-              </select>
-            </div>
-            <div class="ef-ctl">
-              <label>Transición de salida</label>
-              <select id="pf-transicion" onchange="pfOpciones()">
-                <option value="fundido" data-i18n="tr_fund">Fundido cruzado</option>
-                <option value="corte" data-i18n="tr_cut">Corte seco</option>
-                <option value="negro" data-i18n="tr_black">Fundido a negro</option>
-                <option value="disolver" data-i18n="tr_diss">Disolver</option>
-                <option value="deslizar" data-i18n="tr_slide">Deslizar</option>
-                <option value="circulo" data-i18n="tr_circle">Círculo</option>
-                <option value="zoom" data-i18n="tr_zoom">Zoom</option>
-                <option value="pixel" data-i18n="tr_pixel">Pixelar</option>
-              </select>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:4px">
-              <button style="flex:1" id="pf-dividir" onclick="dividirEscena(pvPanelN)" title="Corta esta escena en dos" data-i18n="pv_insert" data-i18n-title="pv_insert_t">➕ Insertar</button>
-              <button style="flex:1;color:var(--alerta)" onclick="eliminarEscena(pvPanelN)" title="Borra esta escena; ⌘Z para deshacer" data-i18n="pv_del" data-i18n-title="pv_del_t">🗑 Eliminar</button>
-            </div>
+          </div>
+          <div id="regla"><span>0:00</span><span id="regla-fin">—</span></div>
+          <div id="musica-fila">
+            <span data-i18n="mus_bg">🎵 Música de fondo:</span>
+            <span id="musica-nombre">ninguna</span>
+            <span id="musica-controles" style="display:none;align-items:center;gap:8px">
+              <label><span data-i18n="mus_vol">volumen</span> <input type="range" id="musica-vol" min="2" max="40" step="1" style="width:110px;padding:0;vertical-align:middle" onchange="guardarVolumen()"> <span id="musica-vol-txt"></span></label>
+              <button style="padding:3px 9px;font-size:12px" onclick="quitarMusica()" title="Quitar música" data-i18n-title="mus_remove_t">✕ quitar</button>
+            </span>
           </div>
         </div>
       </div>
-      <div id="detalle" class="visible">
-        <div id="det-izq">
+
+      <!-- ===== columna derecha: herramientas de la escena ===== -->
+      <aside id="ed-derecha">
+        <div id="detalle" class="visible">
+          <div class="pnl-cab">
+            <h4 id="det-titulo">Escena</h4>
+          </div>
           <div id="det-img"></div>
           <div class="acciones">
-            <button onclick="document.getElementById('archivo-imagen').click()" data-i18n="det_upload">⬆ Subir mi imagen o video</button>
+            <button style="width:100%" onclick="document.getElementById('archivo-imagen').click()" data-i18n="det_upload">⬆ Subir mi imagen o video</button>
             <input type="file" id="archivo-imagen" accept="image/*,video/*,.mp4,.mov,.webp" style="display:none" onchange="subirImagen(this)">
           </div>
-        </div>
-        <div id="det-der">
-          <div class="campo"><h4 id="det-titulo">Escena</h4></div>
           <div class="campo">
             <h4 data-i18n="det_narr">Narración</h4>
             <div class="caja-texto" id="det-narracion"></div>
-          </div>
-          <div class="campo">
-            <h4 data-i18n="det_det">Duración · efecto · transición de salida</h4>
-            <div class="fila-busqueda" style="align-items:center">
-              <span id="det-dur" style="min-width:46px;font-weight:600"></span>
-              <button onclick="ajustarDur(-0.5)" id="btn-menos" title="Quita 0.5s (se lo da a la escena siguiente)" data-i18n-title="tt_menos">−0.5s</button>
-              <button onclick="ajustarDur(0.5)" id="btn-mas" title="Agrega 0.5s (se lo quita a la escena siguiente)" data-i18n-title="tt_mas">+0.5s</button>
-              <select id="det-efecto" onchange="guardarOpciones()">
-                <option value="auto" data-i18n="def_auto">Efecto: automático</option>
-                <option value="zoom_in" data-i18n="ef_in">Acercar (zoom in)</option>
-                <option value="zoom_out" data-i18n="ef_out">Alejar (zoom out)</option>
-                <option value="pan_h" data-i18n="ef_panh">Paneo horizontal</option>
-                <option value="pan_v" data-i18n="ef_panv">Paneo vertical</option>
-                <option value="estatico" data-i18n="def_static">Estático (sin movimiento)</option>
-              </select>
-              <select id="det-transicion" onchange="guardarOpciones()">
-                <option value="fundido" data-i18n="dtr_fund">Salida: fundido cruzado</option>
-                <option value="corte" data-i18n="tr_cut">Corte seco</option>
-                <option value="negro" data-i18n="tr_black">Fundido a negro</option>
-                <option value="disolver" data-i18n="tr_diss">Disolver</option>
-                <option value="deslizar" data-i18n="tr_slide">Deslizar</option>
-                <option value="circulo" data-i18n="tr_circle">Círculo</option>
-                <option value="zoom" data-i18n="tr_zoom">Zoom</option>
-                <option value="pixel" data-i18n="tr_pixel">Pixelar</option>
-              </select>
-            </div>
-            <div style="margin-top:8px">
-              <button onclick="dividirEscena()" id="btn-dividir" title="Corta esta escena en dos para meter una imagen intermedia" data-i18n-title="tt_dividir" data-i18n="det_insert">➕ Insertar escena (dividir esta en 2)</button>
-              <button onclick="eliminarEscena()" id="btn-eliminar" style="color:var(--alerta)" title="Borra esta escena; su tiempo lo absorbe la anterior. ⌘Z para deshacer" data-i18n-title="tt_eliminar" data-i18n="det_del">🗑 Eliminar escena</button>
-            </div>
-          </div>
-          <div class="campo">
-            <h4><span data-i18n="det_prompt">Prompt de imagen (editable)</span>
-              <button style="padding:2px 10px;font-size:11px" onclick="copiarPrompt()" data-i18n="det_copy">copiar</button>
-            </h4>
-            <textarea id="det-prompt" rows="3" onblur="guardarPrompt()"></textarea>
-            <div class="fila-busqueda" style="margin-top:8px">
-              <button class="primario" id="btn-ia" onclick="generarIA()" style="flex:1" data-i18n="det_genai">✨ Generar imagen con IA (gratis)</button>
-              <button id="btn-video-ia" onclick="generarVideoIA()" style="flex:1;display:none" title="Genera un clip de video con MiniMax Hailuo (usa tus créditos)" data-i18n-title="tt_videoia">🎬 Video IA (MiniMax)</button>
-            </div>
-            <div id="ia-error" style="color:var(--alerta);font-size:12px;margin-top:4px"></div>
           </div>
           <div class="campo" id="campo-tramo" style="display:none">
             <h4 data-i18n="det_trim">Parte del video a usar (el video dura más que la escena)</h4>
@@ -1112,23 +1014,106 @@
             </div>
           </div>
           <div class="campo">
-            <h4><span data-i18n="det_search">Buscar imágenes y videos</span>
+            <h4><span data-i18n="det_prompt">Prompt de imagen (editable)</span>
+              <button style="padding:2px 10px;font-size:11px" onclick="copiarPrompt()" data-i18n="det_copy">copiar</button>
+            </h4>
+            <textarea id="det-prompt" rows="3" onblur="guardarPrompt()"></textarea>
+            <div class="fila-busqueda" style="margin-top:8px">
+              <button class="primario" id="btn-ia" onclick="generarIA()" style="flex:1" data-i18n="det_genai">✨ Regenerar imagen (IA gratis)</button>
+              <button id="btn-video-ia" onclick="generarVideoIA()" style="flex:1;display:none" title="Genera un clip de video con MiniMax Hailuo (usa tus créditos)" data-i18n-title="tt_videoia">🎬 Video IA</button>
+            </div>
+            <div id="ia-error" style="color:var(--alerta);font-size:12px;margin-top:4px"></div>
+          </div>
+          <div class="campo">
+            <h4><span data-i18n="det_search">Reemplazar con medios de</span>
               <button style="padding:2px 10px;font-size:11px" onclick="sugerirPalabras()" title="Deja que el editor elija mejores palabras clave a partir de la narración" data-i18n="det_suggest">✨ sugerir palabras</button>
             </h4>
             <div class="fila-busqueda">
               <input type="text" id="det-consulta" placeholder="ej: bosque niebla noche" data-i18n-ph="det_search_ph">
-              <select id="pexels-tipo" style="width:160px;flex-shrink:0">
+              <select id="pexels-tipo" style="width:130px;flex-shrink:0">
                 <option value="fotos" data-i18n="px_photos">Pexels · Fotos</option>
                 <option value="videos" data-i18n="px_videos">Pexels · Videos</option>
-                <option value="web" data-i18n="px_web">Web (Google/Bing)</option>
+                <option value="web" data-i18n="px_web">Google Imágenes</option>
               </select>
               <button class="primario" onclick="buscarPexels()" data-i18n="det_search_btn">Buscar</button>
             </div>
             <div id="pexels-resultados"></div>
           </div>
         </div>
-      </div>
-      <div id="cuadricula"></div>
+
+        <!-- efectos + movimiento + transición + duración + insertar/eliminar -->
+        <div id="pv-panel">
+          <div id="ef-cab">
+            <h4 id="ef-titulo" data-i18n="pv_effects">Efectos y controles</h4>
+            <button class="mini-btn" onclick="resetAjustes()" title="Volver a los valores por defecto" data-i18n-title="pv_reset_t">↺ reset</button>
+          </div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_scale">Escala</span> <b id="ef-escala-v">1.00×</b></label>
+            <input type="range" id="ef-escala" min="0.3" max="3" step="0.05" value="1"
+                   oninput="ajustePreview('escala', this.value)">
+          </div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_posx">Posición X</span> <b id="ef-posx-v">0%</b></label>
+            <input type="range" id="ef-posx" min="-80" max="80" step="1" value="0"
+                   oninput="ajustePreview('pos_x', this.value)">
+          </div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_posy">Posición Y</span> <b id="ef-posy-v">0%</b></label>
+            <input type="range" id="ef-posy" min="-80" max="80" step="1" value="0"
+                   oninput="ajustePreview('pos_y', this.value)">
+          </div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_opac">Opacidad</span> <b id="ef-opac-v">100%</b></label>
+            <input type="range" id="ef-opac" min="0" max="1" step="0.05" value="1"
+                   oninput="ajustePreview('opacidad', this.value)">
+          </div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_speed">Velocidad (solo video)</span> <b id="ef-vel-v">1×</b></label>
+            <div id="ef-vel-btns">
+              <button data-v="0.5" onclick="ajusteVel(0.5)">0.5×</button>
+              <button data-v="1" onclick="ajusteVel(1)">1×</button>
+              <button data-v="1.5" onclick="ajusteVel(1.5)">1.5×</button>
+              <button data-v="2" onclick="ajusteVel(2)">2×</button>
+            </div>
+          </div>
+          <div class="pf-sep"></div>
+          <div class="ef-ctl">
+            <label><span data-i18n="pv_dur">Duración</span> <b id="pf-dur">—</b></label>
+            <div style="display:flex;gap:6px">
+              <button style="flex:1" id="pf-menos" onclick="pfDur(-0.5)">−0.5s</button>
+              <button style="flex:1" id="pf-mas" onclick="pfDur(0.5)">+0.5s</button>
+            </div>
+          </div>
+          <div class="ef-ctl">
+            <label data-i18n="pv_motion">Efecto de movimiento</label>
+            <select id="pf-efecto" onchange="pfOpciones()">
+              <option value="auto" data-i18n="ef_auto">Automático</option>
+              <option value="zoom_in" data-i18n="ef_in">Acercar (zoom in)</option>
+              <option value="zoom_out" data-i18n="ef_out">Alejar (zoom out)</option>
+              <option value="pan_h" data-i18n="ef_panh">Paneo horizontal</option>
+              <option value="pan_v" data-i18n="ef_panv">Paneo vertical</option>
+              <option value="estatico" data-i18n="ef_static">Estático</option>
+            </select>
+          </div>
+          <div class="ef-ctl">
+            <label data-i18n="pv_trans">Transición de salida</label>
+            <select id="pf-transicion" onchange="pfOpciones()">
+              <option value="fundido" data-i18n="tr_fund">Fundido cruzado</option>
+              <option value="corte" data-i18n="tr_cut">Corte seco</option>
+              <option value="negro" data-i18n="tr_black">Fundido a negro</option>
+              <option value="disolver" data-i18n="tr_diss">Disolver</option>
+              <option value="deslizar" data-i18n="tr_slide">Deslizar</option>
+              <option value="circulo" data-i18n="tr_circle">Círculo</option>
+              <option value="zoom" data-i18n="tr_zoom">Zoom</option>
+              <option value="pixel" data-i18n="tr_pixel">Pixelar</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button style="flex:1" id="pf-dividir" onclick="dividirEscena(pvPanelN)" title="Corta esta escena en dos" data-i18n="pv_insert" data-i18n-title="pv_insert_t">➕ Insertar</button>
+            <button style="flex:1;color:var(--alerta)" onclick="eliminarEscena(pvPanelN)" title="Borra esta escena; ⌘Z para deshacer" data-i18n="pv_del" data-i18n-title="pv_del_t">🗑 Eliminar</button>
+          </div>
+        </div>
+      </aside>
     </div>
   </div>
 </main>
@@ -1364,6 +1349,18 @@
       <button class="primario" onclick="guardarOverlayUI()" data-i18n="btn_save">Guardar</button>
     </div>
     <div id="ov-error" style="color:var(--alerta);font-size:13px;margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- modal: todas las escenas y prompts -->
+<div class="modal-fondo" id="modal-cuadricula">
+  <div class="modal" style="width:min(1100px,94vw);max-height:86vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;margin-bottom:14px">
+      <h3 data-i18n="all_title">Todas las escenas y prompts</h3>
+      <div style="flex:1"></div>
+      <button onclick="cerrarModal('modal-cuadricula')" data-i18n="btn_close">Cerrar</button>
+    </div>
+    <div id="cuadricula" class="visible"></div>
   </div>
 </div>
 
@@ -1714,10 +1711,15 @@ const EN = {
   det_del: "🗑 Delete scene",
   det_prompt: "Image prompt (editable)",
   det_copy: "copy",
-  det_genai: "✨ Generate image with AI (free)",
+  det_genai: "✨ Regenerate image (free AI)",
   det_trim: "Part of the video to use (the clip is longer than the scene)",
-  det_search: "Search images and videos",
+  det_search: "Replace with media from",
   det_suggest: "✨ suggest keywords",
+  hdr_all: "▦ All", all_title: "All scenes and prompts",
+  tl_title: "Timeline",
+  tl_hint2: "Click a scene to view it · drag its edge to change its duration",
+  trk_text_lbl: "Text", trk_image_lbl: "Image", trk_anim_lbl: "Animation",
+  trk_music_add: "♪ Music", pv_trans: "Exit transition",
   det_search_ph: "e.g. forest fog night",
   det_search_btn: "Search",
   pv_insert_t: "Split this scene in two",
@@ -2667,8 +2669,8 @@ async function abrirProyecto(nombre) {
   $('p-nombre').textContent = nombre;
   $('audio').src = `/api/proyectos/${nombre}/audio`;
   $('audio').pause();
-  verTab('detalle');
   render();
+  pvIniciar();               // la previsualización queda siempre activa
   cargarLista();
   cargarSubs();
   clearInterval(timerProyecto);
@@ -2729,7 +2731,7 @@ function render() {
   renderEstado();
   renderTimeline();
   renderDetalle();
-  renderCuadricula();
+  if (escenaSel) renderPanelEfectos(escenaSel);
   renderMusica();
   aplicarFormatoLienzo(actual.formato || '16:9');
   $('btn-video').style.display = actual.video ? '' : 'none';
@@ -2849,7 +2851,8 @@ document.addEventListener('mouseup', async () => {
 function seleccionar(n) {
   escenaSel = n;
   $('pexels-resultados').innerHTML = '';
-  verTab('detalle');
+  const e = escena(n);
+  if (e && $('audio')) $('audio').currentTime = e.inicio + 0.01;   // el preview salta a la escena
   render();
 }
 
@@ -2860,13 +2863,6 @@ function renderDetalle() {
   $('det-titulo').textContent = `${L('Escena','Scene')} ${e.n} ${L('de','of')} ${actual.escenas.length} · ${fmt(e.inicio)} → ${fmt(e.fin)}`;
   $('det-narracion').textContent = e.texto;
   if (!$('det-prompt').matches(':focus')) $('det-prompt').value = e.prompt || '';
-  $('det-dur').textContent = (e.fin - e.inicio).toFixed(1) + 's';
-  const esUltima = i === actual.escenas.length - 1;
-  $('btn-menos').disabled = $('btn-mas').disabled = esUltima;
-  $('btn-dividir').disabled = (e.fin - e.inicio) < 2;
-  $('det-efecto').value = e.efecto || 'auto';
-  $('det-efecto').disabled = e.tipo_medio === 'video';
-  $('det-transicion').value = e.transicion || 'fundido';
   if (!$('det-consulta').matches(':focus')) $('det-consulta').value = e.consulta;
   const dur = e.fin - e.inicio;
   const sobra = e.tipo_medio === 'video' ? (e.medio_duracion || 0) - dur : 0;
@@ -2917,6 +2913,7 @@ async function subirMusica(input) {
   await api(`/api/proyectos/${actual.nombre}/musica`, { method: 'POST', body: fd });
   input.value = '';
   await refrescarForzado();
+  pvIniciar();   // re-vincula la música al previsualizador
 }
 
 async function guardarVolumen() {
@@ -2929,6 +2926,7 @@ async function guardarVolumen() {
 async function quitarMusica() {
   await api(`/api/proyectos/${actual.nombre}/musica`, { method: 'DELETE' });
   await refrescarForzado();
+  pvIniciar();
 }
 
 function renderMusica() {
@@ -2994,10 +2992,6 @@ async function aplicarOpciones(n, efecto, transicion) {
   }
 }
 
-function guardarOpciones() {
-  aplicarOpciones(escenaSel, $('det-efecto').value, $('det-transicion').value);
-}
-
 function renderCuadricula() {
   const c = $('cuadricula');
   c.innerHTML = '';
@@ -3016,14 +3010,12 @@ function renderCuadricula() {
   }
 }
 
-function verTab(cual) {
-  $('tab-detalle').classList.toggle('activa', cual === 'detalle');
-  $('tab-preview').classList.toggle('activa', cual === 'preview');
-  $('tab-todas').classList.toggle('activa', cual === 'todas');
-  $('detalle').classList.toggle('visible', cual === 'detalle');
-  $('previsualizacion').classList.toggle('visible', cual === 'preview');
-  $('cuadricula').classList.toggle('visible', cual === 'todas');
-  if (cual === 'preview') pvIniciar(); else pvDetener();
+// El editor ya no usa pestañas: la previsualización y el panel de escena están
+// siempre visibles. "Todas las escenas" abre un modal con la cuadrícula.
+function abrirCuadricula() {
+  if (!actual) return;
+  renderCuadricula();
+  $('modal-cuadricula').classList.add('visible');
 }
 
 /* ==================== PREVISUALIZADOR ==================== */
@@ -3037,6 +3029,7 @@ let pvVisibles = '';               // firma de overlays visibles (para no repint
 
 function pvIniciar() {
   if (!actual) return;
+  if (pvRAF) cancelAnimationFrame(pvRAF);   // idempotente: nunca dos bucles a la vez
   pvActivo = true;
   pvSlots = [{ el: $('pv-0'), n: null }, { el: $('pv-1'), n: null }];
   // música: audio oculto en loop, sincronizado con la narración
@@ -3125,8 +3118,8 @@ function pvBucle() {
   let i = actual.escenas.findIndex(e => t >= e.inicio && t < e.fin);
   if (i < 0) i = t >= total ? actual.escenas.length - 1 : 0;
   const A = actual.escenas[i];
-  if (pvPanelN !== A.n && !document.activeElement?.closest?.('#pv-panel'))
-    renderPanelEfectos(A.n);
+  // el panel de la derecha refleja la escena SELECCIONADA (no la que reproduce),
+  // para que medios y efectos sean coherentes; se cambia al hacer clic en la escena.
   const cur = pvSlots[i % 2], otro = pvSlots[(i + 1) % 2];
   const pA = Math.max(0, Math.min(1, (t - A.inicio) / (A.fin - A.inicio)));
   pvCargar(cur, A); pvAplicar(cur, A, i, pA, t);

@@ -421,11 +421,39 @@ sistema de licencias con código + vencimiento.
 - **Código de dueño (1 año, plan owner) para desbloquear tu propia build**:
   `AFS1.eyJleHAiOiIyMDI3LTA3LTExIiwiaWQiOiJkZXJlay1vd25lciIsInBsYW4iOiJvd25lciJ9.cZ1f7EqKzKdKaNFLripJpwqbcSj7znD0Sw28dHIHtQ2wt0N-pi3rastxeqr9k8JtXKmhGg7pnzBER1M9OC9OAg`
 
-## Estado actual: v0.16 (multiplataforma + licencias; zip v0.16 en ~/Documents/CLAUDE/)
+## Editor reestructurado sin pestañas (v0.17)
+
+El editor (`#proyecto`) pasó de pestañas (Escena/Previsualización/Todas) a un
+layout fijo más simple para no técnicos, según pidió Derek:
+- `#ed-cuerpo` = flex row: **`#ed-centro`** (columna izquierda) + **`#ed-derecha`**
+  (panel de 366px).
+- Centro: **previsualización SIEMPRE visible** (`#pv-lienzo` con alto tope
+  `min(46vh,600px)`; `.alto` 9:16 usa `min(58vh,760px)`) + su barra de play, y
+  **debajo la línea de tiempo** (`#tl-cab` con botones +Texto/+Imagen/+Animación/
+  ♪Música, `#timeline-caja` con pistas, `#regla`, fila de música). El `<audio>`
+  ahora es `display:none` (reloj maestro; controla la barra del preview).
+- Derecha: **un solo panel** = `#detalle` (imagen, narración, prompt+Regenerar IA,
+  "Reemplazar con medios de" Pexels/Google) **apilado con** `#pv-panel` (efectos:
+  escala/pos/opacidad/velocidad + movimiento + transición + duración +/- +
+  insertar/eliminar). Se quitaron los controles duplicados de duración/efecto/
+  transición que estaban en `#detalle`.
+- "▦ Todas" (header) abre el modal `#modal-cuadricula` con la cuadrícula de escenas.
+- JS: se eliminó `verTab`; `abrirProyecto` llama `pvIniciar()` (preview siempre
+  activo, ahora idempotente: cancela el RAF previo); `render()` llama
+  `renderPanelEfectos(escenaSel)`; `seleccionar(n)` hace seek del audio y render;
+  `pvBucle` ya NO auto-cambia el panel (queda en la escena seleccionada, coherente
+  con detalle); `renderCuadricula` solo al abrir el modal; música re-vincula el
+  preview con `pvIniciar()`. `renderDetalle` recortado (sin det-dur/efecto/etc.).
+- Verificado en navegador: preview central reproduce, timeline debajo, panel
+  derecho con todas las herramientas, selección sincroniza detalle+efectos+seek,
+  modal Todas, sin errores de consola. Backup del layout previo:
+  `index.v016.backup.html` (scratchpad).
+
+## Estado actual: v0.17 (editor reestructurado; zip v0.17 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.16-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.17-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

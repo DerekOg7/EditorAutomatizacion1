@@ -680,7 +680,8 @@ def pexels_buscar(consulta, cantidad=8, orientacion="landscape"):
     return [{"id": f["id"],
              "miniatura": f["src"]["medium"],
              "grande": f["src"]["large2x"],
-             "autor": f.get("photographer", "")}
+             "autor": f.get("photographer", ""),
+             "texto": f.get("alt", "")}
             for f in r.json().get("photos", [])]
 
 
@@ -2375,6 +2376,215 @@ def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
                 nuevas_auto.append(n)
                 descargadas += 1
         avisar(f"Imágenes… escena {n}/{len(escenas)}",
+               (i + 1) / len(escenas) * 100)
+    _marcar_auto(p, nuevas_auto)
+    return {"descargadas": descargadas, "saltadas": saltadas,
+            "pendientes": pendientes}
+
+
+# ------------------------------------------- relleno inteligente multi-fuente
+# Un "director de arte" que, por escena, busca en varias fuentes (Pexels fotos,
+# Pexels videos y la web tipo Google Imágenes), puntúa por relevancia, mezcla
+# foto y video para que el video sea dinámico, y usa la web para lo muy
+# específico (que los bancos de stock no tienen). Opcionalmente una IA planea
+# la fuente y la consulta de cada escena a partir de la guía que pone el usuario.
+
+FUENTES_ORDEN = ["FOTO", "VIDEO", "WEB"]
+
+SISTEMA_PLAN_IMAGENES = """Eres director de arte de un video narrado. Recibes el \
+guión completo dividido en escenas numeradas. Para CADA escena decide la MEJOR \
+fuente y una consulta de búsqueda de material visual de archivo.
+
+FUENTE (elige una):
+- FOTO: foto de archivo genérica (personas, lugares, objetos, atmósferas).
+- VIDEO: clip genérico con movimiento (olas del mar, tráfico, fuego, multitud, \
+nubes, radar) — para dar dinamismo.
+- WEB: buscador web (como Google Imágenes), SOLO para cosas MUY específicas que \
+los bancos de stock no tienen: un avión o barco concreto, una persona/lugar/\
+evento/objeto histórico con nombre propio, una marca o modelo específico.
+
+CONSULTA: en INGLÉS, 2 a 5 palabras concretas y visuales. Para WEB puedes incluir \
+el nombre propio específico. Nada de conceptos abstractos.
+
+Mezcla para que el video sea dinámico: alterna FOTO y VIDEO (aprox. 1 de cada 3 \
+en VIDEO cuando encaje). Mantén un hilo visual coherente con TODA la historia.
+{guia}
+Responde SOLO una línea por escena, con este formato exacto y nada más:
+N| FUENTE| consulta en inglés
+(por ejemplo:  3| VIDEO| deep ocean waves sonar)"""
+
+
+def plan_imagenes_ia(p, proveedor="gratis", modelo="", guia="", on_progreso=None):
+    """Una IA ve la historia completa y decide, por escena, la fuente (FOTO/
+    VIDEO/WEB) y la consulta, incorporando la guía/inputs del usuario. Escribe
+    consulta + fuente_ia en escenas.json. Devuelve cuántas planeó."""
+    avisar = on_progreso or (lambda *_: None)
+    escenas = leer_escenas(p)
+    if not escenas:
+        err("No hay escenas todavía.")
+    avisar("Planeando las imágenes con IA…", 10)
+
+    guia_txt = ""
+    if (guia or "").strip():
+        guia_txt = ("\nEl usuario pide especialmente: " + guia.strip() +
+                    "\nIncorpora estas indicaciones en las consultas de las escenas "
+                    "donde encajen.")
+    sistema = SISTEMA_PLAN_IMAGENES.replace("{guia}", guia_txt)
+    lineas = "\n".join(f"{e['n']}| {e['texto']}" for e in escenas)
+    pedido = (f"Historia en {len(escenas)} escenas. Devuelve una línea por escena "
+              f"con FUENTE y consulta.\n\n{lineas}")
+    crudo = chat_guion([{"rol": "usuario", "texto": pedido}],
+                       proveedor=proveedor, modelo=modelo, sistema=sistema)
+
+    plan = {}
+    for linea in crudo.splitlines():
+        m = re.match(r"\s*(\d+)\s*[|.:)\-]\s*(FOTO|VIDEO|WEB)\s*[|.:)\-]\s*(.+)",
+                     linea, re.I)
+        if m:
+            q = re.sub(r'["*`]', "", m.group(3)).strip().strip(".")
+            if q:
+                plan[int(m.group(1))] = {"fuente": m.group(2).upper(), "consulta": q[:80]}
+            continue
+        m2 = re.match(r"\s*(\d+)\s*[|.:)\-]\s*(.+)", linea)     # sin fuente explícita
+        if m2:
+            q = re.sub(r'["*`]', "", m2.group(2)).strip().strip(".")
+            if q:
+                plan[int(m2.group(1))] = {"fuente": "FOTO", "consulta": q[:80]}
+
+    if not plan:
+        err("La IA no devolvió un plan en el formato esperado. Prueba con un "
+            "proveedor más potente (Claude/Gemini/ChatGPT en 🔑 Claves API).")
+
+    datos = json.loads((p / "escenas.json").read_text())
+    cambiadas = 0
+    for e in datos["escenas"]:
+        pl = plan.get(e["n"])
+        if pl:
+            e["consulta"] = pl["consulta"]
+            e["consulta_ia"] = True
+            e["fuente_ia"] = pl["fuente"]
+            cambiadas += 1
+    (p / "escenas.json").write_text(json.dumps(datos, ensure_ascii=False, indent=2))
+    avisar("Plan listo", 100)
+    return {"cambiadas": cambiadas, "total": len(escenas),
+            "sin_respuesta": len(escenas) - len(plan)}
+
+
+def _buscar_fuente(fuente, consulta, orient, cantidad=8):
+    """Busca en una fuente y normaliza a [{tipo, url, id, texto}, …].
+    Tolerante: si la fuente falla (sin clave, red), devuelve []."""
+    fuente = (fuente or "FOTO").upper()
+    try:
+        if fuente == "VIDEO":
+            return [{"tipo": "video", "url": v["url"], "id": f"pv{v['id']}",
+                     "texto": ""}
+                    for v in pexels_buscar_videos(consulta, cantidad, orientacion=orient)]
+        if fuente == "WEB":
+            return [{"tipo": "web", "url": w["grande"], "id": w["grande"],
+                     "texto": w.get("titulo", "")}
+                    for w in web_buscar_imagenes(consulta, cantidad) if w.get("grande")]
+        return [{"tipo": "imagen", "url": f["grande"], "id": f"pf{f['id']}",
+                 "texto": f.get("texto", "")}
+                for f in pexels_buscar(consulta, cantidad, orientacion=orient)]
+    except (ErrorPipeline, Exception):
+        return []
+
+
+def _puntuar_candidato(texto_escena, texto_cand):
+    """Cuántos términos concretos de la escena aparecen en la descripción del
+    candidato (relevancia). Los videos de Pexels no traen descripción → 0 neutro."""
+    if not texto_cand:
+        return 0
+    base = {sin_acentos(w.lower()) for w in _concretas(texto_escena, 8)}
+    cand = sin_acentos(texto_cand.lower())
+    return sum(1 for w in base if w and len(w) > 2 and w in cand)
+
+
+def _orden_fuentes(pref, permitidas, mezclar, ult_tipos):
+    """Orden de fuentes a intentar para una escena: primero la que sugirió la IA,
+    luego el resto; con `mezclar`, evita 3+ del mismo tipo seguidas."""
+    orden = [pref] if pref in permitidas else []
+    for f in permitidas:
+        if f not in orden:
+            orden.append(f)
+    if mezclar and len(ult_tipos) >= 2 and ult_tipos[-1] == ult_tipos[-2]:
+        mono = ult_tipos[-1]
+        if mono == "imagen" and "VIDEO" in orden:
+            orden.remove("VIDEO"); orden.insert(0, "VIDEO")
+        elif mono == "video":
+            for foto in ("FOTO", "WEB"):
+                if foto in orden:
+                    orden.remove(foto); orden.insert(0, foto); break
+    return orden
+
+
+def _bajar_candidato(p, n, cand):
+    """Descarga un candidato como medio de la escena. True si lo logró."""
+    try:
+        if cand["tipo"] == "web":
+            descargar_web_a_escena(p, n, cand["url"])
+        elif cand["tipo"] == "video":
+            descargar_a_escena(p, n, cand["url"], tipo="video", auto=True)
+        else:
+            descargar_a_escena(p, n, cand["url"], tipo="imagen", auto=True)
+        return True
+    except Exception:
+        return False
+
+
+def rellenar_inteligente(p, guia="", fuentes=None, mezclar=True,
+                         reemplazar_auto=True, on_progreso=None):
+    """Rellena cada escena buscando en varias fuentes y eligiendo el mejor medio,
+    mezclando foto y video. Respeta las escenas elegidas a mano."""
+    escenas = leer_escenas(p)
+    (p / "imagenes").mkdir(exist_ok=True)
+    avisar = on_progreso or (lambda *_: None)
+    orient = ORIENTACION.get(formato_proyecto(p), "landscape")
+    permitidas = [f for f in FUENTES_ORDEN if (not fuentes or f in fuentes)]
+    if not permitidas:
+        permitidas = ["FOTO"]
+    guia_kw = [w.strip() for w in re.split(r"[,\n]+", guia or "") if w.strip()][:3]
+
+    usadas, ult_tipos = set(), []
+    descargadas = saltadas = pendientes = 0
+    nuevas_auto = []
+    for i, e in enumerate(escenas):
+        n = e["n"]
+        medio, tipo_actual = medio_de_escena(p, n)
+        es_auto = e.get("medio_auto", False)
+        if medio is not None and not (reemplazar_auto and es_auto):
+            saltadas += 1
+            ult_tipos.append("video" if tipo_actual == "video" else "imagen")
+        else:
+            consulta = (e.get("consulta") or "").strip()
+            # si no hubo plan IA, enriquece la consulta con la guía del usuario
+            if guia_kw and not e.get("consulta_ia"):
+                consulta = (consulta + " " + " ".join(guia_kw)).strip()
+            if not consulta:
+                consulta = " ".join(guia_kw) or "dark mystery atmosphere"
+            pref = (e.get("fuente_ia") or "FOTO").upper()
+            elegido = None
+            for fuente in _orden_fuentes(pref, permitidas, mezclar, ult_tipos):
+                cands = [c for c in _buscar_fuente(fuente, consulta, orient)
+                         if c["id"] not in usadas]
+                if not cands:
+                    continue
+                cands.sort(key=lambda c: _puntuar_candidato(e["texto"], c["texto"]),
+                           reverse=True)
+                for c in cands[:5]:
+                    if _bajar_candidato(p, n, c):
+                        elegido = c
+                        break
+                if elegido:
+                    break
+            if elegido:
+                usadas.add(elegido["id"])
+                nuevas_auto.append(n)
+                descargadas += 1
+                ult_tipos.append("video" if elegido["tipo"] == "video" else "imagen")
+            else:
+                pendientes += 1
+        avisar(f"Buscando el mejor medio… escena {n}/{len(escenas)}",
                (i + 1) / len(escenas) * 100)
     _marcar_auto(p, nuevas_auto)
     return {"descargadas": descargadas, "saltadas": saltadas,

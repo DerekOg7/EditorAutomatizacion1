@@ -332,12 +332,52 @@ con minos>=13 tras la build). Verificado e2e: las 4 voces en el navegador (edge 
 sistema generan mp3 real), y el `.app` congelado sirve `/api/voz/proveedores` con
 `edge` disponible y genera una muestra edge de 21 KB.
 
-## Estado actual: v0.14 (rediseño + voz multi-proveedor; zip v0.14 en ~/Documents/CLAUDE/)
+## Imágenes inteligentes multi-fuente (v0.15)
 
-> Las secciones de arriba (v0.07–v0.14) documentan lo añadido después de v0.06.
+El botón del header "✨ Coherencia IA" se convirtió en "✨ Imágenes IA": un
+"director de arte" que rellena cada escena buscando en **varias fuentes** y
+eligiendo el mejor medio, **mezclando foto y video** para dinamismo. Resuelve el
+pedido: meter tus propios inputs, buscar en Pexels fotos/videos + web (Google) y
+decidir la mejor opción, sin usar siempre solo fotos o solo videos.
+
+- **Guía del usuario** (brief): textarea en el modal (`#img-guia`), persistida en
+  `ajustes.json` (`guia_imagenes`, expuesta en GET proyecto para prefill). Se
+  inyecta en el prompt de la IA y, si no se usa IA, se anexa a cada consulta.
+- **Plan con IA** (`editor.plan_imagenes_ia`): una sola llamada `chat_guion` con
+  `SISTEMA_PLAN_IMAGENES` que, viendo toda la historia, decide por escena
+  **FUENTE** (FOTO/VIDEO/WEB) + consulta en inglés, incorporando la guía y
+  alternando ~1/3 VIDEO. WEB = cosas muy específicas (nombres propios, aviones/
+  barcos concretos) que el stock no tiene. Escribe `consulta`/`consulta_ia`/
+  `fuente_ia` en escenas.json. (El proveedor sale del mismo selector de siempre.)
+- **Motor** (`editor.rellenar_inteligente`): por escena que necesita medio, arma
+  el orden de fuentes (la sugerida por la IA primero, luego el resto permitido;
+  con `mezclar` evita 3+ del mismo tipo seguidas via `_orden_fuentes`), busca en
+  cada fuente (`_buscar_fuente` → Pexels fotos/videos o web DDG, normalizado a
+  `{tipo,url,id,texto}`), **puntúa por relevancia** (`_puntuar_candidato`: solape
+  de términos concretos de la escena con la descripción `alt`/título del
+  candidato — por eso `pexels_buscar` ahora devuelve `texto=alt`), descarga el
+  mejor no-duplicado tolerante a fallos (`_bajar_candidato`, si falla prueba el
+  siguiente candidato/fuente → así lo específico cae a la web). Respeta las
+  escenas puestas a mano (solo pisa `medio_auto` con `reemplazar_auto=True`).
+- app.py: `hilo_imagenes_inteligente` (plan opcional + relleno) y
+  `POST /api/proyectos/<n>/imagenes/inteligente` (body `guia, fuentes[FOTO/VIDEO/
+  WEB], mezclar, usar_ia, proveedor, modelo`). Si solo se pide Pexels sin clave →
+  400; con «Web» activo funciona sin clave (DDG es gratis). La ruta vieja
+  `/imagenes/coherencia` y `descargar_imagenes` siguen para compatibilidad.
+- Frontend: el modal `#modal-coherencia` ahora tiene guía + checkboxes de fuentes
+  + toggle mezclar + toggle "usar IA". `ejecutarImagenesIA()` manda todo.
+- Verificado e2e (Pexels+Gemini reales, con backup/restore de un proyecto):
+  el motor rellena escenas vacías con MEZCLA (jpg+mp4); el plan de Gemini repartió
+  7 FOTO / 3 VIDEO (~30% video) con consultas en inglés según la guía; el `.app`
+  v0.15 congelado responde el endpoint y hace búsqueda web (ddgs empaquetado). Sin
+  dependencias nuevas. Piso macOS sigue en 11.
+
+## Estado actual: v0.15 (rediseño + voz multi-proveedor + imágenes inteligentes; zip v0.15 en ~/Documents/CLAUDE/)
+
+> Las secciones de arriba (v0.07–v0.15) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.14-beta-macOS.zip`. Dependencia nueva: `edge-tts`
-> (instálala en el venv con `pip install edge-tts` si recreas el entorno).
+> `AutoFaceless-Video-v0.15-beta-macOS.zip`. Dependencia nueva desde v0.14:
+> `edge-tts` (instálala en el venv con `pip install edge-tts` si recreas el entorno).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

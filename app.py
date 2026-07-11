@@ -153,6 +153,38 @@ def hilo_coherencia(nombre, proveedor, modelo):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
+def hilo_imagenes_inteligente(nombre, guia, fuentes, mezclar, usar_ia,
+                              proveedor, modelo):
+    """Planea (opcional, con IA) y rellena cada escena buscando en varias
+    fuentes (Pexels fotos/videos + web) y eligiendo el mejor medio, mezclando
+    foto y video para dar dinamismo."""
+    p = PROYECTOS / nombre
+    try:
+        editor.guardar_ajustes(p, guia_imagenes=guia or "")
+        base = 0
+        if usar_ia:
+            set_estado(nombre, fase="imagenes", progreso=0, error=None,
+                       detalle="Planeando las imágenes con IA…")
+            r1 = editor.plan_imagenes_ia(
+                p, proveedor=proveedor, modelo=modelo, guia=guia,
+                on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc * 0.3))
+            base = 30
+        else:
+            set_estado(nombre, fase="imagenes", progreso=0, error=None,
+                       detalle="Buscando el mejor medio para cada escena…")
+        r2 = editor.rellenar_inteligente(
+            p, guia=guia, fuentes=fuentes, mezclar=mezclar, reemplazar_auto=True,
+            on_progreso=lambda t, pc: set_estado(nombre, detalle=t,
+                                                 progreso=base + pc * (1 - base / 100)))
+        det = (f"{r2['descargadas']} medios elegidos"
+               + (f" · {r2['pendientes']} sin resultado" if r2['pendientes'] else ""))
+        set_estado(nombre, fase="listo", detalle=det, progreso=100)
+    except ErrorPipeline as e:
+        set_estado(nombre, fase="error", error=str(e))
+    except Exception as e:
+        set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
+
+
 def hilo_exportar(nombre):
     p = PROYECTOS / nombre
     try:
@@ -356,6 +388,33 @@ def imagenes_coherencia(nombre):
     threading.Thread(target=hilo_coherencia,
                      args=(nombre, d.get("proveedor", "gratis"), d.get("modelo", "")),
                      daemon=True).start()
+    return jsonify({"ok": True})
+
+
+@app.post("/api/proyectos/<nombre>/imagenes/inteligente")
+def imagenes_inteligente(nombre):
+    p = PROYECTOS / nombre
+    if not p.is_dir():
+        return jsonify({"error": "No existe"}), 404
+    if not (p / "escenas.json").exists():
+        return jsonify({"error": "Aún no hay escenas — procesa el audio primero."}), 400
+    if ocupado(nombre):
+        return jsonify({"error": "Ya hay un proceso en curso para esta historia."}), 400
+    d = request.get_json(force=True) or {}
+    fuentes = d.get("fuentes") or ["FOTO", "VIDEO", "WEB"]
+    fuentes = [f.upper() for f in fuentes if f.upper() in ("FOTO", "VIDEO", "WEB")]
+    if not fuentes:
+        return jsonify({"error": "Elige al menos una fuente (fotos, videos o web)."}), 400
+    usar_ia = bool(d.get("usar_ia", True))
+    if ("FOTO" in fuentes or "VIDEO" in fuentes) and "WEB" not in fuentes \
+            and not editor.leer_env().get("PEXELS_API_KEY"):
+        return jsonify({"error": "Para fotos/videos de Pexels falta la clave (🔑 Claves API). "
+                                 "También puedes activar solo «Web»."}), 400
+    threading.Thread(
+        target=hilo_imagenes_inteligente,
+        args=(nombre, d.get("guia", ""), fuentes, bool(d.get("mezclar", True)),
+              usar_ia, d.get("proveedor", "gratis"), d.get("modelo", "")),
+        daemon=True).start()
     return jsonify({"ok": True})
 
 
@@ -595,6 +654,7 @@ def ver_proyecto(nombre):
         "video": (p / "video.mp4").exists(),
         "video_desactualizado": video_desactualizado(p),
         "formato": editor.formato_proyecto(p),
+        "guia_imagenes": editor.leer_ajustes(p).get("guia_imagenes", ""),
         "overlays": editor.leer_overlays(p),
         "musica": ({"archivo": musica.name,
                     "volumen": editor.leer_ajustes(p).get("musica_volumen", 0.12)}

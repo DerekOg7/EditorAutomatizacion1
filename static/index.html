@@ -866,7 +866,7 @@
         <option value="9:16">📱 9:16 · Shorts</option>
         <option value="1:1">⬛ 1:1</option>
       </select>
-      <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Reemplaza las imágenes automáticas por otras coherentes con toda la historia, usando IA">✨ Coherencia IA</button>
+      <button id="btn-coherencia" onclick="abrirCoherencia()" data-i18n="hdr_coh" title="Busca en Pexels (fotos/videos) y la web y elige el mejor medio por escena, mezclando foto y video">✨ Imágenes IA</button>
       <button id="btn-subs" onclick="abrirSubs()" data-i18n="hdr_subs">💬 Subtítulos</button>
       <button id="btn-video" style="display:none" onclick="verVideo()" data-i18n="hdr_view">▶ Ver video</button>
       <button class="primario" id="btn-exportar" onclick="abrirExportar()">⬇ Exportar video</button>
@@ -1433,21 +1433,45 @@
 
 <!-- modal coherencia de imágenes -->
 <div class="modal-fondo" id="modal-coherencia">
-  <div class="modal" style="width:520px">
-    <h3 data-i18n="coh_title">✨ Coherencia de imágenes (IA)</h3>
+  <div class="modal" style="width:560px">
+    <h3 data-i18n="coh_title">✨ Imágenes inteligentes (IA)</h3>
     <p style="color:var(--tenue);font-size:13px;margin:4px 0 14px" data-i18n="coh_intro">
-      Una IA lee TODA la historia y reescribe la búsqueda de imagen de cada escena
-      para que encajen con el video completo, no solo con su frase. Reemplaza las
-      imágenes automáticas (respeta las que elegiste a mano).</p>
+      Busca en Pexels (fotos y videos) y en la web, y elige el mejor medio para cada
+      escena — mezclando foto y video para un video más dinámico. Reemplaza solo las
+      automáticas (respeta las que pusiste a mano).</p>
+
     <div class="campo">
-      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="coh_prov">IA A USAR</h4>
-      <select id="coh-prov" onchange="cohProvCambio()"></select>
-      <select id="coh-modelo" style="display:none;margin-top:6px"></select>
-      <div style="font-size:11px;color:var(--tenue);margin-top:4px" data-i18n="coh_hint">Con una IA potente (Claude/Gemini/ChatGPT) el resultado es mucho mejor. La gratuita funciona pero es más básica.</div>
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="coh_brief">TUS INDICACIONES (opcional)</h4>
+      <textarea id="img-guia" rows="2" data-i18n-ph="coh_brief_ph" placeholder="ej: naves militares de los años 40, desierto de Nuevo México, tono oscuro y cinematográfico"></textarea>
+      <div style="font-size:11px;color:var(--tenue);margin-top:3px" data-i18n="coh_brief_hint">Palabras clave, época, lugar o estilo que quieres. La IA las usa para afinar cada búsqueda.</div>
     </div>
+
+    <div class="campo">
+      <h4 style="font-size:11px;color:var(--tenue)" data-i18n="coh_sources">DÓNDE BUSCAR</h4>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:14px">
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="img-f-foto" checked style="width:auto"> <span data-i18n="coh_photos">🖼 Pexels fotos</span></label>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="img-f-video" checked style="width:auto"> <span data-i18n="coh_videos">🎬 Pexels videos</span></label>
+        <label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="img-f-web" checked style="width:auto"> <span data-i18n="coh_web">🌐 Web (Google)</span></label>
+      </div>
+      <label style="display:flex;gap:6px;align-items:center;cursor:pointer;margin-top:10px;font-size:14px">
+        <input type="checkbox" id="img-mezclar" checked style="width:auto"> <span data-i18n="coh_mix">Mezclar fotos y videos (video más dinámico)</span>
+      </label>
+    </div>
+
+    <div class="campo">
+      <label style="display:flex;gap:6px;align-items:center;cursor:pointer;font-size:14px;margin-bottom:6px">
+        <input type="checkbox" id="img-usar-ia" checked style="width:auto" onchange="imgUsarIaCambio()"> <span data-i18n="coh_useia">Usar IA para planear la fuente y la búsqueda de cada escena</span>
+      </label>
+      <div id="img-ia-zona">
+        <select id="coh-prov" onchange="cohProvCambio()"></select>
+        <select id="coh-modelo" style="display:none;margin-top:6px"></select>
+        <div style="font-size:11px;color:var(--tenue);margin-top:4px" data-i18n="coh_hint">Con una IA potente (Claude/Gemini/ChatGPT) el resultado es mucho mejor. La gratuita funciona pero es más básica.</div>
+      </div>
+    </div>
+
     <div class="botones">
       <button onclick="cerrarModal('modal-coherencia')" data-i18n="btn_cancel">Cancelar</button>
-      <button class="primario" id="btn-coh-run" onclick="ejecutarCoherencia()" data-i18n="coh_run">✨ Mejorar imágenes</button>
+      <button class="primario" id="btn-coh-run" onclick="ejecutarImagenesIA()" data-i18n="coh_run">✨ Rellenar imágenes</button>
     </div>
     <div id="coh-msg" style="font-size:13px;margin-top:8px;min-height:18px"></div>
   </div>
@@ -1575,12 +1599,19 @@ const EN = {
   fmt_169: "🖥 Horizontal 16:9 (YouTube)",
   fmt_916: "📱 Vertical 9:16 (Shorts/Reels)",
   fmt_11: "⬛ Square 1:1",
-  hdr_coh: "✨ Coherence AI",
-  coh_title: "✨ Image coherence (AI)",
-  coh_intro: "An AI reads the WHOLE story and rewrites each scene's image search so they fit the full video, not just their sentence. It replaces the automatic images (keeps the ones you picked by hand).",
+  hdr_coh: "✨ AI Images",
+  coh_title: "✨ Smart images (AI)",
+  coh_intro: "It searches Pexels (photos and videos) and the web, and picks the best medium for each scene — mixing photo and video for a more dynamic video. Replaces only the automatic ones (keeps the ones you set by hand).",
+  coh_brief: "YOUR INPUTS (optional)",
+  coh_brief_ph: "e.g. 1940s military aircraft, New Mexico desert, dark cinematic tone",
+  coh_brief_hint: "Keywords, era, place or style you want. The AI uses them to refine each search.",
+  coh_sources: "WHERE TO SEARCH",
+  coh_photos: "🖼 Pexels photos", coh_videos: "🎬 Pexels videos", coh_web: "🌐 Web (Google)",
+  coh_mix: "Mix photos and videos (more dynamic video)",
+  coh_useia: "Use AI to plan the source and search for each scene",
   coh_prov: "AI TO USE",
   coh_hint: "With a powerful AI (Claude/Gemini/ChatGPT) the result is much better. The free one works but is more basic.",
-  coh_run: "✨ Improve images",
+  coh_run: "✨ Fill images",
   side_tools: "TOOLS",
   side_script: "📝 Script studio",
   side_ai: "🎙 Voice studio",
@@ -1913,6 +1944,8 @@ async function abrirCoherencia() {
     return;
   }
   $('coh-msg').textContent = '';
+  $('img-guia').value = actual.guia_imagenes || '';
+  imgUsarIaCambio();
   $('modal-coherencia').classList.add('visible');
   // reutiliza el mismo selector de proveedores del estudio de guión
   try {
@@ -1935,16 +1968,34 @@ function cohProvCambio() {
   $('coh-modelo').style.display = $('coh-prov').value === 'local' ? '' : 'none';
 }
 
-async function ejecutarCoherencia() {
+function imgUsarIaCambio() {
+  $('img-ia-zona').style.opacity = $('img-usar-ia').checked ? '1' : '.4';
+  $('img-ia-zona').style.pointerEvents = $('img-usar-ia').checked ? '' : 'none';
+}
+
+async function ejecutarImagenesIA() {
+  const fuentes = [];
+  if ($('img-f-foto').checked) fuentes.push('FOTO');
+  if ($('img-f-video').checked) fuentes.push('VIDEO');
+  if ($('img-f-web').checked) fuentes.push('WEB');
+  if (!fuentes.length) {
+    $('coh-msg').style.color = 'var(--alerta)';
+    $('coh-msg').textContent = L('Elige al menos una fuente.','Pick at least one source.');
+    return;
+  }
   const btn = $('btn-coh-run');
   btn.disabled = true;
   $('coh-msg').style.color = 'var(--tenue)';
   $('coh-msg').textContent = L('Iniciando…','Starting…');
+  const usarIa = $('img-usar-ia').checked;
   try {
-    await api(`/api/proyectos/${actual.nombre}/imagenes/coherencia`, {
+    await api(`/api/proyectos/${actual.nombre}/imagenes/inteligente`, {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ proveedor: $('coh-prov').value,
+      body: JSON.stringify({ guia: $('img-guia').value.trim(), fuentes,
+                             mezclar: $('img-mezclar').checked, usar_ia: usarIa,
+                             proveedor: $('coh-prov').value,
                              modelo: $('coh-prov').value === 'local' ? $('coh-modelo').value : '' }) });
+    if (actual) actual.guia_imagenes = $('img-guia').value.trim();
     $('coh-msg').style.color = 'var(--ok)';
     $('coh-msg').textContent = L('✓ En proceso — mira la barra de estado arriba.','✓ Running — watch the status bar above.');
     setTimeout(() => cerrarModal('modal-coherencia'), 1400);

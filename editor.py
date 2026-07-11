@@ -27,22 +27,38 @@ import unicodedata
 from pathlib import Path
 
 EMPAQUETADA = getattr(sys, "frozen", False)
+ES_WIN = sys.platform.startswith("win")
+ES_MAC = sys.platform == "darwin"
+_EXE = ".exe" if ES_WIN else ""
+
+
+def _carpeta_datos():
+    """Carpeta de datos del usuario, según el sistema operativo (sobrevive a
+    actualizaciones de la app)."""
+    if ES_WIN:
+        base = os.environ.get("APPDATA") or (Path.home() / "AppData" / "Roaming")
+        return Path(base) / "AutoFacelessVideo"
+    if ES_MAC:
+        return Path.home() / "Library" / "Application Support" / "AutoFacelessVideo"
+    base = os.environ.get("XDG_DATA_HOME") or (Path.home() / ".local" / "share")
+    return Path(base) / "AutoFacelessVideo"
+
 
 if EMPAQUETADA:
-    # App de macOS: el código vive dentro del .app (solo lectura); los datos
-    # del usuario van en su carpeta de soporte, para sobrevivir actualizaciones.
+    # App empaquetada: el código vive dentro del bundle (solo lectura); los datos
+    # del usuario van en su carpeta de soporte del SO, para sobrevivir actualizaciones.
     BASE = Path(sys._MEIPASS)                      # recursos empaquetados (solo lectura)
-    DATOS = Path.home() / "Library/Application Support/AutoFacelessVideo"
-    FFMPEG_BIN = BASE / "ffmpeg" / "ffmpeg"
-    FFPROBE_BIN = BASE / "ffmpeg" / "ffprobe"
+    DATOS = _carpeta_datos()
+    FFMPEG_BIN = BASE / "ffmpeg" / f"ffmpeg{_EXE}"
+    FFPROBE_BIN = BASE / "ffmpeg" / f"ffprobe{_EXE}"
 else:
     BASE = Path(__file__).resolve().parent          # modo desarrollo (como hasta ahora)
     DATOS = BASE
     # Preferir el ffmpeg estático empaquetado también en dev: es el mismo que
     # usan los usuarios y trae libass (subtítulos), que falta en el de Homebrew.
     _ff = BASE / "empaquetado" / "ffmpeg"
-    FFMPEG_BIN = _ff / "ffmpeg" if (_ff / "ffmpeg").exists() else "ffmpeg"
-    FFPROBE_BIN = _ff / "ffprobe" if (_ff / "ffprobe").exists() else "ffprobe"
+    FFMPEG_BIN = _ff / f"ffmpeg{_EXE}" if (_ff / f"ffmpeg{_EXE}").exists() else "ffmpeg"
+    FFPROBE_BIN = _ff / f"ffprobe{_EXE}" if (_ff / f"ffprobe{_EXE}").exists() else "ffprobe"
 
 DATOS.mkdir(parents=True, exist_ok=True)
 PROYECTOS = DATOS / "proyectos"
@@ -1366,8 +1382,44 @@ def edge_voz(texto, voz, velocidad=1.0, on_progreso=None):
     return data
 
 
+_PS_LISTAR_VOCES = (
+    "Add-Type -AssemblyName System.Speech; "
+    "(New-Object System.Speech.Synthesis.SpeechSynthesizer)."
+    "GetInstalledVoices() | ForEach-Object { $_.VoiceInfo } | "
+    "ForEach-Object { \"$($_.Name)|$($_.Culture)\" }")
+
+
+def _voces_windows():
+    """Voces SAPI instaladas en Windows (es/en), vía PowerShell."""
+    import subprocess
+    try:
+        salida = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", _PS_LISTAR_VOCES],
+            capture_output=True, text=True, timeout=15).stdout
+    except Exception:
+        return []
+    voces, vistos = [], set()
+    for linea in salida.splitlines():
+        if "|" not in linea:
+            continue
+        nombre, loc = [x.strip() for x in linea.split("|", 1)]
+        loc = loc.replace("_", "-")
+        if not nombre or not (loc.lower().startswith("es") or loc.lower().startswith("en")):
+            continue
+        if nombre in vistos:
+            continue
+        vistos.add(nombre)
+        voces.append({"id": nombre, "nombre": nombre, "desc": loc})
+    voces.sort(key=lambda v: (0 if v["desc"].lower().startswith("es") else 1, v["nombre"]))
+    return voces
+
+
 def voces_sistema():
-    """Voces de macOS `say` instaladas (español e inglés), para el proveedor 'sistema'."""
+    """Voces del sistema operativo instaladas (español e inglés)."""
+    if ES_WIN:
+        return _voces_windows()
+    if not ES_MAC:
+        return []
     import subprocess
     try:
         salida = subprocess.run(["say", "-v", "?"], capture_output=True,
@@ -1390,26 +1442,54 @@ def voces_sistema():
     return voces
 
 
+def _say_windows(texto, voz, tmp):
+    """Sintetiza con SAPI (Windows) a un WAV. Devuelve la ruta del wav."""
+    import subprocess
+    wav = tmp / "voz.wav"
+    # el texto va por stdin en base64 para evitar problemas de comillas/acentos
+    import base64
+    b64 = base64.b64encode(texto.encode("utf-8")).decode("ascii")
+    sel = f"$s.SelectVoice('{voz}'); " if voz else ""
+    ps = (
+        "Add-Type -AssemblyName System.Speech; "
+        "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; "
+        + sel +
+        f"$t = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('{b64}')); "
+        f"$s.SetOutputToWaveFile('{wav}'); $s.Speak($t); $s.Dispose()")
+    r = subprocess.run(["powershell", "-NoProfile", "-Command", ps],
+                       capture_output=True, text=True, timeout=600)
+    if r.returncode != 0 or not wav.exists():
+        err(f"No pude usar la voz del sistema '{voz}' en Windows. "
+            f"Detalle: {(r.stderr or '')[:200]}")
+    return wav
+
+
 def say_voz(texto, voz, velocidad=1.0, on_progreso=None):
-    """Voz gratuita del sistema macOS (`say`). Offline, sin clave. mp3."""
+    """Voz gratuita del sistema operativo (macOS `say` o Windows SAPI). Offline,
+    sin clave. Devuelve bytes de mp3."""
     import subprocess
     import tempfile
     avisar = on_progreso or (lambda *_: None)
-    voz = voz or "Paulina"
     avisar("Generando la voz del sistema…", 30)
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
-        aiff, mp3 = tmp / "voz.aiff", tmp / "voz.mp3"
-        try:
-            subprocess.run(["say", "-v", voz, "-o", str(aiff), texto],
-                           check=True, capture_output=True, text=True)
-        except FileNotFoundError:
-            err("Las voces del sistema solo están disponibles en macOS.")
-        except subprocess.CalledProcessError as e:
-            err(f"No pude usar la voz del sistema '{voz}' (¿no está instalada?). "
-                f"Instala más voces en Ajustes → Accesibilidad → Contenido "
-                f"hablado. Detalle: {(e.stderr or '')[:200]}")
-        run(["ffmpeg", "-y", "-i", str(aiff), "-c:a", "libmp3lame",
+        mp3 = tmp / "voz.mp3"
+        if ES_WIN:
+            fuente = _say_windows(texto, voz, tmp)
+        elif ES_MAC:
+            fuente = tmp / "voz.aiff"
+            try:
+                subprocess.run(["say", "-v", voz or "Paulina", "-o", str(fuente), texto],
+                               check=True, capture_output=True, text=True)
+            except FileNotFoundError:
+                err("Las voces del sistema no están disponibles en este equipo.")
+            except subprocess.CalledProcessError as e:
+                err(f"No pude usar la voz del sistema '{voz}' (¿no está instalada?). "
+                    f"Instala más voces en Ajustes → Accesibilidad → Contenido "
+                    f"hablado. Detalle: {(e.stderr or '')[:200]}")
+        else:
+            err("Las voces del sistema solo están disponibles en macOS y Windows.")
+        run(["ffmpeg", "-y", "-i", str(fuente), "-c:a", "libmp3lame",
              "-q:a", "2", str(mp3)])
         data = mp3.read_bytes()
     avisar("Voz lista", 90)
@@ -1485,7 +1565,7 @@ def proveedores_voz():
     if edge_ok:
         provs.append({"id": "edge", "gratis": True, "disponible": True,
                       "custom": False, "voces": VOCES_EDGE})
-    if _sys.platform == "darwin":
+    if ES_MAC or ES_WIN:
         provs.append({"id": "sistema", "gratis": True, "disponible": True,
                       "custom": False, "voces": voces_sistema()})
     provs.append({"id": "minimax", "gratis": False,
@@ -1882,13 +1962,31 @@ def logo_de_overlay(p, oid):
     return None
 
 
+def _ruta_fuente():
+    """Ruta a una fuente TTF válida según el sistema operativo (para Pillow)."""
+    if ES_WIN:
+        win = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+        candidatos = [win / "arialbd.ttf", win / "segoeui.ttf", win / "arial.ttf"]
+    elif ES_MAC:
+        candidatos = [Path("/System/Library/Fonts/Helvetica.ttc"),
+                      Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf")]
+    else:
+        candidatos = [Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+                      Path("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")]
+    for c in candidatos:
+        if c.exists():
+            return str(c)
+    return None   # último recurso: la fuente por defecto de Pillow
+
+
 def _texto_a_png(texto, tamano, color, salida):
     """Renderiza el texto a un PNG transparente con borde negro (no dependemos
     del filtro drawtext, que falta en algunos ffmpeg de Homebrew)."""
     from PIL import Image, ImageDraw, ImageFont
     fs = TAM_TEXTO[tamano]
     borde = max(2, fs // 14)
-    fuente = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", fs)
+    ruta = _ruta_fuente()
+    fuente = ImageFont.truetype(ruta, fs) if ruta else ImageFont.load_default()
     sonda = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
     caja = sonda.textbbox((0, 0), texto, font=fuente, stroke_width=borde)
     mgn = borde + 6
@@ -1904,7 +2002,8 @@ def _texto_a_png(texto, tamano, color, salida):
 
 def _fuente(px):
     from PIL import ImageFont
-    return ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", int(px))
+    ruta = _ruta_fuente()
+    return ImageFont.truetype(ruta, int(px)) if ruta else ImageFont.load_default()
 
 
 def _ease_out(x):
@@ -3095,10 +3194,16 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
 
 
 def revelar_en_finder(ruta):
+    """Abre el explorador de archivos del SO mostrando (seleccionado) el archivo."""
     ruta = Path(ruta)
     if not ruta.exists():
         err("El archivo ya no existe.")
-    subprocess.run(["open", "-R", str(ruta)])
+    if ES_WIN:
+        subprocess.run(["explorer", "/select,", str(ruta)])
+    elif ES_MAC:
+        subprocess.run(["open", "-R", str(ruta)])
+    else:
+        subprocess.run(["xdg-open", str(ruta.parent)])
 
 
 def _dims_video(ruta):

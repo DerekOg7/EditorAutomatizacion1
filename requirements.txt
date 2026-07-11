@@ -1,0 +1,15 @@
+# Dependencias de AutoFaceless Studio.
+# Los pines de numpy/onnxruntime/av mantienen el piso de macOS en 11 (wheels
+# macosx_11_0); en Windows esos mismos pines traen wheels win_amd64 nativas.
+flask
+requests
+pillow
+faster-whisper
+ctranslate2
+numpy==1.26.4
+onnxruntime==1.19.2
+av==14.0.0
+tokenizers
+edge-tts
+ddgs
+pyinstaller==6.21.0

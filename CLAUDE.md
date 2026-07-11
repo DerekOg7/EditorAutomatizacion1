@@ -372,12 +372,61 @@ decidir la mejor opción, sin usar siempre solo fotos o solo videos.
   v0.15 congelado responde el endpoint y hace búsqueda web (ddgs empaquetado). Sin
   dependencias nuevas. Piso macOS sigue en 11.
 
-## Estado actual: v0.15 (rediseño + voz multi-proveedor + imágenes inteligentes; zip v0.15 en ~/Documents/CLAUDE/)
+## Multiplataforma (Windows-ready) + licencias offline (v0.16)
 
-> Las secciones de arriba (v0.07–v0.15) documentan lo añadido después de v0.06.
+Dos cambios grandes para poder lanzar la beta: código listo para Windows y un
+sistema de licencias con código + vencimiento.
+
+**Multiplataforma** (todo en `editor.py`/`lanzador.py`/`empaquetar.spec`):
+- `ES_WIN`/`ES_MAC`/`_EXE`. Carpeta de datos por SO (`_carpeta_datos()`: `%APPDATA%`
+  en Windows, Application Support en Mac, XDG en Linux). ffmpeg por SO
+  (`ffmpeg{_EXE}`; en Windows el spec toma `empaquetado/ffmpeg-win/` si existe).
+- Fuente para Pillow por SO (`_ruta_fuente()`: Arial/Segoe en Win, Helvetica en Mac,
+  DejaVu en Linux) — antes estaba fija a Helvetica.ttc (rompía en Windows).
+- `revelar_en_finder()` usa `explorer /select,` en Win, `open -R` en Mac.
+- **Voz del sistema en Windows**: `voces_sistema()`/`say_voz()` usan SAPI vía
+  PowerShell (`_voces_windows`/`_say_windows`) además del `say` de macOS; el
+  proveedor 'sistema' se ofrece en Mac y Win.
+- Lanzador: `_pids_en_puerto`/`_es_nuestro` usan `netstat`/`tasklist` en Windows
+  (Unix sigue con lsof/ps). El spec: `BUNDLE` solo en macOS; en Windows el
+  resultado es `dist/AutoFaceless Video/AutoFaceless Video.exe` (onedir).
+- **Build de Windows por CI**: `.github/workflows/build.yml` (job `windows`:
+  setup Python 3.11 → pip install -r requirements.txt → descarga ffmpeg de
+  gyan.dev a `empaquetado/ffmpeg-win/` → pyinstaller → sube zip como artifact;
+  job `macos` análogo con ffmpeg de evermeet). `requirements.txt` nuevo. **No se
+  puede compilar Windows desde la Mac** (PyInstaller no cruza): se usa el CI (o
+  una PC Windows con `pip install -r requirements.txt && pyinstaller empaquetar.spec`).
+
+**Licencias offline firmadas (Ed25519)**:
+- `licencia_ed25519.py` = Ed25519 en Python PURO (RFC 8032, dominio público) →
+  **sin dependencias nativas, no sube el piso de macOS**. Verificado: acepta una
+  firma Ed25519 real y rechaza forjadas/alteradas.
+- `licencia.py`: `generar_codigo(id, exp, plan, priv)` y `verificar_codigo()`
+  (comprueba firma con la **llave pública embebida** `LLAVE_PUBLICA_HEX` + fecha).
+  Código = `AFS1.<payload_b64url>.<firma_b64url>` (payload JSON canónico
+  {id,exp,plan}). Almacén en `DATOS/licencia.txt`; `estado()` para la app.
+- `scripts/generar_licencia.py`: CLI del dueño para emitir códigos
+  (`--id --dias N | --exp AAAA-MM-DD --plan`). Lee la privada de
+  `LLAVE_PRIVADA_NO_COMPARTIR.hex` (raíz, **gitignored**) o `AFS_LLAVE_PRIVADA`.
+  **La privada NUNCA va en la app ni en git.**
+- app.py: `GET/POST /api/licencia` + `@app.before_request` (`_puerta_licencia`):
+  si `EXIGIR_LICENCIA` y no hay licencia válida → 402 en todo salvo `/`,
+  `/api/salud`, `/api/licencia`, `/api/config`, `/static/*`. `EXIGIR_LICENCIA =
+  EMPAQUETADA or AFS_FORZAR_LICENCIA==1` (en dev NO exige, salvo con esa env para
+  probar). Frontend: overlay `#licencia` (pantalla de activación, pega el código),
+  chip `#tb-lic` de vencimiento cuando quedan ≤14 días, `activarLicencia()`.
+- Verificado e2e: el `.app` v0.16 congelado exige licencia (`/api/proyectos` da 402
+  sin código, 200 tras activar); pantalla de activación probada en el navegador
+  (código inválido → error, válido → activa; caducado → aviso). Piso macOS sigue en 11.
+- **Código de dueño (1 año, plan owner) para desbloquear tu propia build**:
+  `AFS1.eyJleHAiOiIyMDI3LTA3LTExIiwiaWQiOiJkZXJlay1vd25lciIsInBsYW4iOiJvd25lciJ9.cZ1f7EqKzKdKaNFLripJpwqbcSj7znD0Sw28dHIHtQ2wt0N-pi3rastxeqr9k8JtXKmhGg7pnzBER1M9OC9OAg`
+
+## Estado actual: v0.16 (multiplataforma + licencias; zip v0.16 en ~/Documents/CLAUDE/)
+
+> Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.15-beta-macOS.zip`. Dependencia nueva desde v0.14:
-> `edge-tts` (instálala en el venv con `pip install edge-tts` si recreas el entorno).
+> `AutoFaceless-Video-v0.16-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/
   logos/6 plantillas de animación, música, deshacer/rehacer, previsualización

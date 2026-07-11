@@ -461,6 +461,17 @@
   .zona-archivo.con-archivo { border-color: var(--ok); color: var(--ok); }
   #aviso-pexels { background: #3a2b12; color: var(--ambar); border-radius: 10px; padding: 10px 14px; margin: 10px 20px 0; font-size: 13px; display: none; }
 
+  /* pantalla de licencia (gate) */
+  #licencia { position: fixed; inset: 0; z-index: 110; background: var(--bg);
+    display: none; align-items: center; justify-content: center; }
+  #lic-codigo { width: 100%; font: 13px ui-monospace, Menlo, monospace; margin: 6px 0 4px;
+    resize: vertical; text-align: center; }
+  #lic-msg { min-height: 20px; font-size: 13px; margin-top: 8px; }
+  #lic-estado { font-size: 13px; color: var(--tenue); margin: -6px 0 14px; }
+  #tb-lic { display: none; align-items: center; gap: 6px; background: var(--acento-suave);
+    color: var(--acento); border-radius: 14px; padding: 5px 12px; font: 600 12px 'Roboto', sans-serif; }
+  #tb-lic.on { display: inline-flex; }
+
   /* pantalla de bienvenida */
   #bienvenida { position: fixed; inset: 0; z-index: 100; background: var(--bg);
     display: flex; align-items: center; justify-content: center; }
@@ -555,6 +566,19 @@
 </head>
 <body>
 
+<div id="licencia">
+  <div class="bienv-caja">
+    <div class="iso iso-96" style="margin:0 auto 20px"><div class="cabeza"></div><div class="hombros"></div></div>
+    <div class="bienv-marca">AutoFaceless <span>Studio</span></div>
+    <p class="bienv-tagline" data-i18n="lic_intro">Pega tu código de licencia para activar la app.</p>
+    <div id="lic-estado"></div>
+    <textarea id="lic-codigo" rows="3" data-i18n-ph="lic_ph" placeholder="AFS1..."></textarea>
+    <button class="primario bienv-start" onclick="activarLicencia()" data-i18n="lic_activate">Activar licencia</button>
+    <div id="lic-msg"></div>
+    <div style="font-size:11px;color:var(--tenue);margin-top:16px" data-i18n="lic_help">¿No tienes un código? Escríbenos para unirte a la beta.</div>
+  </div>
+</div>
+
 <div id="bienvenida">
   <div class="bienv-caja">
     <div class="iso iso-96" style="margin:0 auto 20px"><div class="cabeza"></div><div class="hombros"></div></div>
@@ -581,6 +605,7 @@
     </div>
   </div>
   <div id="tb-der">
+    <span id="tb-lic" title="Estado de tu licencia"></span>
     <div class="seg">
       <button id="tb-es" class="on" onclick="fijarIdioma('es')">ES</button>
       <button id="tb-en" onclick="fijarIdioma('en')">EN</button>
@@ -1390,7 +1415,7 @@
       <p style="color:var(--ok)" data-i18n="exp_saved">✓ Video guardado en:</p>
       <p id="exp-ruta" style="font-size:12px;word-break:break-all;background:var(--bg);padding:8px 10px;border-radius:8px;margin:8px 0"></p>
       <div class="botones">
-        <button id="btn-revelar" data-i18n="exp_reveal">Mostrar en Finder</button>
+        <button id="btn-revelar" data-i18n="exp_reveal">📂 Abrir la carpeta</button>
         <button class="primario" onclick="cerrarModal('modal-exportar')" data-i18n="btn_close">Cerrar</button>
       </div>
     </div>
@@ -1548,6 +1573,11 @@ let idioma = localStorage.getItem('afv_idioma') || 'es';
 const L = (es, en) => idioma === 'en' ? en : es;
 
 const EN = {
+  // --- licencia ---
+  lic_intro: "Paste your license code to activate the app.",
+  lic_ph: "AFS1...",
+  lic_activate: "Activate license",
+  lic_help: "Don't have a code? Contact us to join the beta.",
   // --- rediseño: barra superior ---
   tb_back: "← Back", tb_help: "? Help",
   // --- Principal ---
@@ -1800,7 +1830,7 @@ const EN = {
   exp_rebuild: "⚙ There are unrendered changes: the video will be built before saving (may take a while).",
   exp_processing: "Processing…",
   exp_saved: "✓ Video saved to:",
-  exp_reveal: "Show in Finder",
+  exp_reveal: "📂 Open folder",
   pos_si: "Top left",
   pos_sd: "Top right",
   pos_ci: "Center left",
@@ -4164,12 +4194,59 @@ async function exportarSeleccionHist() {
 // stub: se completa en la barra lateral del editor
 function renderSidebarStories() { if (typeof pintarSidebarStories === 'function') pintarSidebarStories(); }
 
+/* ---------------- licencia ---------------- */
+
+function mostrarLicencia(lic) {
+  $('licencia').style.display = 'flex';
+  $('bienvenida').style.display = 'none';
+  const est = $('lic-estado');
+  if (lic && lic.razon === 'vencida') {
+    est.style.color = 'var(--alerta)';
+    est.textContent = L('Tu licencia venció' + (lic.exp ? ' el ' + lic.exp : '') + '. Pega una nueva para seguir.',
+                        'Your license expired' + (lic.exp ? ' on ' + lic.exp : '') + '. Paste a new one to continue.');
+  } else { est.textContent = ''; }
+}
+
+async function activarLicencia() {
+  const codigo = $('lic-codigo').value.trim();
+  if (!codigo) return;
+  $('lic-msg').style.color = 'var(--tenue)';
+  $('lic-msg').textContent = L('Verificando…', 'Checking…');
+  try {
+    const r = await api('/api/licencia', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ codigo }) });
+    $('lic-msg').style.color = 'var(--ok)';
+    $('lic-msg').textContent = L('✓ Licencia activada — abriendo…', '✓ License activated — opening…');
+    setTimeout(() => window.location.reload(), 900);
+  } catch (e) {
+    $('lic-msg').style.color = 'var(--alerta)';
+    $('lic-msg').textContent = e.message;
+  }
+}
+
+function pintarChipLicencia(lic) {
+  const chip = $('tb-lic');
+  if (!lic || !lic.activa || lic.dias_restantes == null) { chip.classList.remove('on'); return; }
+  if (lic.dias_restantes <= 14) {
+    chip.classList.add('on');
+    chip.textContent = '⏳ ' + L(lic.dias_restantes + ' días', lic.dias_restantes + ' days');
+  } else { chip.classList.remove('on'); }
+}
+
 /* ---------------- arranque ---------------- */
 
 (async function init() {
-  // idioma + bienvenida
+  // idioma
   aplicarIdioma();
   document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === idioma));
+
+  // gate de licencia (solo si la app la exige)
+  let lic = null;
+  try { lic = await api('/api/licencia'); } catch (e) { /* offline */ }
+  if (lic && lic.exigir && !lic.activa) { mostrarLicencia(lic); return; }
+  pintarChipLicencia(lic);
+
   if (localStorage.getItem('afv_sidebar_col') === '1') {
     $('lateral').classList.add('colapsado'); $('lat-colapsar').textContent = '▶';
   }

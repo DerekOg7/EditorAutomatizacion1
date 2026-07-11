@@ -1,15 +1,19 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Empaqueta el editor como app de macOS.  Uso:  pyinstaller empaquetar.spec
+# Empaqueta el editor.  Uso:  pyinstaller empaquetar.spec
 #
-# El .app resultante queda en dist/AutoFaceless Video.app — se puede
-# copiar/comprimir para compartir. No está firmado: la primera vez hay que
-# abrirlo con clic derecho → Abrir (Gatekeeper).
+# macOS  → dist/AutoFaceless Video.app  (BUNDLE; sin firmar: clic derecho → Abrir).
+# Windows → dist/AutoFaceless Video/AutoFaceless Video.exe  (carpeta onedir;
+#           SmartScreen: Más información → Ejecutar de todos modos).
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
 
 exec(Path("version.py").read_text())  # define VERSION
+
+ES_WIN = sys.platform.startswith("win")
+ES_MAC = sys.platform == "darwin"
 
 block_cipher = None
 nombre_app = "AutoFaceless Video"
@@ -26,9 +30,13 @@ for paquete in ("faster_whisper", "ctranslate2", "onnxruntime", "tokenizers",
     binarios += b
     ocultos += h
 
+# ffmpeg estático según el SO (en Windows, ffmpeg.exe/ffprobe.exe en ffmpeg-win).
+_ff_win = Path("empaquetado/ffmpeg-win")
+_ff_dir = "empaquetado/ffmpeg-win" if (ES_WIN and _ff_win.is_dir()) else "empaquetado/ffmpeg"
+
 datas += [
     ("static", "static"),
-    ("empaquetado/ffmpeg", "ffmpeg"),
+    (_ff_dir, "ffmpeg"),
 ]
 
 a = Analysis(
@@ -36,7 +44,8 @@ a = Analysis(
     pathex=["."],
     binaries=binarios,
     datas=datas,
-    hiddenimports=ocultos + ["editor", "app", "version"],
+    hiddenimports=ocultos + ["editor", "app", "version",
+                             "licencia", "licencia_ed25519"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -46,12 +55,16 @@ a = Analysis(
 )
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# En Windows el ejecutable lleva el nombre de la app (AutoFaceless Video.exe);
+# en macOS se llama "lanzador" y el .app envolvente lleva el nombre bonito.
+_exe_name = nombre_app if ES_WIN else "lanzador"
+
 exe = EXE(
     pyz,
     a.scripts,
     [],
     exclude_binaries=True,
-    name="lanzador",
+    name=_exe_name,
     debug=False,
     strip=False,
     upx=False,
@@ -68,17 +81,20 @@ coll = COLLECT(
     name=nombre_app,
 )
 
-app = BUNDLE(
-    coll,
-    name=f"{nombre_app}.app",
-    icon=None,
-    bundle_identifier="com.autofacelessvideo.editor",
-    info_plist={
-        "CFBundleName": nombre_app,
-        "CFBundleDisplayName": nombre_app,
-        "CFBundleShortVersionString": VERSION,
-        "CFBundleVersion": VERSION,
-        "NSHighResolutionCapable": True,
-        "LSUIElement": False,
-    },
-)
+# El BUNDLE (.app) solo existe en macOS; en Windows el resultado es la carpeta
+# onedir dist/AutoFaceless Video/ con el .exe adentro.
+if ES_MAC:
+    app = BUNDLE(
+        coll,
+        name=f"{nombre_app}.app",
+        icon=None,
+        bundle_identifier="com.autofacelessvideo.editor",
+        info_plist={
+            "CFBundleName": nombre_app,
+            "CFBundleDisplayName": nombre_app,
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
+            "NSHighResolutionCapable": True,
+            "LSUIElement": False,
+        },
+    )

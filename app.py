@@ -6,6 +6,7 @@ App web del editor — corre local y abre http://localhost:5178
 """
 
 import datetime
+import os
 import re
 import threading
 import time
@@ -16,11 +17,32 @@ from flask import Flask, jsonify, request, send_file
 from werkzeug.exceptions import HTTPException
 
 import editor
+import licencia
 from editor import BASE, DATOS, PROYECTOS, ErrorPipeline
 from version import VERSION
 
 app = Flask(__name__, static_folder=str(BASE / "static"), static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
+
+# La licencia se exige en la app empaquetada; en desarrollo no, salvo que se
+# ponga AFS_FORZAR_LICENCIA=1 (útil para probar la pantalla de activación).
+EXIGIR_LICENCIA = editor.EMPAQUETADA or os.environ.get("AFS_FORZAR_LICENCIA") == "1"
+# Rutas accesibles siempre (aunque no haya licencia): la página, salud y la
+# propia activación de licencia. El resto se bloquea hasta activar.
+_LIBRES = {"/", "/api/salud", "/api/licencia", "/api/config"}
+
+
+@app.before_request
+def _puerta_licencia():
+    if not EXIGIR_LICENCIA:
+        return None
+    ruta = request.path
+    if ruta in _LIBRES or ruta.startswith("/static/"):
+        return None
+    if licencia.estado().get("activa"):
+        return None
+    return jsonify({"error": "licencia_requerida",
+                    "mensaje": "Activa tu licencia para usar la app."}), 402
 
 
 @app.errorhandler(Exception)
@@ -294,6 +316,30 @@ def salud():
     instancia aún puede servir la interfaz (sus archivos siguen existiendo)."""
     return jsonify({"app": "autofaceless", "version": VERSION,
                     "ok": (BASE / "static" / "index.html").exists()})
+
+
+@app.get("/api/licencia")
+def licencia_estado():
+    e = licencia.estado()
+    e["exigir"] = EXIGIR_LICENCIA
+    return jsonify(e)
+
+
+@app.post("/api/licencia")
+def licencia_activar():
+    codigo = (request.get_json(force=True) or {}).get("codigo", "")
+    r = licencia.guardar_licencia(codigo)
+    if not r["valido"]:
+        motivos = {
+            "vencida": "Este código ya venció. Pide uno nuevo.",
+            "firma": "El código no es válido (firma incorrecta).",
+            "formato": "El código no tiene el formato correcto.",
+            "fecha": "El código tiene una fecha inválida.",
+        }
+        return jsonify({"error": motivos.get(r["razon"], "Código inválido."),
+                        "razon": r["razon"]}), 400
+    return jsonify({"ok": True, "id": r["id"], "exp": r["exp"],
+                    "plan": r["plan"], "dias_restantes": r["dias_restantes"]})
 
 
 @app.get("/api/config")

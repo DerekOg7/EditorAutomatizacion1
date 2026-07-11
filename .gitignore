@@ -8,3 +8,7 @@ proyectos/
 guiones/
 error.log
 .DS_Store
+
+# llave privada de licencias — NUNCA subir
+LLAVE_PRIVADA_NO_COMPARTIR.hex
+licencia.txt

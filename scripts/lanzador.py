@@ -43,8 +43,24 @@ def salud(puerto):
         return None
 
 
+ES_WIN = sys.platform.startswith("win")
+
+
 def _pids_en_puerto(puerto):
     try:
+        if ES_WIN:
+            out = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                                 capture_output=True, text=True, timeout=8).stdout
+            pids = set()
+            for linea in out.splitlines():
+                partes = linea.split()
+                if len(partes) >= 5 and partes[3] == "LISTENING" \
+                        and partes[1].endswith(f":{puerto}"):
+                    try:
+                        pids.add(int(partes[4]))
+                    except ValueError:
+                        pass
+            return list(pids)
         out = subprocess.run(["lsof", "-ti", f"tcp:{puerto}"],
                              capture_output=True, text=True, timeout=5).stdout
         return [int(x) for x in out.split()]
@@ -55,6 +71,11 @@ def _pids_en_puerto(puerto):
 def _es_nuestro(pid):
     """True si el proceso es una instancia de esta app (vieja o actual)."""
     try:
+        if ES_WIN:
+            out = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=8).stdout.lower()
+            return "lanzador" in out or "autofaceless" in out
         comm = subprocess.run(["ps", "-p", str(pid), "-o", "comm="],
                               capture_output=True, text=True, timeout=5).stdout
         return "lanzador" in comm or "AutoFaceless" in comm

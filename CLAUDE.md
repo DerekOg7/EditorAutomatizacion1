@@ -508,11 +508,28 @@ terceros — no funcionan en localhost; se descartó AdSense).
   abierto (sin código) habría que permitir en `_puerta_licencia` que "sin licencia"
   = gratis; es 1 cambio, pendiente de decisión de Derek.
 
-## Estado actual: v0.19 (freemium gratis/Pro; zip v0.19 en ~/Documents/CLAUDE/)
+## Versión gratis ABIERTA sin código (v0.20)
+
+Decisión de Derek: la versión gratis se usa **sin código de activación**. Se quitó
+la "puerta" de licencia (`_puerta_licencia` before_request ELIMINADA; ya no hay 402
+por falta de licencia). El código de licencia solo sirve para **desbloquear Pro**.
+- `es_pro()`: sin licencia → gratis en la app empaquetada (`return not
+  editor.EMPAQUETADA`); en dev sin licencia = Pro (para probar). AFS_FORZAR_GRATIS=1
+  fuerza gratis. Con licencia activa → su plan.
+- `/api/licencia` devuelve `exigir: False` siempre → el frontend nunca muestra el
+  gate al arrancar (va directo a home; el badge "🆓 Gratis" aparece si no es Pro).
+- Se eliminaron `EXIGIR_LICENCIA` / `_LIBRES` / `AFS_FORZAR_LICENCIA` (ya no hay
+  beta cerrada; si se quisiera, se reañade una puerta). La pantalla `#licencia`
+  ahora solo se abre a voluntad (badge / upsell) para pegar un código Pro.
+- Verificado: sin código → `/api/proyectos` da 200 (no bloquea), `pro:false`,
+  export solo 720p; la app arranca en home sin pantalla de licencia. Con código
+  Pro → 1080p sin marca.
+
+## Estado actual: v0.20 (gratis abierto sin código; zip v0.20 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.19-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.20-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

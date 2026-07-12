@@ -24,36 +24,20 @@ from version import VERSION
 app = Flask(__name__, static_folder=str(BASE / "static"), static_url_path="/static")
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024
 
-# La licencia se exige en la app empaquetada; en desarrollo no, salvo que se
-# ponga AFS_FORZAR_LICENCIA=1 (útil para probar la pantalla de activación).
-EXIGIR_LICENCIA = editor.EMPAQUETADA or os.environ.get("AFS_FORZAR_LICENCIA") == "1"
-# Rutas accesibles siempre (aunque no haya licencia): la página, salud y la
-# propia activación de licencia. El resto se bloquea hasta activar.
-_LIBRES = {"/", "/api/salud", "/api/licencia", "/api/config"}
-
-
-@app.before_request
-def _puerta_licencia():
-    if not EXIGIR_LICENCIA:
-        return None
-    ruta = request.path
-    if ruta in _LIBRES or ruta.startswith("/static/"):
-        return None
-    if licencia.estado().get("activa"):
-        return None
-    return jsonify({"error": "licencia_requerida",
-                    "mensaje": "Activa tu licencia para usar la app."}), 402
-
+# La versión gratis es ABIERTA: no se exige código para usar la app. El código
+# de licencia solo sirve para desbloquear Pro (sin marca de agua, 1080p, etc.).
+# (Si algún día se quiere una beta cerrada, se puede reactivar una puerta aquí.)
 
 def es_pro():
     """True si el plan de la licencia da acceso Pro (sin marca de agua, 1080p…).
-    En desarrollo (sin exigir licencia) se trata como Pro; AFS_FORZAR_GRATIS=1
-    fuerza la versión gratis para poder probarla."""
+    Sin licencia = versión gratis. AFS_FORZAR_GRATIS=1 fuerza gratis (para probar);
+    en desarrollo, sin licencia se trata como Pro para poder probarlo todo."""
     if os.environ.get("AFS_FORZAR_GRATIS") == "1":
         return False
-    if not EXIGIR_LICENCIA:
-        return True
-    return bool(licencia.estado().get("pro"))
+    st = licencia.estado()
+    if st.get("activa"):
+        return bool(st.get("pro"))
+    return not editor.EMPAQUETADA   # dev = Pro; empaquetada sin licencia = gratis
 
 
 @app.errorhandler(Exception)
@@ -333,8 +317,8 @@ def salud():
 @app.get("/api/licencia")
 def licencia_estado():
     e = licencia.estado()
-    e["exigir"] = EXIGIR_LICENCIA
-    e["pro"] = es_pro()   # incluye el override de desarrollo (AFS_FORZAR_GRATIS)
+    e["exigir"] = False   # la app gratis es abierta: nunca se bloquea por licencia
+    e["pro"] = es_pro()
     return jsonify(e)
 
 

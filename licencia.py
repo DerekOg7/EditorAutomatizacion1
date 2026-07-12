@@ -106,12 +106,22 @@ def leer_licencia_guardada():
     return ""
 
 
+# Planes que dan acceso "Pro" (sin marca de agua, 1080p, etc.). Cualquier otro
+# plan (p. ej. "free"/"gratis") o la ausencia de licencia = versión gratis.
+PLANES_PRO = {"pro", "owner", "beta", "premium", "lifetime", "todo", "vip"}
+
+
+def es_plan_pro(plan):
+    return (plan or "").strip().lower() in PLANES_PRO
+
+
 def estado():
     """Estado de la licencia instalada (para la app)."""
     codigo = leer_licencia_guardada()
     if not codigo:
-        return {"activa": False, "razon": "sin_licencia"}
+        return {"activa": False, "razon": "sin_licencia", "pro": False}
     r = verificar_codigo(codigo)
     return {"activa": bool(r["valido"]), "razon": r["razon"], "id": r["id"],
             "plan": r["plan"], "exp": r["exp"],
-            "dias_restantes": r["dias_restantes"]}
+            "dias_restantes": r["dias_restantes"],
+            "pro": bool(r["valido"]) and es_plan_pro(r["plan"])}

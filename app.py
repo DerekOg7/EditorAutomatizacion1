@@ -45,6 +45,17 @@ def _puerta_licencia():
                     "mensaje": "Activa tu licencia para usar la app."}), 402
 
 
+def es_pro():
+    """True si el plan de la licencia da acceso Pro (sin marca de agua, 1080p…).
+    En desarrollo (sin exigir licencia) se trata como Pro; AFS_FORZAR_GRATIS=1
+    fuerza la versión gratis para poder probarla."""
+    if os.environ.get("AFS_FORZAR_GRATIS") == "1":
+        return False
+    if not EXIGIR_LICENCIA:
+        return True
+    return bool(licencia.estado().get("pro"))
+
+
 @app.errorhandler(Exception)
 def _registrar_error(e):
     """Beta: cualquier error no controlado se guarda en un log y se muestra
@@ -226,7 +237,7 @@ def hilo_exportar(nombre):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad):
+def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad, marca_agua=False):
     p = PROYECTOS / nombre
     try:
         set_estado(nombre, fase="exportando", progreso=0, error=None,
@@ -234,6 +245,7 @@ def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad):
         master_ok = (p / "video.mp4").exists() and not video_desactualizado(p)
         destino = editor.exportar_final(
             p, carpeta, nombre_archivo, calidad, master_ok=master_ok,
+            marca_agua=marca_agua,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
         set_estado(nombre, fase="listo", progreso=100,
                    detalle=f"Guardado en {destino}", destino=str(destino))
@@ -243,12 +255,12 @@ def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad):
+def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad, marca_agua=False):
     try:
         set_estado("__union__", fase="exportando", progreso=0, error=None,
                    detalle="Preparando…", destino=None)
         destino = editor.exportar_union(
-            nombres, carpeta, nombre_archivo, calidad,
+            nombres, carpeta, nombre_archivo, calidad, marca_agua=marca_agua,
             on_progreso=lambda t, pc: set_estado("__union__", detalle=t, progreso=pc))
         set_estado("__union__", fase="listo", progreso=100,
                    detalle=f"Guardado en {destino}", destino=str(destino))
@@ -322,6 +334,7 @@ def salud():
 def licencia_estado():
     e = licencia.estado()
     e["exigir"] = EXIGIR_LICENCIA
+    e["pro"] = es_pro()   # incluye el override de desarrollo (AFS_FORZAR_GRATIS)
     return jsonify(e)
 
 
@@ -1183,9 +1196,22 @@ def exportar(nombre):
 
 @app.get("/api/exportar/opciones")
 def exportar_opciones():
-    return jsonify({"carpetas": editor.carpetas_comunes(),
-                    "calidades": [{"id": k, "etiqueta": v["etiqueta"]}
-                                  for k, v in editor.CALIDADES.items()]})
+    pro = es_pro()
+    # en la versión gratis solo se ofrece 720p (calidades cuyo lado corto ≤ 720)
+    cal = [{"id": k, "etiqueta": v["etiqueta"]} for k, v in editor.CALIDADES.items()
+           if pro or v["corto"] <= 720]
+    return jsonify({"carpetas": editor.carpetas_comunes(), "calidades": cal,
+                    "pro": pro})
+
+
+def _calidad_permitida(calidad):
+    """Si es versión gratis, limita la calidad a 720p (lado corto ≤ 720)."""
+    if es_pro():
+        return calidad
+    cfg = editor.CALIDADES.get(calidad)
+    if cfg and cfg["corto"] > 720:
+        return "ligera"      # baja a 720p
+    return calidad
 
 
 @app.post("/api/proyectos/<nombre>/exportar_final")
@@ -1196,7 +1222,7 @@ def exportar_final(nombre):
     threading.Thread(
         target=hilo_exportar_final,
         args=(nombre, d.get("carpeta", ""), d.get("nombre_archivo", ""),
-              d.get("calidad", "alta")),
+              _calidad_permitida(d.get("calidad", "alta")), not es_pro()),
         daemon=True).start()
     return jsonify({"ok": True})
 
@@ -1234,7 +1260,7 @@ def exportar_union():
         target=hilo_exportar_union,
         args=(nombres, datos.get("carpeta", ""),
               datos.get("nombre_archivo", "video_final"),
-              datos.get("calidad", "alta")),
+              _calidad_permitida(datos.get("calidad", "alta")), not es_pro()),
         daemon=True).start()
     return jsonify({"ok": True})
 

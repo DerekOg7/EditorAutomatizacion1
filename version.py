@@ -1,2 +1,2 @@
 """Versión única de la app — la leen app.py, el lanzador y empaquetar.spec."""
-VERSION = "0.18"
+VERSION = "0.19"

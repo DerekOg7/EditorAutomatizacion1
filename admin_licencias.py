@@ -165,7 +165,7 @@ PAGINA = """<!DOCTYPE html><html lang="es"><head><meta charset="utf-8">
       </div>
       <div>
         <label>PLAN</label>
-        <select id="plan"><option>beta</option><option>pro</option><option>owner</option></select>
+        <select id="plan"><option value="free">free (con marca de agua / 720p)</option><option>pro</option><option>beta</option><option>owner</option></select>
       </div>
     </div>
     <div id="zona-fecha" style="display:none"><label>VENCE EL</label><input type="date" id="exp"></div>

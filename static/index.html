@@ -506,6 +506,10 @@
   #tb-lic { display: none; align-items: center; gap: 6px; background: var(--acento-suave);
     color: var(--acento); border-radius: 14px; padding: 5px 12px; font: 600 12px 'Roboto', sans-serif; }
   #tb-lic.on { display: inline-flex; }
+  #tb-plan { display: none; align-items: center; background: var(--oscuro2); color: #fff;
+    border-radius: 14px; padding: 5px 12px; font: 600 12px 'Roboto', sans-serif; cursor: pointer; }
+  #tb-plan.on { display: inline-flex; }
+  #tb-plan:hover { background: var(--acento); }
 
   /* pantalla de bienvenida */
   #bienvenida { position: fixed; inset: 0; z-index: 100; background: var(--bg);
@@ -609,6 +613,7 @@
     <div id="lic-estado"></div>
     <textarea id="lic-codigo" rows="3" data-i18n-ph="lic_ph" placeholder="AFS1..."></textarea>
     <button class="primario bienv-start" onclick="activarLicencia()" data-i18n="lic_activate">Activar licencia</button>
+    <button id="lic-cerrar" onclick="cerrarLicencia()" style="display:none;width:100%;margin-top:8px" data-i18n="lic_keep_free">Seguir en la versión gratis</button>
     <div id="lic-msg"></div>
     <div style="font-size:11px;color:var(--tenue);margin-top:16px" data-i18n="lic_help">¿No tienes un código? Escríbenos para unirte a la beta.</div>
   </div>
@@ -640,6 +645,7 @@
     </div>
   </div>
   <div id="tb-der">
+    <span id="tb-plan" onclick="abrirLicencia()" title="Tu plan"></span>
     <span id="tb-lic" title="Estado de tu licencia"></span>
     <div class="seg">
       <button id="tb-es" class="on" onclick="fijarIdioma('es')">ES</button>
@@ -1398,6 +1404,11 @@
 <div class="modal-fondo" id="modal-exportar">
   <div class="modal">
     <h3 id="exp-titulo" data-i18n="exp_title">Exportar esta historia</h3>
+    <div id="exp-upsell" style="display:none;background:var(--acento-suave);border:1px solid #f3c9c4;border-radius:12px;padding:12px 14px;margin-bottom:14px">
+      <div style="font:700 13px 'Roboto';color:var(--acento)" data-i18n="exp_free_t">Versión gratis</div>
+      <div style="font-size:12.5px;color:var(--texto);margin:3px 0 8px" data-i18n="exp_free_d">El video se exportará con una pequeña marca de agua y hasta 720p. Con Pro exportas en 1080p y sin marca de agua.</div>
+      <button class="primario" style="padding:7px 14px;font-size:13px" onclick="cerrarModal('modal-exportar');abrirLicencia()" data-i18n="exp_free_btn">✨ Mejorar a Pro</button>
+    </div>
     <div id="exp-form">
       <div class="campo">
         <h4 style="font-size:11px;color:var(--tenue);letter-spacing:1px" data-i18n="exp_file">NOMBRE DEL ARCHIVO</h4>
@@ -1596,6 +1607,10 @@ const EN = {
   lic_ph: "AFS1...",
   lic_activate: "Activate license",
   lic_help: "Don't have a code? Contact us to join the beta.",
+  lic_keep_free: "Continue with the free version",
+  exp_free_t: "Free version",
+  exp_free_d: "The video will export with a small watermark and up to 720p. Pro exports 1080p with no watermark.",
+  exp_free_btn: "✨ Upgrade to Pro",
   // --- rediseño: barra superior ---
   tb_back: "← Back", tb_help: "? Help",
   // --- Principal ---
@@ -4054,6 +4069,7 @@ async function abrirExportar() {
   $('exp-form').style.display = '';
   $('exp-progreso').style.display = 'none';
   $('btn-exp-lanzar').disabled = false;
+  $('exp-upsell').style.display = esPro ? 'none' : '';
   expUnion = seleccionadas.length >= 2 ? [...seleccionadas] : null;
   if (expUnion) {
     $('exp-titulo').textContent = L(`Exportar y unir ${expUnion.length} historias`, `Export & merge ${expUnion.length} stories`);
@@ -4277,6 +4293,7 @@ function renderSidebarStories() { if (typeof pintarSidebarStories === 'function'
 function mostrarLicencia(lic) {
   $('licencia').style.display = 'flex';
   $('bienvenida').style.display = 'none';
+  $('lic-cerrar').style.display = 'none';   // es el gate: no se puede cerrar sin activar
   const est = $('lic-estado');
   if (lic && lic.razon === 'vencida') {
     est.style.color = 'var(--alerta)';
@@ -4312,6 +4329,25 @@ function pintarChipLicencia(lic) {
   } else { chip.classList.remove('on'); }
 }
 
+let esPro = true;   // versión Pro por defecto (dev); lo fija /api/licencia
+function pintarPlan(lic) {
+  esPro = !!(lic && lic.pro);
+  const b = $('tb-plan');
+  if (esPro) { b.classList.remove('on'); return; }
+  b.classList.add('on');
+  b.textContent = L('🆓 Gratis · Mejora a Pro', '🆓 Free · Upgrade to Pro');
+}
+
+// mostrar la pantalla de licencia para ACTIVAR/actualizar sin estar bloqueado
+function abrirLicencia() {
+  $('lic-codigo').value = '';
+  $('lic-msg').textContent = '';
+  $('lic-estado').textContent = '';
+  $('lic-cerrar').style.display = '';   // se puede cerrar (no es el gate inicial)
+  $('licencia').style.display = 'flex';
+}
+function cerrarLicencia() { $('licencia').style.display = 'none'; }
+
 /* ---------------- arranque ---------------- */
 
 (async function init() {
@@ -4324,6 +4360,7 @@ function pintarChipLicencia(lic) {
   try { lic = await api('/api/licencia'); } catch (e) { /* offline */ }
   if (lic && lic.exigir && !lic.activa) { mostrarLicencia(lic); return; }
   pintarChipLicencia(lic);
+  pintarPlan(lic);
 
   if (localStorage.getItem('afv_sidebar_col') === '1') {
     $('lateral').classList.add('colapsado'); $('lat-colapsar').textContent = '▶';

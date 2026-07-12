@@ -3137,8 +3137,42 @@ def nombre_archivo_seguro(nombre, por_defecto):
     return (nombre or por_defecto) + ".mp4"
 
 
+def _marca_agua_png(dims, salida):
+    """Genera el PNG de la marca de agua (isotipo + 'AutoFaceless Studio' en una
+    pastilla semitransparente), dimensionado según el alto del video de salida."""
+    from PIL import Image, ImageDraw, ImageFont
+    _ancho, alto = dims
+    fs = max(18, round(alto * 0.030))
+    txt = "AutoFaceless Studio"
+    ruta = _ruta_fuente()
+    fuente = ImageFont.truetype(ruta, fs) if ruta else ImageFont.load_default()
+    sonda = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    caja = sonda.textbbox((0, 0), txt, font=fuente)
+    tw, th = caja[2] - caja[0], caja[3] - caja[1]
+    padx, pady = round(fs * 0.7), round(fs * 0.45)
+    logo, gap = round(fs * 1.05), round(fs * 0.5)
+    W = padx + logo + gap + tw + padx
+    H = pady + max(th, logo) + pady
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([0, 0, W - 1, H - 1], radius=H // 2, fill=(15, 15, 20, 150))
+    lx, ly = padx, (H - logo) // 2
+    d.rounded_rectangle([lx, ly, lx + logo, ly + logo], radius=round(logo * 0.26),
+                        fill=(196, 35, 27, 235))
+    cab = round(logo * 0.34)
+    d.ellipse([lx + logo / 2 - cab / 2, ly + logo * 0.16,
+               lx + logo / 2 + cab / 2, ly + logo * 0.16 + cab], fill=(255, 255, 255, 235))
+    hw, hh = round(logo * 0.62), round(logo * 0.42)
+    d.rounded_rectangle([lx + logo / 2 - hw / 2, ly + logo - hh,
+                         lx + logo / 2 + hw / 2, ly + logo], radius=round(hw * 0.5),
+                        fill=(255, 255, 255, 235))
+    d.text((lx + logo + gap, (H - th) // 2 - caja[1]), txt, font=fuente,
+           fill=(255, 255, 255, 225))
+    img.save(salida)
+
+
 def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
-                   on_progreso=None, master_ok=False):
+                   on_progreso=None, master_ok=False, marca_agua=False):
     """Construye el master (video.mp4) si hace falta y lo transcodifica a la
     calidad/carpeta/nombre elegidos. Devuelve la ruta final."""
     avisar = on_progreso or (lambda *_: None)
@@ -3170,17 +3204,36 @@ def exportar_final(p, carpeta, nombre_archivo, calidad="alta",
     # (casi instantáneo). Si baja (720p), se escala manteniendo el formato.
     ancho_m, alto_m = dims_proyecto(p)
     corto_m = min(ancho_m, alto_m)
-    if cfg["corto"] >= corto_m:
+    baja = cfg["corto"] < corto_m
+    if baja:
+        factor = cfg["corto"] / corto_m
+        out_w = round(ancho_m * factor / 2) * 2      # dimensiones pares
+        out_h = round(alto_m * factor / 2) * 2
+    else:
+        out_w, out_h = ancho_m, alto_m
+
+    if marca_agua:
+        avisar("Añadiendo la marca de agua y guardando…", 88)
+        wm = tmp.with_name("_marca.png")
+        _marca_agua_png((out_w, out_h), wm)
+        mgn = max(10, round(out_h * 0.028))
+        fc = (f"[0:v]scale={out_w}:{out_h}[v];[v][1:v]overlay=W-w-{mgn}:H-h-{mgn}"
+              if baja else f"[0:v][1:v]overlay=W-w-{mgn}:H-h-{mgn}")
+        run(["ffmpeg", "-y", "-i", str(p / "video.mp4"), "-i", str(wm),
+             "-filter_complex", fc,
+             "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
+             "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+             "-video_track_timescale", TIMESCALE, str(tmp)])
+        wm.unlink(missing_ok=True)
+    elif not baja:
+        # el master ya está a la resolución final: basta copiar (casi instantáneo)
         avisar("Guardando el archivo…", 92)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
              "-c", "copy", "-movflags", "+faststart", str(tmp)])
     else:
-        factor = cfg["corto"] / corto_m
-        w = round(ancho_m * factor / 2) * 2      # dimensiones pares
-        h = round(alto_m * factor / 2) * 2
         avisar("Ajustando calidad y guardando el archivo…", 88)
         run(["ffmpeg", "-y", "-i", str(p / "video.mp4"),
-             "-vf", f"scale={w}:{h}",
+             "-vf", f"scale={out_w}:{out_h}",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
              "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
              "-video_track_timescale", TIMESCALE, str(tmp)])
@@ -3214,7 +3267,7 @@ def _dims_video(ruta):
 
 
 def exportar_union(nombres, carpeta, nombre_archivo, calidad="alta",
-                   on_progreso=None):
+                   on_progreso=None, marca_agua=False):
     """Exporta VARIAS historias unidas en un solo archivo, con fundido entre
     ellas. Arma el maestro que falte, normaliza todas al tamaño de la primera y
     guarda en la carpeta/calidad elegidas. Devuelve la ruta final."""
@@ -3244,6 +3297,13 @@ def exportar_union(nombres, carpeta, nombre_archivo, calidad="alta",
     cmd = ["ffmpeg", "-y"]
     for v in masters:
         cmd += ["-i", str(v)]
+    wm_tmp = None
+    if marca_agua:
+        import tempfile
+        wm_tmp = Path(tempfile.mktemp(suffix=".png"))
+        _marca_agua_png((Wt, Ht), wm_tmp)
+        cmd += ["-i", str(wm_tmp)]
+        wm_idx = len(masters)
     # normaliza cada entrada al mismo tamaño/tiempo (xfade lo exige)
     fv = [f"[{k}:v]scale={Wt}:{Ht}:force_original_aspect_ratio=increase,"
           f"crop={Wt}:{Ht},fps={FPS},settb=AVTB,setsar=1,format=yuv420p[n{k}]"
@@ -3266,11 +3326,19 @@ def exportar_union(nombres, carpeta, nombre_archivo, calidad="alta",
     destino = destino_dir / nombre_archivo_seguro(nombre_archivo, "video_final")
     tmp = destino.with_name("." + destino.stem + ".tmp.mp4")
     avisar("Uniendo y exportando…", 60)
-    cmd += ["-filter_complex", ";".join(fv + fa), "-map", pv, "-map", pa,
+    filtros = fv + fa
+    map_v = pv
+    if marca_agua:
+        mgn = max(10, round(Ht * 0.028))
+        filtros.append(f"{pv}[{wm_idx}:v]overlay=W-w-{mgn}:H-h-{mgn}[vout]")
+        map_v = "[vout]"
+    cmd += ["-filter_complex", ";".join(filtros), "-map", map_v, "-map", pa,
             "-c:v", "libx264", "-preset", "veryfast", "-crf", str(cfg["crf"]),
             "-pix_fmt", "yuv420p", "-video_track_timescale", TIMESCALE,
             "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", str(tmp)]
     run(cmd)
+    if wm_tmp:
+        wm_tmp.unlink(missing_ok=True)
     if not video_valido(tmp):
         tmp.unlink(missing_ok=True)
         err("La unión quedó incompleta (¿te quedaste sin espacio?). "

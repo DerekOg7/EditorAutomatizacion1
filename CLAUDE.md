@@ -476,11 +476,43 @@ Cuatro mejoras de usabilidad sobre el editor v0.17:
   y crea la capa en el playhead, resize del borde cambia la duración, zoom escala
   la timeline, y arrastrar la aguja hace scrub exacto. Sin errores de consola.
 
-## Estado actual: v0.18 (editor optimizado; zip v0.18 en ~/Documents/CLAUDE/)
+## Freemium: gratis (marca de agua + 720p + upsell) vs Pro (v0.19)
+
+Monetización de la versión gratis atada al **plan** de la licencia (no anuncios de
+terceros — no funcionan en localhost; se descartó AdSense).
+- **licencia.py**: `PLANES_PRO = {pro, owner, beta, premium, lifetime, todo, vip}`;
+  `es_plan_pro()`; `estado()` expone `pro`. Cualquier otro plan (p. ej. `free`) o
+  sin licencia = versión gratis.
+- **app.py**: `es_pro()` (con override de dev `AFS_FORZAR_GRATIS=1` para probar la
+  versión gratis; en dev sin exigir licencia = Pro). `/api/licencia` devuelve
+  `pro=es_pro()`. `/api/exportar/opciones` filtra calidades a ≤720p si gratis y
+  devuelve `pro`. `_calidad_permitida()` baja a "ligera" (720p) si gratis. Los
+  hilos de export reciben `marca_agua=not es_pro()`.
+- **editor.py**: `_marca_agua_png(dims)` = pastilla semitransparente con isotipo
+  faceless + "AutoFaceless Studio" (Pillow). `exportar_final`/`exportar_union`
+  aceptan `marca_agua`; cuando True hacen overlay con ffmpeg (`overlay=W-w-mgn:
+  H-h-mgn`, esquina inferior derecha) — fuerza re-encode (el copy rápido solo
+  aplica a Pro sin bajar resolución). El master interno (video.mp4) queda LIMPIO;
+  la marca solo se aplica en el pase final del export, así al pasar a Pro se
+  re-exporta sin marca.
+- **Frontend**: badge `#tb-plan` "🆓 Gratis · Mejora a Pro" (abre la pantalla de
+  licencia con botón "Seguir en la versión gratis" = `abrirLicencia`/`cerrarLicencia`;
+  `mostrarLicencia` oculta el cierre porque es el gate). Franja `#exp-upsell` en el
+  modal de exportar (marca de agua + 720p). `esPro` global viene de `/api/licencia`.
+- **admin_licencias.py**: el plan `free` está en el selector para emitir códigos gratis.
+- Verificado: gratis → `/api/exportar/opciones` solo 720p y `pro:false`; export real
+  gratis = 1280x720 con la marca de agua visible (frame comprobado); Pro → 1080p
+  limpio. Badge + upsell + flujo de upgrade sin errores.
+- NOTA de modelo: el gate (`EXIGIR_LICENCIA`) sigue pidiendo código al abrir. La
+  "versión gratis" hoy = activar un código de plan `free`. Para un free totalmente
+  abierto (sin código) habría que permitir en `_puerta_licencia` que "sin licencia"
+  = gratis; es 1 cambio, pendiente de decisión de Derek.
+
+## Estado actual: v0.19 (freemium gratis/Pro; zip v0.19 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.18-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.19-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

@@ -449,11 +449,38 @@ layout fijo más simple para no técnicos, según pidió Derek:
   modal Todas, sin errores de consola. Backup del layout previo:
   `index.v016.backup.html` (scratchpad).
 
-## Estado actual: v0.17 (editor reestructurado; zip v0.17 en ~/Documents/CLAUDE/)
+## Optimizaciones del editor (v0.18)
+
+Cuatro mejoras de usabilidad sobre el editor v0.17:
+1. **Panel derecho retráctil** (`#ed-derecha`): botón `#der-colapsar` en `#der-cab`,
+   `togglePanelDer()` (persiste `afv_panel_der`), `.colapsado` → 46px y oculta todo
+   menos el toggle (`> *:not(#der-cab){display:none !important}` — el `!important`
+   es necesario porque `#ed-derecha #detalle.visible` empata en especificidad).
+   Al togglear, `renderTimeline()` tras la transición (el ancho cambió).
+2. **Capas por DURACIÓN, no desde/hasta**: los modales de texto/logo/animación
+   cambiaron "DESDE (s)/HASTA (s)" (`ov-ini/ov-fin`, `an-ini/an-fin`, ELIMINADOS)
+   por un solo campo "¿Cuántos segundos quieres que dure?" (`ov-dur`/`an-dur`). La
+   capa nueva se coloca en el punto de la aguja (`ovEditando.inicio` = playhead) y
+   `fin = inicio + dur`. Al editar, `dur = fin - inicio`.
+3. **Redimensionar capas arrastrando el borde**: `renderOverlays` ahora pinta cada
+   `.ov-item` con `.ov-lbl` + `.ov-asa` (asa de resize como las escenas). `ovResize`
+   + listeners globales mousemove/mouseup cambian el ancho → `fin = inicio + dur`
+   y guardan. El arrastre del cuerpo (mover) sigue con `ovDrag`; el asa hace
+   `stopPropagation`.
+4. **Zoom de timeline + aguja arrastrable**: `tlZoom` (0.3–6), `zoomTL(f)`; en
+   `renderTimeline` `anchoTL = max(160, base*tlZoom)`. Botones 🔍−/🔍+ en `#tl-cab`.
+   `#aguja` pasó a `pointer-events:auto` + perilla (`::after`) + zona de agarre
+   (`::before`); `agujaDrag` con mousemove global hace scrub (`audio.currentTime`).
+   La aguja se reposiciona al final de `renderTimeline` (para zoom con pausa).
+- Verificado en navegador: colapso oculta el contenido (46px), modal pide segundos
+  y crea la capa en el playhead, resize del borde cambia la duración, zoom escala
+  la timeline, y arrastrar la aguja hace scrub exacto. Sin errores de consola.
+
+## Estado actual: v0.18 (editor optimizado; zip v0.18 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.17-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.18-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

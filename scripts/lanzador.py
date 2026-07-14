@@ -154,4 +154,10 @@ def main():
 
 
 if __name__ == "__main__":
+    # CRÍTICO en apps PyInstaller: si alguna librería (Whisper, etc.) crea un
+    # proceso hijo con multiprocessing, macOS/Windows RE-EJECUTAN este script.
+    # Sin freeze_support(), ese hijo corría main() otra vez → detectaba la
+    # instancia sana y abría OTRA pestaña del navegador a media transcripción.
+    import multiprocessing
+    multiprocessing.freeze_support()
     main()

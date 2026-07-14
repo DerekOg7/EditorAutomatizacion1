@@ -1660,6 +1660,48 @@ def generar_imagen_ia(p, n, prompt, modelo="flux"):
     (p / "imagenes" / f"{n:03d}.jpg").write_bytes(r.content)
 
 
+def gemini_imagen(p, n, prompt):
+    """Genera una imagen con Google Gemini "Nano Banana" (gemini-2.5-flash-image)
+    para la escena n. Usa la GEMINI_API_KEY del usuario. Mucho mejor calidad y
+    seguimiento del prompt que el generador gratuito."""
+    import base64
+    import requests
+    key = leer_env().get("GEMINI_API_KEY")
+    if not key:
+        err("Falta GEMINI_API_KEY — pégala en 🔑 Claves API (gratis en "
+            "aistudio.google.com/apikey).")
+    mod = leer_env().get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
+    aspecto = formato_proyecto(p)                      # 16:9 | 9:16 | 1:1
+    try:
+        r = requests.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent",
+            params={"key": key}, timeout=180,
+            json={"contents": [{"parts": [{"text": prompt[:1500]}]}],
+                  "generationConfig": {"responseModalities": ["IMAGE"],
+                                       "imageConfig": {"aspectRatio": aspecto}}})
+    except requests.RequestException as e:
+        err(f"No pude conectar con Google: {e}")
+    datos = r.json() if r.ok else {}
+    if not r.ok:
+        detalle = (datos.get("error", {}) or {}).get("message", r.text[:300])
+        err(f"Google rechazó la petición ({r.status_code}): {detalle}")
+    imagen = None
+    for cand in datos.get("candidates", []):
+        for parte in (cand.get("content", {}) or {}).get("parts", []):
+            blob = parte.get("inlineData") or parte.get("inline_data")
+            if blob and blob.get("data"):
+                imagen = base64.b64decode(blob["data"])
+                break
+        if imagen:
+            break
+    if not imagen:
+        err("Google no devolvió una imagen (¿el prompt activó un filtro de "
+            "seguridad?). Prueba reformulando el prompt.")
+    (p / "imagenes").mkdir(exist_ok=True)
+    borrar_medio(p, n)
+    (p / "imagenes" / f"{n:03d}.png").write_bytes(imagen)
+
+
 def descargar_a_escena(p, n, url, tipo="imagen", auto=False):
     """Descarga una imagen o video (url) como el medio de la escena n. Si auto
     es False (elección manual), marca la escena para que no la pise el

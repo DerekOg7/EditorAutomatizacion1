@@ -126,17 +126,39 @@ def hilo_procesar(nombre, modelo):
                    progreso=0)
         editor.generar_escenas(p)
 
-        if editor.leer_env().get("PEXELS_API_KEY"):
+        # Coherencia IA AUTOMÁTICA: una IA planea la fuente (foto/video/web) y
+        # la consulta de cada escena viendo la historia completa, y el relleno
+        # inteligente elige el mejor medio mezclando foto y video. Si la IA
+        # falla, se sigue con las consultas locales (no rompe el pipeline).
+        env = editor.leer_env()
+        base = 0
+        try:
+            prov = ("claude" if env.get("ANTHROPIC_API_KEY")
+                    else "gemini" if env.get("GEMINI_API_KEY")
+                    else "openai" if env.get("OPENAI_API_KEY") else "gratis")
             set_estado(nombre, fase="imagenes", progreso=0,
-                       detalle="Buscando imágenes en Pexels…")
-            r = editor.descargar_imagenes(
-                p, on_progreso=lambda t, pc: set_estado(nombre, detalle=t,
-                                                        progreso=pc))
-            pend = r["pendientes"]
-            det = (f"{r['descargadas']} imágenes descargadas"
-                   + (f", {len(pend)} sin resultados" if pend else ""))
+                       detalle="Planeando las imágenes con IA…")
+            guia = editor.leer_ajustes(p).get("guia_imagenes", "")
+            editor.plan_imagenes_ia(
+                p, proveedor=prov, guia=guia,
+                on_progreso=lambda t, pc: set_estado(nombre, detalle=t,
+                                                     progreso=pc * 0.25))
+            base = 25
+        except Exception:
+            pass                      # sin IA: quedan las consultas locales
+
+        if env.get("PEXELS_API_KEY"):
+            fuentes = None            # todas: Pexels fotos/videos + web
         else:
-            det = "Sin clave de Pexels (.env) — agrega las imágenes a mano."
+            fuentes = ["WEB"]         # sin clave, al menos la web funciona
+        set_estado(nombre, fase="imagenes", progreso=base,
+                   detalle="Buscando el mejor medio para cada escena…")
+        r = editor.rellenar_inteligente(
+            p, fuentes=fuentes, mezclar=True, reemplazar_auto=False,
+            on_progreso=lambda t, pc: set_estado(
+                nombre, detalle=t, progreso=base + pc * (1 - base / 100)))
+        det = (f"{r['descargadas']} medios elegidos"
+               + (f", {r['pendientes']} sin resultado" if r['pendientes'] else ""))
         set_estado(nombre, fase="listo", detalle=det, progreso=100)
     except ErrorPipeline as e:
         set_estado(nombre, fase="error", error=str(e))
@@ -803,12 +825,16 @@ def opciones_escena(nombre, n):
 
 @app.post("/api/proyectos/<nombre>/escenas/<int:n>/ia")
 def generar_ia(nombre, n):
-    prompt = ((request.json or {}).get("prompt") or "").strip()
+    d = request.json or {}
+    prompt = (d.get("prompt") or "").strip()
     if not prompt:
         return jsonify({"error": "El prompt está vacío."}), 400
     try:
         editor.guardar_historial(PROYECTOS / nombre)
-        editor.generar_imagen_ia(PROYECTOS / nombre, n, prompt)
+        if d.get("motor") == "nano":       # Google "Nano Banana" (clave Gemini)
+            editor.gemini_imagen(PROYECTOS / nombre, n, prompt)
+        else:                              # Pollinations (gratis, sin clave)
+            editor.generar_imagen_ia(PROYECTOS / nombre, n, prompt)
         return jsonify({"ok": True})
     except ErrorPipeline as e:
         return jsonify({"error": str(e)}), 400

@@ -525,11 +525,44 @@ por falta de licencia). El código de licencia solo sirve para **desbloquear Pro
   export solo 720p; la app arranca en home sin pantalla de licencia. Con código
   Pro → 1080p sin marca.
 
-## Estado actual: v0.20 (gratis abierto sin código; zip v0.20 en ~/Documents/CLAUDE/)
+## Candado Pexels + coherencia IA automática + Nano Banana + fix voz→editor (v0.21)
+
+Cuatro mejoras pedidas por Derek:
+1. **Candado de Pexels en la Principal**: `empezarNicho()` exige `configApp.pexels`;
+   sin clave abre el modal 🔑 con mensaje y NO avanza (evita que el usuario se
+   frustre a mitad del flujo sin imágenes automáticas). Con clave avanza normal.
+2. **Coherencia IA AUTOMÁTICA al crear historias**: `hilo_procesar` (app.py) ya no
+   usa `descargar_imagenes` plano — tras `generar_escenas` corre
+   `plan_imagenes_ia` (proveedor auto: claude > gemini > openai > gratis, con la
+   `guia_imagenes` del proyecto) y luego `rellenar_inteligente` (todas las fuentes
+   si hay Pexels; solo WEB si no). El plan IA es tolerante (try/except: si falla,
+   quedan las consultas locales). El botón "✨ Imágenes IA" sigue para re-runs.
+   Verificado e2e REAL: historia nueva desde audio → 5 escenas planeadas
+   (fuente_ia FOTO/VIDEO 3-2) → medios descargados en esa mezcla exacta.
+3. **Nano Banana (Google)**: `editor.gemini_imagen(p, n, prompt)` llama
+   `gemini-2.5-flash-image` (`GEMINI_IMAGE_MODEL` para override) con
+   `responseModalities:["IMAGE"]` + `imageConfig.aspectRatio` = formato del
+   proyecto; parsea `inlineData` (b64) → guarda `NNN.png`. Endpoint
+   `/escenas/<n>/ia` acepta `motor:"nano"`. Botón `#btn-nano` 🍌 junto al de IA
+   gratis, visible si `configApp.gemini` (`generarIA('nano')`). OJO: el tier
+   gratis de Gemini casi no da cuota de imagen → 429 con mensaje claro (la
+   integración quedó verificada con la respuesta real de Google).
+4. **Fix voz→editor**: (a) `crearHistoriaIA` ya no salta a un editor vacío a los
+   600ms — `esperarHistoriaYAbrir()` sondea `/estado` cada 2s mostrando el
+   detalle real en el spinner (voz X%, transcribiendo…) y abre el editor SOLO
+   cuando `GET /api/proyectos/<n>` responde ok. (b) Overlay `#pv-cargando` sobre
+   el preview (spinner + fase + detalle) cuando fase ∈ voz/transcribiendo/escenas
+   o imagenes-sin-ninguna-lista (se pinta en `renderEstado`). (c) **Pestaña
+   duplicada**: era multiprocessing re-ejecutando el lanzador congelado
+   (PyInstaller) durante el trabajo pesado → el "hijo" corría main(), veía la
+   instancia sana y abría otra pestaña. Fix: `multiprocessing.freeze_support()`
+   en el `__main__` de scripts/lanzador.py ANTES de main(). NO quitar.
+
+## Estado actual: v0.21 (candado Pexels + auto-IA + nano banana + fixes; zip v0.21 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.20-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.21-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

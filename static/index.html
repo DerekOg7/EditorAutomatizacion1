@@ -439,6 +439,10 @@
     transform-origin: center center; will-change: transform;
   }
   #pv-negro { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; }
+  #pv-cargando { position: absolute; inset: 0; z-index: 6; background: rgba(10,10,16,.78);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; color: #fff; font: 500 15px 'Roboto', sans-serif; text-align: center; padding: 24px; }
+  #pv-cargando.on { display: flex; }
   #pv-overlays { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   #pv-anim { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   .pv-an-num { position: absolute; font-weight: 700; white-space: nowrap;
@@ -953,6 +957,11 @@
               <div id="pv-anim"></div>
               <div id="pv-subs"></div>
               <div id="pv-negro"></div>
+              <div id="pv-cargando">
+                <div class="voz-spin" style="width:26px;height:26px;border-color:rgba(255,255,255,.25);border-top-color:#fff"></div>
+                <div id="pv-cargando-txt" data-i18n="pv_loading">Creando tu video…</div>
+                <div style="font:400 12px 'Roboto';color:#c9c9c9" data-i18n="pv_loading_hint">Puedes quedarte aquí — las escenas irán apareciendo solas.</div>
+              </div>
               <button id="pv-play" onclick="pvToggle()">▶</button>
             </div>
             <div id="pv-barra">
@@ -1049,6 +1058,7 @@
             <textarea id="det-prompt" rows="3" onblur="guardarPrompt()"></textarea>
             <div class="fila-busqueda" style="margin-top:8px">
               <button class="primario" id="btn-ia" onclick="generarIA()" style="flex:1" data-i18n="det_genai">✨ Regenerar imagen (IA gratis)</button>
+              <button id="btn-nano" onclick="generarIA('nano')" style="flex:1;display:none" title="Genera la imagen con Google Nano Banana (usa tu clave de Gemini) — mejor calidad">🍌 Nano Banana</button>
               <button id="btn-video-ia" onclick="generarVideoIA()" style="flex:1;display:none" title="Genera un clip de video con MiniMax Hailuo (usa tus créditos)" data-i18n-title="tt_videoia">🎬 Video IA</button>
             </div>
             <div id="ia-error" style="color:var(--alerta);font-size:12px;margin-top:4px"></div>
@@ -1855,6 +1865,8 @@ const EN = {
   dur_s: "HOW MANY SECONDS SHOULD IT LAST?",
   dur_hint: "It appears where the red line is. Then drag the layer's edge on the timeline to adjust its duration.",
   der_tools: "Tools", tl_zoom_in: "Zoom in the timeline", tl_zoom_out: "Zoom out the timeline",
+  pv_loading: "Creating your video…",
+  pv_loading_hint: "You can stay here — the scenes will appear on their own.",
   btn_delete: "🗑 Delete",
   ov_text: "TEXT",
   ov_text_ph: "e.g. SUBSCRIBE",
@@ -2801,6 +2813,16 @@ function renderEstado() {
   else chip.textContent = actual.escenas.length ? '—' : L('Sin procesar','Not processed');
   chip.id = 'chip-estado';
   $('barra-prog').style.width = (['transcribiendo','imagenes','exportando'].includes(fase) ? (est.progreso || 0) : 0) + '%';
+
+  // Overlay de carga sobre el preview mientras aún no hay nada que mostrar
+  // (voz/transcripción/escenas, o buscando imágenes sin ninguna lista todavía).
+  const cargando = ['voz', 'transcribiendo', 'escenas'].includes(fase) ||
+    (fase === 'imagenes' && !actual.escenas.some(e => e.tiene_imagen));
+  $('pv-cargando').classList.toggle('on', !!cargando);
+  if (cargando) {
+    $('pv-cargando-txt').textContent =
+      `${nombres[fase] || L('Creando tu video','Creating your video')}… ${est.detalle || ''}`;
+  }
 }
 
 let anchoTL = 0;       // ancho en px de la timeline (para convertir px↔segundos)
@@ -2928,6 +2950,7 @@ function renderDetalle() {
       `${(e.video_inicio || 0).toFixed(1)}s → ${((e.video_inicio || 0) + dur).toFixed(1)}s ${L('de','of')} ${e.medio_duracion.toFixed(1)}s`;
   }
   $('btn-video-ia').style.display = configApp.minimax ? '' : 'none';
+  $('btn-nano').style.display = configApp.gemini ? '' : 'none';
   const img = $('det-img');
   if (e.tipo_medio === 'video') {
     img.style.backgroundImage = '';
@@ -3906,9 +3929,34 @@ async function crearHistoriaIA() {
                              proveedor: vozProvSel, voz: vozEfectiva(),
                              velocidad: $('ia-velocidad').value,
                              modelo: $('ia-modelo').value, formato: $('ia-formato').value }) });
-    setTimeout(() => abrirHistoriaEnEditor(r.nombre).catch(() => { cargarLista(); irA('editor'); }), 600);
-  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; $('voz-generando').style.display = 'none'; }
+    await esperarHistoriaYAbrir(r.nombre);   // espera con progreso en vivo
+  } catch (e) { $('ia-error').textContent = '✗ ' + e.message; }
+  $('voz-generando').style.display = 'none';
   btn.disabled = false;
+}
+
+// La voz tarda ~1 min en generarse y el proyecto no existe hasta que termina.
+// Aquí esperamos mostrando el detalle real (generando voz → transcribiendo…)
+// y solo abrimos el editor cuando el proyecto ya responde.
+async function esperarHistoriaYAbrir(nombre) {
+  const txt = document.querySelector('#voz-generando span');
+  for (let i = 0; i < 900; i++) {            // hasta ~30 min
+    try {
+      const est = await api(`/api/proyectos/${encodeURIComponent(nombre)}/estado`);
+      if (est.fase === 'error') {
+        $('ia-error').textContent = '✗ ' + (est.error || 'Error');
+        return;
+      }
+      if (txt && est.detalle) {
+        txt.textContent = est.detalle +
+          (est.progreso ? ` (${Math.round(est.progreso)}%)` : '');
+      }
+      const ok = await fetch(`/api/proyectos/${encodeURIComponent(nombre)}`)
+        .then(res => res.ok).catch(() => false);
+      if (ok) { await abrirHistoriaEnEditor(nombre); return; }
+    } catch (e) { /* red: seguir esperando */ }
+    await new Promise(res => setTimeout(res, 2000));
+  }
 }
 
 /* ---------------- video IA por escena ---------------- */
@@ -4033,14 +4081,15 @@ async function guardarPrompt() {
       body: JSON.stringify({ prompt: e.prompt }) });
 }
 
-async function generarIA() {
+async function generarIA(motor) {
   const e = escena(escenaSel);
   if (!e) return;
   const n = e.n;
   await guardarPrompt();
-  const btn = $('btn-ia');
+  const btn = motor === 'nano' ? $('btn-nano') : $('btn-ia');
+  const orig = btn.textContent;
   btn.disabled = true;
-  btn.textContent = L('✨ Generando… (puede tardar ~20s)','✨ Generating… (may take ~20s)');
+  btn.textContent = L('✨ Generando…','✨ Generating…');
   $('ia-error').textContent = '';
   const img = $('det-img');
   img.style.backgroundImage = '';
@@ -4048,12 +4097,12 @@ async function generarIA() {
   try {
     await api(`/api/proyectos/${actual.nombre}/escenas/${n}/ia`,
       { method: 'POST', headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ prompt: $('det-prompt').value }) });
+        body: JSON.stringify({ prompt: $('det-prompt').value, motor: motor || '' }) });
   } catch (err) {
     $('ia-error').textContent = '✗ ' + err.message;
   }
   btn.disabled = false;
-  btn.textContent = L('✨ Generar imagen con IA (gratis)','✨ Generate image with AI (free)');
+  btn.textContent = orig;
   await refrescarForzado();
 }
 
@@ -4232,8 +4281,22 @@ function irAtras() {
   const i = orden.indexOf(pagina);
   irA(orden[Math.max(0, i - 1)]);
 }
-// El nicho activo arranca el flujo guiado en el Estudio de guión
-function empezarNicho() { irA('guion'); if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio(); }
+// El nicho activo arranca el flujo guiado en el Estudio de guión.
+// Antes de avanzar exige la clave GRATIS de Pexels: sin ella las imágenes
+// automáticas del video no funcionan y el usuario se frustra a mitad del flujo.
+function empezarNicho() {
+  if (!configApp.pexels) {
+    abrirClaves();
+    const msg = $('cl-msg');
+    msg.style.color = 'var(--acento)';
+    msg.textContent = L(
+      '⚠ Para empezar necesitas tu clave GRATIS de Pexels (2 minutos): entra a pexels.com/api, copia tu clave y pégala arriba.',
+      '⚠ To start you need your FREE Pexels key (2 minutes): go to pexels.com/api, copy your key and paste it above.');
+    return;
+  }
+  irA('guion');
+  if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio();
+}
 
 /* ---- página Mis historias ---- */
 let histSel = null;

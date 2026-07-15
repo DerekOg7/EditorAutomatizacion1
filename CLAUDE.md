@@ -558,11 +558,39 @@ Cuatro mejoras pedidas por Derek:
    instancia sana y abría otra pestaña. Fix: `multiprocessing.freeze_support()`
    en el `__main__` de scripts/lanzador.py ANTES de main(). NO quitar.
 
-## Estado actual: v0.21 (candado Pexels + auto-IA + nano banana + fixes; zip v0.21 en ~/Documents/CLAUDE/)
+## Tutorial interactivo tipo videojuego (v0.22)
+
+Onboarding de coach-marks (spotlight) que lleva al usuario por TODO el flujo para
+hacer su primer video demo. Todo en `static/index.html` (motor + contenido).
+
+- **Motor** (`iniciarTutorial`/`mostrarPasoTut`/`tutColocar`/`tutSiguiente`/
+  `tutAnterior`/`cerrarTutorial`): un overlay `#tut-hueco` con
+  `box-shadow: 0 0 0 9999px` recorta un "hueco" sobre el elemento resaltado
+  (todo lo demás atenuado), `#tut-cazador` bloquea clics de la app durante el tour
+  (Next-driven), y `#tut-globo` es el globo (número, título, texto, barra de
+  puntos, Saltar/Atrás/Siguiente). Posicionamiento: rect del target + scrollIntoView;
+  si el target está oculto o es null → tarjeta centrada (hueco de 0px = atenúa todo).
+- **Contenido** (`construirPasosTutorial`): 12 pasos si hay historias
+  (intro → nicho → guión → voz → editor×5 → cierre), o versión reducida si no las
+  hay (los pasos del editor se vuelven tarjetas explicativas). Cada paso: `{page,
+  sel, antes, titulo, texto}`. `mostrarPasoTut` hace `irA(page)`, corre `antes`
+  (p.ej. `abrirGuionPagina`, `abrirVozPagina`, o abrir `proyectos[0]` con
+  `abrirHistoriaEnEditor` para poblar el editor) y coloca el spotlight. **El texto
+  del globo se pinta ANTES de esperar la red** (feedback inmediato) con guarda
+  anti-carrera (`idxEste === tutIdx`) al reposicionar. Bilingüe con `L()`.
+- **Disparo**: automático la 1ª vez tras la bienvenida (`entrarApp` + fallback en
+  init si `afv_bienvenida_vista` pero no `afv_tutorial_visto`); relanzable desde
+  "▶ Ver tutorial guiado" en la Principal (`home_tutorial`) y en el modal de Ayuda
+  (`help_tour`). Teclas: →/Enter avanza, ← retrocede, Esc cierra.
+- Verificado e2e en navegador: 12 pasos, navegación entre páginas, spotlight sobre
+  los 9 controles reales (todos existen), abre proyecto real en el editor, cierre
+  por botón/Esc, ambos botones de lanzamiento, i18n ES/EN, sin errores en consola.
+
+## Estado actual: v0.22 (tutorial interactivo; zip v0.22 en ~/Documents/CLAUDE/)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:
-> `AutoFaceless-Video-v0.21-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
+> `AutoFaceless-Video-v0.22-beta-macOS.zip`. Deps nuevas: `edge-tts` (v0.14).
 > Windows: se compila por GitHub Actions o en una PC Windows (ver v0.16).
 
 - Editor completo: timeline multipista, efectos/transiciones por escena, texto/

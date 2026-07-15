@@ -515,6 +515,37 @@
   #tb-plan.on { display: inline-flex; }
   #tb-plan:hover { background: var(--acento); }
 
+  /* tutorial interactivo (spotlight tipo videojuego) */
+  #tut-hueco { position: fixed; z-index: 2000; border-radius: 14px; pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(9,9,16,.72); display: none;
+    transition: left .3s ease, top .3s ease, width .3s ease, height .3s ease; }
+  #tut-hueco.on { display: block; }
+  #tut-cazador { position: fixed; inset: 0; z-index: 2001; display: none; pointer-events: auto; }
+  #tut-cazador.on { display: block; }
+  #tut-globo { position: fixed; z-index: 2002; width: 340px; max-width: 92vw;
+    background: var(--panel); border: 1px solid var(--linea); border-radius: 18px;
+    padding: 20px 22px 18px; box-shadow: 0 22px 60px rgba(0,0,0,.5); display: none;
+    transition: left .3s ease, top .3s ease; }
+  #tut-globo.on { display: block; animation: tutEntra .32s ease; }
+  @keyframes tutEntra { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+  #tut-globo #tut-num { font: 800 11px 'Roboto', sans-serif; letter-spacing: 1px;
+    text-transform: uppercase; color: var(--acento); margin-bottom: 6px; }
+  #tut-globo #tut-titulo { font: 900 19px/1.25 'Roboto', sans-serif; color: var(--texto); margin: 0 0 8px; }
+  #tut-globo #tut-texto { font: 400 14px/1.6 'Roboto', sans-serif; color: var(--tenue); margin: 0 0 16px; }
+  #tut-globo .tut-barra { display: flex; gap: 4px; margin-bottom: 14px; }
+  #tut-globo .tut-punto { height: 4px; flex: 1; border-radius: 3px; background: var(--linea); transition: background .25s; }
+  #tut-globo .tut-punto.on { background: var(--acento); }
+  #tut-globo .tut-btns { display: flex; align-items: center; gap: 10px; }
+  #tut-globo #tut-saltar { font: 600 12px 'Roboto', sans-serif; color: var(--tenue2);
+    cursor: pointer; margin-right: auto; background: none; border: none; padding: 4px 0; }
+  #tut-globo #tut-saltar:hover { color: var(--texto); }
+  #tut-globo #tut-prev { font: 700 13px 'Roboto', sans-serif; color: var(--tenue);
+    background: none; border: 1px solid var(--linea); border-radius: 10px; padding: 8px 14px; cursor: pointer; }
+  #tut-globo #tut-prev:hover { border-color: var(--tenue); color: var(--texto); }
+  #tut-globo #tut-next { font: 800 13px 'Roboto', sans-serif; color: #fff;
+    background: var(--acento); border: none; border-radius: 10px; padding: 9px 18px; cursor: pointer; }
+  #tut-globo #tut-next:hover { filter: brightness(1.08); }
+
   /* pantalla de bienvenida */
   #bienvenida { position: fixed; inset: 0; z-index: 100; background: var(--bg);
     display: flex; align-items: center; justify-content: center; }
@@ -638,6 +669,21 @@
 </div>
 
 
+<!-- ============ TUTORIAL INTERACTIVO ============ -->
+<div id="tut-hueco"></div>
+<div id="tut-cazador"></div>
+<div id="tut-globo">
+  <div id="tut-num"></div>
+  <h3 id="tut-titulo"></h3>
+  <p id="tut-texto"></p>
+  <div class="tut-barra" id="tut-barra"></div>
+  <div class="tut-btns">
+    <button id="tut-saltar" onclick="cerrarTutorial()"></button>
+    <button id="tut-prev" onclick="tutAnterior()"></button>
+    <button id="tut-next" onclick="tutSiguiente()"></button>
+  </div>
+</div>
+
 <!-- ============ BARRA SUPERIOR COMPARTIDA ============ -->
 <header id="topbar">
   <button id="tb-atras" class="btn-pill" onclick="irAtras()" data-i18n="tb_back">← Atrás</button>
@@ -722,7 +768,7 @@
             <b data-i18n="home_help_t">¿Primera vez aquí?</b>
             <div data-i18n="home_help_d">No necesitas saber nada de edición. El programa te lleva de la mano en cada paso y siempre puedes volver atrás.</div>
           </div>
-          <button class="btn-pill" style="flex:none" onclick="$('modal-ayuda').classList.add('visible')" data-i18n="home_tutorial">Ver cómo funciona</button>
+          <button class="btn-pill" style="flex:none" onclick="iniciarTutorial()" data-i18n="home_tutorial">▶ Ver tutorial guiado</button>
         </div>
       </div>
     </div>
@@ -1242,7 +1288,10 @@
         💡 Las funciones de IA (guión con Claude, voz y video con MiniMax) usan tus propias claves — se configuran en el archivo <code>.env</code>. Sin ellas, la app funciona con recursos gratuitos (Pexels, imágenes IA gratis).
       </p>
     </div>
-    <div class="botones"><button class="primario" onclick="cerrarModal('modal-ayuda')" data-i18n="help_ok">Entendido</button></div>
+    <div class="botones">
+      <button onclick="cerrarModal('modal-ayuda'); iniciarTutorial();" data-i18n="help_tour">▶ Ver tutorial guiado</button>
+      <button class="primario" onclick="cerrarModal('modal-ayuda')" data-i18n="help_ok">Entendido</button>
+    </div>
   </div>
 </div>
 
@@ -1636,7 +1685,7 @@ const EN = {
   home_niche3: "History · Documentary", home_niche3_desc: "Historical events told documentary-style.",
   home_help_t: "First time here?",
   home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
-  home_tutorial: "See how it works",
+  home_tutorial: "▶ Watch guided tour",
   // --- Mis historias ---
   hist_title: "My stories", hist_sub: "One click to select · double-click to open it in the editor and keep editing.",
   hist_none_sel: "All the videos you have created live here.",
@@ -1908,7 +1957,7 @@ const EN = {
   ia_create: '🎙 Create story (generates the voice)',
   exp_title: 'Export this story', exp_go: 'Export',
   btn_cancel: 'Cancel', btn_save: 'Save',
-  help_title: '❓ How to use AutoFaceless Video', help_ok: 'Got it',
+  help_title: '❓ How to use AutoFaceless Video', help_ok: 'Got it', help_tour: '▶ Watch guided tour',
   help_body: `
       <p style="color:var(--tenue);margin:6px 0 14px">From a script to a YouTube-ready video, in 4 steps.</p>
       <p><b>1 · Create a story</b></p>
@@ -1964,7 +2013,159 @@ function elegirIdioma(x) {
   fijarIdioma(x);
   document.querySelectorAll('.bi-lang').forEach(b => b.classList.toggle('sel', b.dataset.lang === x));
 }
-function entrarApp() { localStorage.setItem('afv_bienvenida_vista', '1'); $('bienvenida').style.display = 'none'; irA('home'); }
+function entrarApp() {
+  localStorage.setItem('afv_bienvenida_vista', '1');
+  $('bienvenida').style.display = 'none';
+  irA('home');
+  if (!localStorage.getItem('afv_tutorial_visto')) setTimeout(iniciarTutorial, 650);
+}
+
+/* ==================== tutorial interactivo (tipo videojuego) ==================== */
+let tutPasos = [], tutIdx = 0;
+const tutDelay = ms => new Promise(r => setTimeout(r, ms));
+
+function construirPasosTutorial() {
+  const hay = proyectos && proyectos.length;
+  const abrirDemo = async () => { if (!actual && hay) { try { await abrirHistoriaEnEditor(proyectos[0].nombre); } catch (e) {} } };
+  const pasos = [
+    { titulo: L('¡Hola! Te enseño la app 👋', 'Hi! Let me show you around 👋'),
+      texto: L('En 5 pasos vas a entender cómo se crea un video completo. Solo lee y pulsa «Siguiente»; puedes salir cuando quieras.',
+               'In 5 steps you\'ll learn how a full video gets made. Just read and hit "Next"; you can exit anytime.') },
+    { page: 'home', sel: '.nicho:not(.bloq)',
+      titulo: L('1 · Elige tu nicho', '1 · Pick your niche'),
+      texto: L('Cada nicho es un estilo de video listo para producir. Aquí darás clic en «Empezar» para arrancar tu historia.',
+               'Each niche is a ready-to-make video style. Here you click "Start" to begin your story.') },
+    { page: 'guion', sel: '#est-texto', antes: abrirGuionPagina,
+      titulo: L('2 · Escribe tu guión con IA', '2 · Write your script with AI'),
+      texto: L('Cuéntale tu idea a la IA aquí mismo — por ejemplo: «un video de 30 segundos sobre el Triángulo de las Bermudas» — y ella escribe el guión por ti.',
+               'Tell the AI your idea right here — e.g. "a 30-second video about the Bermuda Triangle" — and it writes the script for you.') },
+    { page: 'guion', sel: '#gu-siguiente',
+      titulo: L('Pasa a la voz en off', 'Move on to the voice-over'),
+      texto: L('Cuando tu guión esté listo, este botón se ilumina y te lleva al siguiente paso.',
+               'When your script is ready, this button lights up and takes you to the next step.') },
+    { page: 'voz', sel: '#voz-voces', antes: abrirVozPagina,
+      titulo: L('3 · Elige una voz', '3 · Pick a voice'),
+      texto: L('Hay voces GRATIS, sin necesidad de clave. Elige la que más te guste y escucha una muestra antes de decidir.',
+               'There are FREE voices, no key needed. Pick the one you like best and hear a sample before deciding.') },
+    { page: 'voz', sel: '#btn-ia-crear',
+      titulo: L('Genera la narración', 'Generate the narration'),
+      texto: L('Pulsa aquí: la IA narra tu guión y arma la historia sola (tarda alrededor de 1 minuto). Verás un aviso de carga mientras trabaja.',
+               'Press here: the AI narrates your script and builds the story on its own (about 1 minute). You\'ll see a loading notice while it works.') },
+  ];
+  if (hay) {
+    pasos.push(
+      { page: 'editor', sel: '#pv-lienzo', antes: abrirDemo,
+        titulo: L('4 · Tu video, casi listo', '4 · Your video, almost ready'),
+        texto: L('La app busca imágenes y videos coherentes para cada escena y los sincroniza con la voz. Esta es la vista previa.',
+                 'The app finds coherent images and videos for each scene and syncs them with the voice. This is the preview.') },
+      { page: 'editor', sel: '#timeline-caja', antes: abrirDemo,
+        titulo: L('La línea de tiempo', 'The timeline'),
+        texto: L('Cada bloque es una escena. Haz clic para verla y arrastra su borde para cambiar cuánto dura.',
+                 'Each block is a scene. Click to view it and drag its edge to change how long it lasts.') },
+      { page: 'editor', sel: '#ed-derecha', antes: abrirDemo,
+        titulo: L('Ajusta cada escena', 'Tweak each scene'),
+        texto: L('Aquí cambias la imagen, los efectos y las transiciones de la escena seleccionada… o dejas todo como está.',
+                 'Here you change the selected scene\'s image, effects and transitions… or leave it all as is.') },
+      { page: 'editor', sel: '#btn-coherencia', antes: abrirDemo,
+        titulo: L('Mejora las imágenes con IA', 'Improve the images with AI'),
+        texto: L('¿No te convencen las imágenes? Este botón las regenera con IA, mezclando fotos y videos para que peguen con tu historia.',
+                 'Not sold on the images? This button regenerates them with AI, mixing photos and videos to fit your story.') },
+      { page: 'editor', sel: '#btn-exportar', antes: abrirDemo,
+        titulo: L('5 · Exporta tu video', '5 · Export your video'),
+        texto: L('Cuando te guste cómo quedó, expórtalo listo para subir a YouTube. ¡Ese es todo el flujo de trabajo!',
+                 'When you like how it looks, export it ready to upload to YouTube. That\'s the whole workflow!') },
+    );
+  } else {
+    pasos.push(
+      { page: 'voz', sel: null,
+        titulo: L('4 · El editor de video', '4 · The video editor'),
+        texto: L('Al generar la voz se abre el EDITOR: la app arma tu video sola (una imagen por escena + la narración) y ahí puedes ajustar imágenes, efectos, subtítulos y música.',
+                 'Once the voice is generated the EDITOR opens: the app builds your video on its own (one image per scene + narration) and there you can adjust images, effects, subtitles and music.') },
+      { page: 'voz', sel: null,
+        titulo: L('5 · Exporta tu video', '5 · Export your video'),
+        texto: L('Cuando quede a tu gusto, lo exportas listo para YouTube. La versión gratis lleva una marca de agua y exporta en 720p.',
+                 'When it looks right, you export it ready for YouTube. The free version adds a watermark and exports in 720p.') },
+    );
+  }
+  pasos.push({ page: hay ? 'editor' : 'home', sel: null,
+    titulo: L('¡Listo para crear! 🎬', 'Ready to create! 🎬'),
+    texto: L('Ese es el flujo completo: nicho → guión → voz → editar → exportar. Ahora te toca a ti. Puedes repetir este tutorial cuando quieras desde el botón «? Ayuda».',
+             'That\'s the full flow: niche → script → voice → edit → export. Now it\'s your turn. You can replay this tour anytime from the "? Help" button.') });
+  return pasos;
+}
+
+function iniciarTutorial() {
+  tutPasos = construirPasosTutorial();
+  tutIdx = 0;
+  $('tut-saltar').textContent = L('Saltar tutorial', 'Skip tour');
+  $('tut-prev').textContent = L('Atrás', 'Back');
+  $('tut-barra').innerHTML = tutPasos.map(() => '<span class="tut-punto"></span>').join('');
+  mostrarPasoTut();
+}
+
+async function mostrarPasoTut() {
+  const idxEste = tutIdx, p = tutPasos[tutIdx];
+  // 1) actualizar el globo YA (feedback inmediato, sin esperar a la red)
+  $('tut-num').textContent = L('Paso ' + (tutIdx + 1) + ' de ' + tutPasos.length, 'Step ' + (tutIdx + 1) + ' of ' + tutPasos.length);
+  $('tut-titulo').textContent = p.titulo;
+  $('tut-texto').textContent = p.texto;
+  $('tut-prev').style.visibility = tutIdx === 0 ? 'hidden' : 'visible';
+  $('tut-next').textContent = tutIdx === tutPasos.length - 1 ? L('¡Empezar! ✨', 'Start! ✨') : L('Siguiente →', 'Next →');
+  document.querySelectorAll('#tut-barra .tut-punto').forEach((d, i) => d.classList.toggle('on', i <= tutIdx));
+  $('tut-cazador').classList.add('on');
+  $('tut-globo').classList.add('on');
+  $('tut-hueco').classList.remove('on');
+  // 2) navegar y preparar la página (puede tardar por red)
+  if (p.page && pagina !== p.page) { irA(p.page); await tutDelay(280); }
+  if (p.antes) { try { await p.antes(); } catch (e) {} await tutDelay(360); }
+  // 3) colocar el spotlight — solo si seguimos en este mismo paso (anti-carrera)
+  await tutDelay(40);
+  if (idxEste === tutIdx) tutColocar(p.sel);
+}
+
+function tutColocar(sel) {
+  const hueco = $('tut-hueco'), globo = $('tut-globo');
+  let t = sel ? document.querySelector(sel) : null;
+  if (t && t.offsetWidth === 0 && t.offsetHeight === 0) t = null;   // oculto → tarjeta centrada
+  hueco.classList.add('on');
+  if (t) {
+    try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+    const r = t.getBoundingClientRect(), pad = 8;
+    hueco.style.left = (r.left - pad) + 'px';
+    hueco.style.top = (r.top - pad) + 'px';
+    hueco.style.width = (r.width + pad * 2) + 'px';
+    hueco.style.height = (r.height + pad * 2) + 'px';
+    const gw = globo.offsetWidth || 340, gh = globo.offsetHeight || 200;
+    let top = r.bottom + 14;
+    if (top + gh > innerHeight - 12) top = Math.max(12, r.top - gh - 14);
+    const left = Math.min(Math.max(12, r.left), innerWidth - gw - 12);
+    globo.style.transform = '';
+    globo.style.left = left + 'px';
+    globo.style.top = top + 'px';
+  } else {
+    hueco.style.left = (innerWidth / 2) + 'px';
+    hueco.style.top = (innerHeight / 2) + 'px';
+    hueco.style.width = '0px';
+    hueco.style.height = '0px';
+    globo.style.left = '50%';
+    globo.style.top = '50%';
+    globo.style.transform = 'translate(-50%,-50%)';
+  }
+}
+
+function tutSiguiente() { if (tutIdx >= tutPasos.length - 1) return cerrarTutorial(); tutIdx++; mostrarPasoTut(); }
+function tutAnterior() { if (tutIdx > 0) { tutIdx--; mostrarPasoTut(); } }
+function cerrarTutorial() {
+  localStorage.setItem('afv_tutorial_visto', '1');
+  ['tut-hueco', 'tut-cazador', 'tut-globo'].forEach(id => $(id).classList.remove('on'));
+}
+window.addEventListener('resize', () => { if ($('tut-globo').classList.contains('on')) tutColocar(tutPasos[tutIdx] && tutPasos[tutIdx].sel); });
+window.addEventListener('keydown', e => {
+  if (!$('tut-globo').classList.contains('on')) return;
+  if (e.key === 'Escape') cerrarTutorial();
+  else if (e.key === 'ArrowRight' || e.key === 'Enter') tutSiguiente();
+  else if (e.key === 'ArrowLeft') tutAnterior();
+});
 
 /* ==================== claves API (modal 🔑) ==================== */
 async function abrirClaves() {
@@ -4441,6 +4642,11 @@ function cerrarLicencia() { $('licencia').style.display = 'none'; }
   actualizarAvisoPexels();
   await cargarLista();
   setInterval(cargarLista, 5000);
+  // 1ª vez que ya pasó la bienvenida pero aún no vio el tutorial → lánzalo solo
+  if (localStorage.getItem('afv_bienvenida_vista') && !localStorage.getItem('afv_tutorial_visto')
+      && $('bienvenida').style.display === 'none' && pagina === 'home') {
+    setTimeout(iniciarTutorial, 750);
+  }
 })();
 </script>
 </body>

@@ -667,7 +667,23 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
   mute, calidez/reverb, preview, guardar/borrar preset, y render real con
   sonidos+tono+calidez+reverb (60s, 3.45 Mbps).
 
-## Estado actual: v0.23 (nicho Relax PRO: catálogo, tonos, control fino, presets; código commiteado — pendiente empaquetar zip)
+**UX premium + estéreo real (mejora posterior):**
+- **Escucha al clic**: seleccionar un sonido, pad/tono o preset lo REPRODUCE al
+  instante (reproductor central `rxTocar` con caché de blobs `rxPrevCache`, máx 40
+  — repetir un sonido ya oído es instantáneo). Soltar el slider de volumen de una
+  pista re-reproduce esa pista. Deseleccionar el chip que suena detiene el audio.
+  El preview de música sola (sin sonidos) lo soporta `generar_preview_relax`
+  (endpoint acepta `sonidos=[]` si hay `musica`).
+- **Selección visible**: acento propio del nicho `--rxa` (#2e86c1, azul calmado)
+  — chips/tabs/botones seleccionados en azul SÓLIDO con texto blanco y sombra
+  (antes rgba al 12% casi invisible). El preset cargado queda marcado
+  (`rxPresetActivo`). Hover con elevación; pulso `rxLatido` mientras carga; la
+  pista sonando muestra un ecualizador animado (`.rx-eq`, 3 barras CSS).
+- **Estéreo REAL**: `generar_ambiente` genera DOS ruidos por capa (semillas
+  distintas) unidos con `join=stereo` → canales decorrelacionados (sensación de
+  amplitud; antes era mono duplicado). Verificado con RMS de L−R en el video final.
+
+## Estado actual: v0.23 (nicho Relax PRO + UX premium; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

@@ -778,10 +778,10 @@ def relax_preview():
     escucharla antes de generar el video. Devuelve el mp3 directamente."""
     d = request.json or {}
     sonidos = [s for s in (d.get("sonidos") or []) if isinstance(s, str)]
-    if not sonidos:
+    musica = (d.get("musica") or "").strip()
+    if not sonidos and not musica:
         return jsonify({"error": "Elige al menos un sonido."}), 400
     volumenes = _limpiar_vols(d.get("volumenes"))
-    musica = (d.get("musica") or "").strip()
     try:
         musica_vol = max(0.0, min(1.5, float(d.get("musica_volumen", 0.5))))
     except (TypeError, ValueError):

@@ -3534,16 +3534,23 @@ def generar_ambiente(tipos, dur, salida, volumenes=None, calidez=None, reverb=0,
     dur = max(3.0, float(dur))
     avisar("Generando el paisaje sonoro…", 5)
 
-    entradas, filtros, etiquetas, idx = [], [], [], 0
+    entradas, filtros, etiquetas, idx, n_in = [], [], [], 0, 0
     for t in tipos:
         g = max(0.0, min(2.0, float(vols.get(t, 1.0))))
         extra = f",volume={g:.3f}" if abs(g - 1.0) > 0.001 else ""
         for color, cadena in AMBIENTES[t]:
+            # Dos generadores de ruido con semillas distintas → canal L y R
+            # decorrelacionados = estéreo REAL con sensación de amplitud
+            # (con un solo ruido duplicado la mezcla suena "en el centro").
             entradas += ["-f", "lavfi", "-t", f"{dur:.2f}",
-                         "-i", f"anoisesrc=c={color}:a=0.8:r=48000"]
-            filtros.append(f"[{idx}:a]{cadena}{extra}[a{idx}]")
+                         "-i", f"anoisesrc=c={color}:a=0.8:r=48000:seed={100 + n_in}",
+                         "-f", "lavfi", "-t", f"{dur:.2f}",
+                         "-i", f"anoisesrc=c={color}:a=0.8:r=48000:seed={101 + n_in}"]
+            filtros.append(f"[{n_in}:a][{n_in + 1}:a]join=inputs=2:"
+                           f"channel_layout=stereo,{cadena}{extra}[a{idx}]")
             etiquetas.append(f"[a{idx}]")
             idx += 1
+            n_in += 2
     mezcla = (f"{''.join(etiquetas)}amix=inputs={idx}:normalize=0:"
               f"duration=longest[mx]")
     fin_fade = max(0.1, dur - 4.0)
@@ -3905,10 +3912,19 @@ def catalogo_relax():
 def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8,
                           calidez=None, reverb=0):
     """Muestra CORTA (≈8s) de la mezcla actual (sonidos a sus volúmenes + música)
-    para que el usuario la escuche antes de generar el video completo."""
+    para que el usuario la escuche antes de generar el video completo. Si no hay
+    sonidos pero sí música, genera la música sola (escuchar un pad/tono al clic)."""
     import tempfile
     d = Path(tempfile.mkdtemp(prefix="relaxprev_"))
     try:
+        if not sonidos and musica:            # música/tono solo, a volumen audible
+            mus = d / "mus.mp3"
+            generar_musica_ambiente(musica, dur, mus, loopable=True)
+            run(["ffmpeg", "-y", "-i", str(mus),
+                 "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,volume=0.9",
+                 "-t", f"{dur:.2f}", "-c:a", "libmp3lame", "-b:a", "160k",
+                 str(salida)])
+            return salida
         amb = d / "amb.mp3"
         generar_ambiente(sonidos, dur, amb, volumenes=volumenes,
                          calidez=calidez, reverb=reverb)

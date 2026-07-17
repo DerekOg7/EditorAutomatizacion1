@@ -853,19 +853,22 @@
           </div>
 
           <div class="rx-bloque" id="rx-musica-bloque">
-            <label data-i18n="rx_l_musica">2 · Música melódica (opcional)</label>
-            <div class="rx-ayuda" data-i18n="rx_h_musica">Una capa de música relajante generada con IA (ElevenLabs). Requiere tu clave; se mezcla bajo el ambiente.</div>
+            <label data-i18n="rx_l_musica">2 · Música relajante (opcional)</label>
+            <div class="rx-ayuda" data-i18n="rx_h_musica">Una cama de música suave que se mezcla bajo el ambiente. GRATIS, generada en tu equipo.</div>
             <label class="rx-chip" style="cursor:pointer" id="rx-musica-toggle-l">
-              <input type="checkbox" id="rx-musica-on" onchange="rxToggleMusica()" style="margin:0"> <span data-i18n="rx_musica_add">Añadir música con IA</span>
+              <input type="checkbox" id="rx-musica-on" onchange="rxToggleMusica()" style="margin:0"> <span data-i18n="rx_musica_add">Añadir música</span>
             </label>
             <div id="rx-musica-caja" class="off" style="margin-top:10px">
               <div class="rx-chips" id="rx-musica-mood">
-                <div class="rx-chip on" data-val="piano"><span class="em">🎹</span><span data-i18n="rx_m_piano">Piano suave</span></div>
-                <div class="rx-chip" data-val="ambient"><span class="em">🌌</span><span data-i18n="rx_m_ambient">Ambient / Pads</span></div>
-                <div class="rx-chip" data-val="lofi"><span class="em">🎧</span><span data-i18n="rx_m_lofi">Lo-fi chill</span></div>
-                <div class="rx-chip" data-val="meditacion"><span class="em">🧘</span><span data-i18n="rx_m_medit">Meditación</span></div>
+                <div class="rx-chip on" data-val="pad_calido"><span class="em">🌅</span><span data-i18n="rx_m_calido">Pad cálido</span></div>
+                <div class="rx-chip" data-val="pad_sonador"><span class="em">🌌</span><span data-i18n="rx_m_sonador">Pad soñador</span></div>
+                <div class="rx-chip" data-val="drone"><span class="em">🧘</span><span data-i18n="rx_m_drone">Drone / Meditación</span></div>
+                <div class="rx-chip" data-val="campanas"><span class="em">🔔</span><span data-i18n="rx_m_campanas">Campanas</span></div>
               </div>
-              <div class="rx-aviso" id="rx-musica-aviso" data-i18n="rx_m_aviso">La música con IA gasta créditos de tu cuenta de ElevenLabs.</div>
+              <label class="rx-chip" id="rx-eleven-l" style="cursor:pointer;margin-top:10px;display:none">
+                <input type="checkbox" id="rx-musica-ia" style="margin:0"> <span data-i18n="rx_m_eleven">Mejor calidad con ElevenLabs (IA, gasta créditos)</span>
+              </label>
+              <div class="rx-aviso" id="rx-musica-aviso" data-i18n="rx_m_aviso">La música se genera gratis en tu equipo. Con ElevenLabs suena más realista pero gasta créditos.</div>
             </div>
           </div>
 
@@ -1850,9 +1853,10 @@ const EN = {
   rx_l_sonidos: "1 · Ambient sounds", rx_h_sonidos: "Generated for free on your machine. You can combine several (e.g. rain + fire).",
   rx_s_lluvia: "Rain", rx_s_tormenta: "Thunderstorm", rx_s_mar: "Ocean / Waves", rx_s_rio: "River / Stream",
   rx_s_bosque: "Forest", rx_s_fuego: "Fire / Fireplace", rx_s_viento: "Wind", rx_s_noche: "Night / Crickets",
-  rx_l_musica: "2 · Melodic music (optional)", rx_h_musica: "A layer of relaxing music generated with AI (ElevenLabs). Needs your key; mixed under the ambience.",
-  rx_musica_add: "Add AI music", rx_m_piano: "Soft piano", rx_m_ambient: "Ambient / Pads", rx_m_lofi: "Lo-fi chill", rx_m_medit: "Meditation",
-  rx_m_aviso: "AI music uses credits from your ElevenLabs account.",
+  rx_l_musica: "2 · Relaxing music (optional)", rx_h_musica: "A soft music bed mixed under the ambience. FREE, generated on your machine.",
+  rx_musica_add: "Add music", rx_m_calido: "Warm pad", rx_m_sonador: "Dreamy pad", rx_m_drone: "Drone / Meditation", rx_m_campanas: "Bells",
+  rx_m_eleven: "Better quality with ElevenLabs (AI, uses credits)",
+  rx_m_aviso: "Music is generated for free on your machine. ElevenLabs sounds more realistic but uses credits.",
   rx_l_visuales: "3 · Images / visuals", rx_h_visuales: "Where the video's images come from (searched on Pexels). Pick one or several.",
   rx_v_lluvia: "Rain on window", rx_v_bosque: "Forest", rx_v_estrellas: "Starry sky", rx_v_chimenea: "Fireplace",
   rx_v_playa: "Beach / Waves", rx_v_nieve: "Falling snow", rx_v_montanas: "Mountains", rx_v_nubes: "Clouds",
@@ -4695,15 +4699,9 @@ function empezarRelax() {
   $('rx-progreso').classList.remove('on');
   $('rx-resultado').classList.remove('on');
   $('rx-crear-msg').textContent = '';
-  const hayEleven = configApp.elevenlabs;
-  $('rx-musica-on').disabled = !hayEleven;
-  $('rx-musica-toggle-l').style.opacity = hayEleven ? '' : '.55';
-  if (!hayEleven) { $('rx-musica-on').checked = false; rxToggleMusica(); }
-  $('rx-musica-aviso').textContent = hayEleven
-    ? L('La música con IA gasta créditos de tu cuenta de ElevenLabs.',
-        'AI music uses credits from your ElevenLabs account.')
-    : L('Para habilitar la música con IA, añade tu clave de ElevenLabs en 🔑 Claves API.',
-        'To enable AI music, add your ElevenLabs key in 🔑 API Keys.');
+  // la música GRATIS está siempre disponible; ElevenLabs es un extra opcional
+  $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
+  if (!configApp.elevenlabs) $('rx-musica-ia').checked = false;
   rxAvisoDur();
 }
 
@@ -4739,10 +4737,11 @@ async function crearRelax() {
   const msg = $('rx-crear-msg');
   if (!sonidos.length) { msg.textContent = L('Elige al menos un sonido de ambiente.', 'Pick at least one ambient sound.'); return; }
   if (!visuales.length) { msg.textContent = L('Elige al menos un visual.', 'Pick at least one visual.'); return; }
-  const musica = ($('rx-musica-on').checked && configApp.elevenlabs)
-    ? rxUnica('rx-musica-mood', '.rx-chip', 'ambient') : '';
+  const musOn = $('rx-musica-on').checked;
+  const musica = musOn ? rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido') : '';
+  const musica_ia = musOn && configApp.elevenlabs && $('rx-musica-ia').checked;
   const nombre = ($('rx-nombre').value || '').trim() || ('relax_' + Date.now());
-  const cuerpo = { nombre, sonidos, visuales, musica,
+  const cuerpo = { nombre, sonidos, visuales, musica, musica_ia,
                    minutos: +rxUnica('rx-dur', 'button', '10'),
                    formato: rxUnica('rx-formato', 'button', '16:9') };
   msg.textContent = '';

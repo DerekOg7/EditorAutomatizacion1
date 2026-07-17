@@ -600,17 +600,24 @@ Backend en `editor.py` (sección "NICHO: RELAX", antes del CLI):
   agudo ~4.4kHz, mar grave ~620Hz, fuego ~730Hz, etc. — verificado por centro
   espectral). Mezcla varias capas con `amix`+`alimiter`, fade in/out. Rápido a
   cualquier duración (ruido es baratísimo), así los videos largos son viables.
-- **`elevenlabs_musica(mood, salida)`** (opcional, best-effort): música melódica
-  vía ElevenLabs `/v1/music` (`MUSICA_PROMPT` por mood: piano/ambient/lofi/
-  meditacion). Si falla o no hay acceso, se omite y queda solo el ambiente.
+- **Música relajante (opcional)**: por defecto GRATIS con
+  `generar_musica_ambiente(mood, dur, salida, loopable)` — pads/drones de
+  sinusoides con vibrato+tremolo lentos (>=0.1Hz, ojo: `tremolo` mínimo 0.1) +
+  reverb `aecho` (moods `ACORDES`: pad_calido/pad_sonador/drone/campanas). Y
+  opcionalmente `elevenlabs_musica()` (ElevenLabs `/v1/music`) si el usuario marca
+  la casilla IA (best-effort: si falla, cae a la música gratis). La música se
+  guarda como `musica.mp3` y el ensamblado la mezcla en loop bajo el ambiente.
 - **`VISUALES`**: 12 temas → consulta Pexels (video preferido, imagen fallback).
   `armar_escenas_relax` baja un medio por tema y escribe escenas.json (loop de
   `RELAX_SEG`=24s por escena).
-- **`ensamblar_relax`** (clave para videos largos): arma el loop visual corto (una
-  codificación barata: `_clip_video`/`_clip_imagen` + concat) y lo REPITE con
-  `-c copy` hasta la duración pedida — NO recodifica la hora entera. Luego mezcla
-  el audio (ambiente + música en loop). `ensamblar_video` delega aquí si
-  `tipo=="relax"`. Verificado: 5 min reales renderizados en la app en ~1 min.
+- **`ensamblar_relax`** (clave para videos largos): arma el loop visual corto y lo
+  recodifica con **bitrate ACOTADO** (`libx264 -crf 25 -maxrate 4M`; SIN esto el
+  clip de Pexels a ~18 Mbps hacía que 1 h pesara ~8 GB → ahora ~1.85 GB). Luego lo
+  repite con `-stream_loop -1 -i loop -c:v copy -t total` en el MISMO mux del audio
+  (sin archivo intermedio de longitud completa, para no duplicar el pico de disco)
+  y limpia los `loop*.mp4`. Guarda de espacio en disco antes de mux (`shutil.
+  disk_usage`) con mensaje claro. `ensamblar_video` delega aquí si `tipo=="relax"`.
+  Verificado: 5 min reales en la app a 4.3 Mbps (154 MB).
 - **`crear_relax(...)`** orquesta todo. Endpoint `POST /api/relax` +
   `hilo_relax` en app.py (estado fase="relax"→"listo").
 

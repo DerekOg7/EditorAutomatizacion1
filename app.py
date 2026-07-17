@@ -192,16 +192,16 @@ def hilo_coherencia(nombre, proveedor, modelo):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica):
-    """Nicho Relax: genera el audio (ambiente sintetizado + música IA opcional),
-    baja los visuales por tema y ensambla un video largo de forma eficiente."""
+def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia):
+    """Nicho Relax: genera el audio (ambiente sintetizado + música opcional,
+    gratis o con IA), baja los visuales por tema y ensambla un video largo."""
     p = PROYECTOS / nombre
     try:
         set_estado(nombre, fase="relax", progreso=1, error=None,
                    detalle="Preparando tu video relajante…")
         editor.crear_relax(
             p, sonidos=sonidos, visuales=visuales, dur_min=minutos,
-            formato=formato, musica_mood=musica,
+            formato=formato, musica_mood=musica, musica_ia=musica_ia,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
         set_estado(nombre, fase="listo", progreso=100,
                    detalle="Tu video relajante está listo")
@@ -715,14 +715,16 @@ def crear_relax_endpoint():
         return jsonify({"error": f"Ya existe un proyecto llamado '{nombre}'."}), 400
     (p / "imagenes").mkdir(parents=True)
     musica = (d.get("musica") or "").strip()
+    musica_ia = bool(d.get("musica_ia"))
     try:
         minutos = max(1, min(180, int(d.get("minutos") or 10)))
     except (TypeError, ValueError):
         minutos = 10
     formato = d.get("formato") if d.get("formato") in editor.FORMATOS else "16:9"
-    threading.Thread(target=hilo_relax,
-                     args=(nombre, sonidos, visuales, minutos, formato, musica),
-                     daemon=True).start()
+    threading.Thread(
+        target=hilo_relax,
+        args=(nombre, sonidos, visuales, minutos, formato, musica, musica_ia),
+        daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
 
 

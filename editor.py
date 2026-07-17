@@ -3590,10 +3590,52 @@ def armar_escenas_relax(p, visuales, on_progreso=None):
     return escenas
 
 
+# Música melódica GRATIS: pads/drones sintetizados con osciladores (ffmpeg). No es
+# una melodía "real", pero los pads ambientales son un subgénero legítimo de música
+# relajante y combinan perfecto con los sonidos de la naturaleza. Sin claves.
+ACORDES = {
+    "pad_calido":  [130.81, 164.81, 196.00, 261.63],   # Do mayor, cálido
+    "pad_sonador": [130.81, 196.00, 293.66, 392.00],   # quintas abiertas + 9ª, etéreo
+    "drone":       [110.00, 164.81, 220.00],           # La grave + quinta, meditación
+    "campanas":    [261.63, 329.63, 392.00, 523.25],   # Do mayor agudo, brillante
+}
+MUSICA_GRATIS_NOMBRE = {"pad_calido": "Pad cálido", "pad_sonador": "Pad soñador",
+                        "drone": "Drone / Meditación", "campanas": "Campanas"}
+# equivalencia pad → prompt de ElevenLabs (si el usuario activa la versión IA)
+_ELEVEN_DE_PAD = {"pad_calido": "piano", "pad_sonador": "ambient",
+                  "drone": "meditacion", "campanas": "ambient"}
+
+
+def generar_musica_ambiente(mood, dur, salida, loopable=False, on_progreso=None):
+    """Sintetiza un pad/drone ambiental GRATIS con ffmpeg (acordes de sinusoides
+    con vibrato/tremolo lentos + reverb). Se usa como cama de música relajante."""
+    freqs = ACORDES.get(mood, ACORDES["pad_calido"])
+    dur = max(3.0, float(dur))
+    entradas, filtros, etiquetas = [], [], []
+    for i, f in enumerate(freqs):
+        entradas += ["-f", "lavfi", "-t", f"{dur:.2f}", "-i", f"sine=f={f}:r=48000"]
+        rate = 0.12 + 0.03 * i           # tremolo lento (>=0.1Hz) distinto por voz → coro
+        filtros.append(f"[{i}:a]vibrato=f=0.12:d=0.6,tremolo=f={rate:.3f}:d=0.5,"
+                       f"volume=0.22[v{i}]")
+        etiquetas.append(f"[v{i}]")
+    mezcla = f"{''.join(etiquetas)}amix=inputs={len(freqs)}:normalize=0[mx]"
+    # reverb suave + filtro cálido; si es loopable, sin fades (se repite sin cortes)
+    cadena = "lowpass=f=2600,aecho=0.8:0.9:700|1300:0.35|0.25,alimiter=limit=0.9"
+    if not loopable:
+        fin = max(0.1, dur - 4.0)
+        cadena += f",afade=t=in:st=0:d=3,afade=t=out:st={fin:.2f}:d=4"
+    post = f"[mx]{cadena}[out]"
+    run(["ffmpeg", "-y"] + entradas +
+        ["-filter_complex", ";".join(filtros + [mezcla, post]),
+         "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
+    return salida
+
+
 def ensamblar_relax(p, on_progreso=None):
-    """Ensamblado eficiente para videos largos: arma un loop visual corto (una
-    codificación barata) y lo REPITE con `-c copy` hasta la duración pedida, sin
-    recodificar la hora entera. Luego mezcla el audio ya generado."""
+    """Ensamblado eficiente para videos largos: arma un loop visual corto con
+    BITRATE ACOTADO y lo repite con `-stream_loop` copiando el video (sin
+    recodificar la hora entera ni crear un intermedio gigante). Luego mezcla el
+    audio ya generado."""
     avisar = on_progreso or (lambda *_: None)
     aj = leer_ajustes(p)
     escenas = leer_escenas(p)
@@ -3618,96 +3660,107 @@ def ensamblar_relax(p, on_progreso=None):
             _clip_imagen(medio, clip, RELAX_SEG, "zoom_in", i, dims=dims)
         partes.append(clip)
         avisar(f"Preparando visual {i + 1}/{len(escenas)}",
-               20 + (i + 1) / len(escenas) * 45)
+               25 + (i + 1) / len(escenas) * 45)
 
-    # loop.mp4 = las partes concatenadas (recodificado corto para uniformar).
+    # loop.mp4 = las partes concatenadas y RECODIFICADAS con bitrate acotado.
+    # Esto es lo que evita que un video de 1 h pese decenas de GB: el clip de
+    # Pexels puede venir a ~18 Mbps; aquí lo bajamos a ~4 Mbps máx.
     loop = clips_dir / "loop.mp4"
-    if len(partes) == 1:
-        shutil.copy(partes[0], loop)
-    else:
-        lista = clips_dir / "loop_lista.txt"
-        lista.write_text("".join(f"file '{c.as_posix()}'\n" for c in partes))
-        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
-             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", str(FPS), "-an",
-             str(loop)])
+    lista = clips_dir / "loop_lista.txt"
+    lista.write_text("".join(f"file '{c.as_posix()}'\n" for c in partes))
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
+         "-c:v", "libx264", "-preset", "veryfast", "-crf", "25",
+         "-maxrate", "4M", "-bufsize", "8M", "-pix_fmt", "yuv420p",
+         "-r", str(FPS), "-an", str(loop)])
     loop_dur = RELAX_SEG * len(partes)
 
-    # 2) Repetir el loop hasta cubrir la duración total — SIN recodificar.
-    avisar("Extendiendo el video a la duración pedida…", 80)
-    repes = max(1, math.ceil(total / loop_dur))
-    lista2 = clips_dir / "repes.txt"
-    lista2.write_text("".join(f"file '{loop.as_posix()}'\n" for _ in range(repes)))
-    video_mudo = clips_dir / "relax_mudo.mp4"
-    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista2),
-         "-c", "copy", str(video_mudo)])
+    # Aviso temprano si no hay espacio en disco para la duración pedida.
+    bytes_seg = loop.stat().st_size / max(0.1, loop_dur)
+    necesita = int(bytes_seg * total * 1.15) + 60 * 1024 * 1024
+    if shutil.disk_usage(p).free < necesita:
+        for f in clips_dir.glob("loop*.mp4"):
+            f.unlink(missing_ok=True)
+        err(f"No hay espacio en disco para un video de {int(total/60)} min "
+            f"(hacen falta ~{necesita // (1024*1024)} MB libres). Libera espacio "
+            f"o elige una duración menor.")
 
-    # Textos/logos encima, si los hay.
-    overlays = leer_overlays(p)
-    if overlays:
-        con_ov = clips_dir / "relax_ov.mp4"
-        _aplicar_overlays(p, video_mudo, con_ov, overlays, clips_dir)
-        video_mudo = con_ov
-
-    # 3) Mezclar el audio (ambiente + música opcional en loop).
-    avisar("Uniendo audio y video…", 92)
+    # 2) Mux: repetir el loop con -stream_loop (video copiado) + audio, en una
+    #    sola pasada. Sin archivo intermedio de longitud completa.
+    avisar("Uniendo audio y video (esto puede tardar en videos largos)…", 82)
     audio = buscar_audio(p)
     musica = buscar_musica(p)
     salida = p / "video.mp4"
     tmp = p / "video.tmp.mp4"
+    base = ["ffmpeg", "-y", "-stream_loop", "-1", "-i", str(loop), "-i", str(audio)]
     if musica:
-        vol = float(aj.get("musica_volumen", 0.55))
+        vol = float(aj.get("musica_volumen", 0.5))
         fade_ini = max(0.0, total - 4.0)
-        run(["ffmpeg", "-y", "-i", str(video_mudo), "-i", str(audio),
-             "-stream_loop", "-1", "-i", str(musica), "-filter_complex",
-             f"[1:a]aresample=48000[amb];"
-             f"[2:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,"
-             f"volume={vol:.3f},afade=t=out:st={fade_ini:.2f}:d=4[mus];"
-             f"[amb][mus]amix=inputs=2:duration=first:normalize=0[a]",
-             "-map", "0:v", "-map", "[a]", "-c:v", "copy",
-             "-c:a", "aac", "-b:a", "192k", "-t", f"{total:.2f}",
-             "-movflags", "+faststart", str(tmp)])
+        cmd = base + ["-stream_loop", "-1", "-i", str(musica), "-filter_complex",
+                      f"[1:a]aresample=48000[amb];"
+                      f"[2:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,"
+                      f"volume={vol:.3f},afade=t=out:st={fade_ini:.2f}:d=4[mus];"
+                      f"[amb][mus]amix=inputs=2:duration=first:normalize=0[a]",
+                      "-map", "0:v", "-map", "[a]"]
     else:
-        run(["ffmpeg", "-y", "-i", str(video_mudo), "-i", str(audio),
-             "-map", "0:v", "-map", "1:a", "-c:v", "copy",
-             "-c:a", "aac", "-b:a", "192k", "-shortest",
-             "-movflags", "+faststart", str(tmp)])
+        cmd = base + ["-map", "0:v", "-map", "1:a"]
+    cmd += ["-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-t", f"{total:.2f}",
+            "-movflags", "+faststart", str(tmp)]
+    run(cmd)
     if not video_valido(tmp):
         tmp.unlink(missing_ok=True)
         err("El render quedó incompleto (¿espacio en disco?).")
+
+    # Textos/logos encima, si los hay (raro en relax; recodifica, pero solo si hay).
+    overlays = leer_overlays(p)
+    if overlays:
+        con_ov = clips_dir / "relax_ov.mp4"
+        _aplicar_overlays(p, tmp, con_ov, overlays, clips_dir)
+        os.replace(con_ov, tmp)
+
     os.replace(tmp, salida)
+    for f in clips_dir.glob("loop*.mp4"):        # limpieza: liberar los temporales
+        f.unlink(missing_ok=True)
     avisar("Listo", 100)
     return salida, faltantes
 
 
-def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9",
-                titulo="", musica_mood="", on_progreso=None):
-    """Orquesta un proyecto Relax completo: audio (ambiente + música IA opcional)
-    → visuales por tema → ensamblado del video final."""
+def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
+                musica_mood="", musica_ia=False, on_progreso=None):
+    """Orquesta un proyecto Relax completo: audio (ambiente sintetizado + música
+    opcional, gratis o con IA) → visuales por tema → ensamblado del video final."""
     avisar = on_progreso or (lambda *_: None)
     dur_min = max(1, min(180, int(dur_min)))
     guardar_ajustes(p, tipo="relax", formato=formato, relax_min=dur_min,
                     sonidos=sonidos, visuales=visuales, titulo=titulo,
-                    musica=musica_mood, musica_volumen=0.55)
+                    musica=musica_mood, musica_ia=bool(musica_ia),
+                    musica_volumen=0.5)
 
-    # 1) Música IA opcional (best-effort) → musica.mp3 (la mezcla el ensamblado).
+    # 1) Música opcional → musica.mp3 (la mezcla el ensamblado, en loop).
     if musica_mood:
-        avisar("Generando la música con IA…", 3)
-        try:
-            elevenlabs_musica(musica_mood, p / "musica.mp3", dur_s=180)
-        except Exception:
-            (p / "musica.mp3").unlink(missing_ok=True)   # sin música: solo ambiente
+        hecha = False
+        if musica_ia:                       # versión IA (ElevenLabs), best-effort
+            avisar("Generando la música con IA…", 3)
+            try:
+                elevenlabs_musica(_ELEVEN_DE_PAD.get(musica_mood, "ambient"),
+                                  p / "musica.mp3", dur_s=180)
+                hecha = True
+            except Exception:
+                (p / "musica.mp3").unlink(missing_ok=True)   # cae a la versión gratis
+        if not hecha:                       # música GRATIS sintetizada (pads/drones)
+            avisar("Generando la música…", 3)
+            generar_musica_ambiente(musica_mood, 90, p / "musica.mp3", loopable=True)
 
     # 2) Paisaje sonoro a longitud completa → audio.mp3
     generar_ambiente(sonidos, dur_min * 60, p / "audio.mp3",
-                     on_progreso=lambda t, pc: avisar(t, 5 + (pc or 0) * 0.15))
+                     on_progreso=lambda t, pc: avisar(t, 6 + (pc or 0) * 0.14))
 
     # 3) Visuales por tema → escenas.json
     armar_escenas_relax(p, visuales,
-                        on_progreso=lambda t, pc: avisar(t, 20 + (pc or 0) * 0.0 + 0))
+                        on_progreso=lambda t, pc: avisar("Buscando visuales…", 22))
 
     # 4) Ensamblar el video final (delegado a ensamblar_relax por tipo=relax)
     _, faltantes = ensamblar_video(
-        p, on_progreso=lambda t, pc: avisar(t, 30 + (pc or 0) * 0.7))
+        p, on_progreso=lambda t, pc: avisar(t, 25 + (pc or 0) * 0.72))
     return faltantes
 
 

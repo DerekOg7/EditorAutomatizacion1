@@ -17,3 +17,6 @@ licencia.txt
 empaquetado/ffmpeg/
 empaquetado/ffmpeg-win/
 licencias_emitidas.json
+
+# datos de usuario del nicho Relax (presets guardados)
+relax_presets.json

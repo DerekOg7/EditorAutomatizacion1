@@ -129,6 +129,55 @@
     content: ""; position: absolute; inset: 0;
     background: linear-gradient(transparent 40%, rgba(0,0,0,.55));
   }
+  .nicho .foto.relax {
+    background:
+      radial-gradient(120% 90% at 50% 6%, rgba(120,180,220,.30), transparent 55%),
+      radial-gradient(90% 120% at 20% 118%, rgba(60,120,140,.35), transparent 60%),
+      linear-gradient(180deg, #0a1420 0%, #0e2130 55%, #060a12 100%);
+  }
+  .nicho .foto.relax::before {   /* estrellas/luz suave */
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(2px 2px at 24% 30%, rgba(255,255,255,.7), transparent 60%),
+      radial-gradient(1.5px 1.5px at 66% 22%, rgba(255,255,255,.55), transparent 60%),
+      radial-gradient(1.5px 1.5px at 82% 52%, rgba(255,255,255,.5), transparent 60%),
+      radial-gradient(2px 2px at 44% 64%, rgba(255,255,255,.45), transparent 60%),
+      radial-gradient(1px 1px at 12% 70%, rgba(255,255,255,.5), transparent 60%);
+  }
+  .nicho .foto.relax::after {   /* viñeta inferior */
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(transparent 40%, rgba(0,0,0,.5));
+  }
+
+  /* página del nicho Relax */
+  #pg-relax .relax-caja { max-width: 860px; margin: 0 auto; }
+  .rx-bloque { margin: 22px 0; }
+  .rx-bloque > label { display: block; font: 700 14px 'Roboto', sans-serif; color: var(--texto); margin-bottom: 4px; }
+  .rx-bloque .rx-ayuda { font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue); margin-bottom: 10px; }
+  .rx-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .rx-chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none;
+    background: var(--panel2, #16171f); border: 1.5px solid var(--linea); border-radius: 12px;
+    padding: 9px 14px; font: 600 13.5px 'Roboto', sans-serif; color: var(--tenue); transition: all .15s; }
+  .rx-chip:hover { border-color: var(--tenue); color: var(--texto); }
+  .rx-chip.on { border-color: var(--acento); background: rgba(120,180,220,.12); color: var(--texto); }
+  .rx-chip .em { font-size: 16px; }
+  .rx-dur { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .rx-dur button { background: var(--panel2, #16171f); border: 1.5px solid var(--linea); border-radius: 12px;
+    padding: 9px 16px; font: 700 14px 'Roboto', sans-serif; color: var(--tenue); cursor: pointer; }
+  .rx-dur button.on { border-color: var(--acento); background: rgba(120,180,220,.12); color: var(--texto); }
+  .rx-fmt button.on { border-color: var(--acento); background: rgba(120,180,220,.12); color: var(--texto); }
+  #rx-crear { margin-top: 8px; font: 800 16px 'Roboto', sans-serif; padding: 14px 28px; }
+  #rx-musica-caja { margin-top: 10px; padding: 12px 14px; border: 1px dashed var(--linea); border-radius: 12px; }
+  #rx-musica-caja.off { opacity: .55; }
+  .rx-aviso { font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue2); margin-top: 6px; }
+  /* progreso de generación relax */
+  #rx-progreso { display: none; max-width: 640px; margin: 20px auto; text-align: center; }
+  #rx-progreso.on { display: block; }
+  #rx-barra-out { height: 10px; background: var(--linea); border-radius: 6px; overflow: hidden; margin: 14px 0 8px; }
+  #rx-barra { height: 100%; width: 0; background: var(--acento); border-radius: 6px; transition: width .4s ease; }
+  #rx-resultado { display: none; max-width: 780px; margin: 20px auto; }
+  #rx-resultado.on { display: block; }
+  #rx-resultado video { width: 100%; border-radius: 14px; background: #000; }
   .nicho .foto .badge { position: absolute; top: 12px; left: 12px; background: var(--acento); color: #fff;
     font: 700 11px 'Roboto', sans-serif; border-radius: 12px; padding: 4px 10px; letter-spacing: .4px; }
   .nicho .cuerpo { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -747,11 +796,15 @@
               </div>
             </div>
           </div>
-          <div class="nicho bloq">
-            <div class="foto"><span class="badge" data-i18n="home_soon">PRÓXIMAMENTE</span></div>
+          <div class="nicho" onclick="empezarRelax()">
+            <div class="foto relax"><span class="badge" data-i18n="home_available">DISPONIBLE</span></div>
             <div class="cuerpo">
-              <h3 data-i18n="home_niche2">Terror · Creepypastas</h3>
-              <p data-i18n="home_niche2_desc">Relatos de horror narrados con ambientación sonora.</p>
+              <h3 data-i18n="home_niche2">Música & Sonidos Relajantes</h3>
+              <p data-i18n="home_niche2_desc">Videos largos de lluvia, naturaleza, estrellas o chimenea con paisaje sonoro y música relajante. Sin narración.</p>
+              <div class="pie">
+                <span class="tiempo" data-i18n="home_niche2_time">≈ 3 min de tu tiempo</span>
+                <span class="cta" data-i18n="home_start">Empezar →</span>
+              </div>
             </div>
           </div>
           <div class="nicho bloq">
@@ -769,6 +822,114 @@
             <div data-i18n="home_help_d">No necesitas saber nada de edición. El programa te lleva de la mano en cada paso y siempre puedes volver atrás.</div>
           </div>
           <button class="btn-pill" style="flex:none" onclick="iniciarTutorial()" data-i18n="home_tutorial">▶ Ver tutorial guiado</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PÁGINA · NICHO RELAX ============ -->
+  <section id="pg-relax" class="pagina">
+    <div class="contenido">
+      <div style="max-width:860px;margin:0 auto">
+        <button class="btn-pill" onclick="irA('home')" style="margin-bottom:14px">← <span data-i18n="rx_volver">Volver</span></button>
+
+        <div id="rx-form" class="relax-caja">
+          <h2 style="margin:0 0 4px" data-i18n="rx_titulo">🌧️ Música & Sonidos Relajantes</h2>
+          <p style="color:var(--tenue);margin:0 0 8px" data-i18n="rx_sub">Elige el ambiente, los visuales y la duración. La app genera el audio y arma el video largo, sin narración.</p>
+
+          <div class="rx-bloque">
+            <label data-i18n="rx_l_sonidos">1 · Sonidos de ambiente</label>
+            <div class="rx-ayuda" data-i18n="rx_h_sonidos">Se generan gratis en tu equipo. Puedes combinar varios (ej. lluvia + fuego).</div>
+            <div class="rx-chips" id="rx-sonidos">
+              <div class="rx-chip on" data-val="lluvia"><span class="em">🌧️</span><span data-i18n="rx_s_lluvia">Lluvia</span></div>
+              <div class="rx-chip" data-val="tormenta"><span class="em">⛈️</span><span data-i18n="rx_s_tormenta">Tormenta</span></div>
+              <div class="rx-chip" data-val="mar"><span class="em">🌊</span><span data-i18n="rx_s_mar">Mar / Olas</span></div>
+              <div class="rx-chip" data-val="rio"><span class="em">🏞️</span><span data-i18n="rx_s_rio">Río / Arroyo</span></div>
+              <div class="rx-chip" data-val="bosque"><span class="em">🌲</span><span data-i18n="rx_s_bosque">Bosque</span></div>
+              <div class="rx-chip" data-val="fuego"><span class="em">🔥</span><span data-i18n="rx_s_fuego">Fuego / Chimenea</span></div>
+              <div class="rx-chip" data-val="viento"><span class="em">💨</span><span data-i18n="rx_s_viento">Viento</span></div>
+              <div class="rx-chip" data-val="noche"><span class="em">🌙</span><span data-i18n="rx_s_noche">Noche / Grillos</span></div>
+            </div>
+          </div>
+
+          <div class="rx-bloque" id="rx-musica-bloque">
+            <label data-i18n="rx_l_musica">2 · Música melódica (opcional)</label>
+            <div class="rx-ayuda" data-i18n="rx_h_musica">Una capa de música relajante generada con IA (ElevenLabs). Requiere tu clave; se mezcla bajo el ambiente.</div>
+            <label class="rx-chip" style="cursor:pointer" id="rx-musica-toggle-l">
+              <input type="checkbox" id="rx-musica-on" onchange="rxToggleMusica()" style="margin:0"> <span data-i18n="rx_musica_add">Añadir música con IA</span>
+            </label>
+            <div id="rx-musica-caja" class="off" style="margin-top:10px">
+              <div class="rx-chips" id="rx-musica-mood">
+                <div class="rx-chip on" data-val="piano"><span class="em">🎹</span><span data-i18n="rx_m_piano">Piano suave</span></div>
+                <div class="rx-chip" data-val="ambient"><span class="em">🌌</span><span data-i18n="rx_m_ambient">Ambient / Pads</span></div>
+                <div class="rx-chip" data-val="lofi"><span class="em">🎧</span><span data-i18n="rx_m_lofi">Lo-fi chill</span></div>
+                <div class="rx-chip" data-val="meditacion"><span class="em">🧘</span><span data-i18n="rx_m_medit">Meditación</span></div>
+              </div>
+              <div class="rx-aviso" id="rx-musica-aviso" data-i18n="rx_m_aviso">La música con IA gasta créditos de tu cuenta de ElevenLabs.</div>
+            </div>
+          </div>
+
+          <div class="rx-bloque">
+            <label data-i18n="rx_l_visuales">3 · Imágenes / visuales</label>
+            <div class="rx-ayuda" data-i18n="rx_h_visuales">De dónde salen las imágenes del video (se buscan en Pexels). Elige uno o varios.</div>
+            <div class="rx-chips" id="rx-visuales">
+              <div class="rx-chip on" data-val="lluvia_ventana"><span class="em">🪟</span><span data-i18n="rx_v_lluvia">Lluvia en la ventana</span></div>
+              <div class="rx-chip" data-val="bosque"><span class="em">🌲</span><span data-i18n="rx_v_bosque">Bosque</span></div>
+              <div class="rx-chip" data-val="estrellas"><span class="em">✨</span><span data-i18n="rx_v_estrellas">Cielo estrellado</span></div>
+              <div class="rx-chip" data-val="chimenea"><span class="em">🔥</span><span data-i18n="rx_v_chimenea">Chimenea</span></div>
+              <div class="rx-chip" data-val="playa"><span class="em">🏖️</span><span data-i18n="rx_v_playa">Playa / Olas</span></div>
+              <div class="rx-chip" data-val="nieve"><span class="em">❄️</span><span data-i18n="rx_v_nieve">Nieve cayendo</span></div>
+              <div class="rx-chip" data-val="montanas"><span class="em">🏔️</span><span data-i18n="rx_v_montanas">Montañas</span></div>
+              <div class="rx-chip" data-val="nubes"><span class="em">☁️</span><span data-i18n="rx_v_nubes">Nubes</span></div>
+              <div class="rx-chip" data-val="aurora"><span class="em">🌌</span><span data-i18n="rx_v_aurora">Aurora boreal</span></div>
+              <div class="rx-chip" data-val="cafe"><span class="em">☕</span><span data-i18n="rx_v_cafe">Cafetería</span></div>
+              <div class="rx-chip" data-val="lago"><span class="em">🏞️</span><span data-i18n="rx_v_lago">Lago</span></div>
+              <div class="rx-chip" data-val="espacio"><span class="em">🪐</span><span data-i18n="rx_v_espacio">Espacio</span></div>
+            </div>
+          </div>
+
+          <div class="rx-bloque">
+            <label data-i18n="rx_l_dur">4 · Duración del video</label>
+            <div class="rx-dur" id="rx-dur">
+              <button data-val="5">5 min</button>
+              <button class="on" data-val="10">10 min</button>
+              <button data-val="30">30 min</button>
+              <button data-val="60">60 min</button>
+            </div>
+            <div class="rx-aviso" id="rx-dur-aviso"></div>
+          </div>
+
+          <div class="rx-bloque">
+            <label data-i18n="rx_l_formato">5 · Formato</label>
+            <div class="rx-dur rx-fmt" id="rx-formato">
+              <button class="on" data-val="16:9">16:9 · YouTube</button>
+              <button data-val="9:16">9:16 · Shorts</button>
+            </div>
+          </div>
+
+          <div class="rx-bloque">
+            <label data-i18n="rx_l_nombre">6 · Nombre del video</label>
+            <input id="rx-nombre" type="text" placeholder="Lluvia relajante para dormir" style="width:100%;max-width:420px">
+          </div>
+
+          <button id="rx-crear" class="primario" onclick="crearRelax()" data-i18n="rx_crear">🎬 Crear video relax</button>
+          <div id="rx-crear-msg" class="rx-aviso" style="color:var(--acento)"></div>
+        </div>
+
+        <div id="rx-progreso">
+          <h3 data-i18n="rx_generando">Creando tu video relajante…</h3>
+          <div id="rx-barra-out"><div id="rx-barra"></div></div>
+          <div id="rx-detalle" style="color:var(--tenue);font-size:13.5px"></div>
+        </div>
+
+        <div id="rx-resultado">
+          <h3 style="margin:0 0 10px" data-i18n="rx_listo">✅ ¡Tu video está listo!</h3>
+          <video id="rx-video" controls preload="metadata"></video>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+            <button class="primario" id="rx-exportar" data-i18n="rx_exportar">⬇ Exportar / Descargar</button>
+            <button id="rx-editar" data-i18n="rx_editar">✏️ Editar en el editor</button>
+            <button id="rx-otro" onclick="empezarRelax()" data-i18n="rx_otro">＋ Crear otro</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1681,8 +1842,24 @@ const EN = {
   home_niche_title: "Mystery · True Crime · Conspiracy",
   home_niche_desc: "Stories with voice-over narration, dark atmosphere and cinematic AI-generated images.",
   home_niche_time: "≈ 15 min of your time", home_start: "Start →",
-  home_niche2: "Horror · Creepypastas", home_niche2_desc: "Horror tales narrated with sound design.",
+  home_niche2: "Relaxing Music & Sounds", home_niche2_desc: "Long videos of rain, nature, stars or fireplace with a soundscape and relaxing music. No narration.", home_niche2_time: "≈ 3 min of your time",
   home_niche3: "History · Documentary", home_niche3_desc: "Historical events told documentary-style.",
+  // ---- nicho Relax ----
+  rx_volver: "Back", rx_titulo: "🌧️ Relaxing Music & Sounds",
+  rx_sub: "Pick the ambience, visuals and length. The app generates the audio and builds the long video, no narration.",
+  rx_l_sonidos: "1 · Ambient sounds", rx_h_sonidos: "Generated for free on your machine. You can combine several (e.g. rain + fire).",
+  rx_s_lluvia: "Rain", rx_s_tormenta: "Thunderstorm", rx_s_mar: "Ocean / Waves", rx_s_rio: "River / Stream",
+  rx_s_bosque: "Forest", rx_s_fuego: "Fire / Fireplace", rx_s_viento: "Wind", rx_s_noche: "Night / Crickets",
+  rx_l_musica: "2 · Melodic music (optional)", rx_h_musica: "A layer of relaxing music generated with AI (ElevenLabs). Needs your key; mixed under the ambience.",
+  rx_musica_add: "Add AI music", rx_m_piano: "Soft piano", rx_m_ambient: "Ambient / Pads", rx_m_lofi: "Lo-fi chill", rx_m_medit: "Meditation",
+  rx_m_aviso: "AI music uses credits from your ElevenLabs account.",
+  rx_l_visuales: "3 · Images / visuals", rx_h_visuales: "Where the video's images come from (searched on Pexels). Pick one or several.",
+  rx_v_lluvia: "Rain on window", rx_v_bosque: "Forest", rx_v_estrellas: "Starry sky", rx_v_chimenea: "Fireplace",
+  rx_v_playa: "Beach / Waves", rx_v_nieve: "Falling snow", rx_v_montanas: "Mountains", rx_v_nubes: "Clouds",
+  rx_v_aurora: "Northern lights", rx_v_cafe: "Coffee shop", rx_v_lago: "Lake", rx_v_espacio: "Space",
+  rx_l_dur: "4 · Video length", rx_l_formato: "5 · Format", rx_l_nombre: "6 · Video name",
+  rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
+  rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Edit in the editor", rx_otro: "＋ Create another",
   home_help_t: "First time here?",
   home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
   home_tutorial: "▶ Watch guided tour",
@@ -4497,6 +4674,114 @@ function empezarNicho() {
   }
   irA('guion');
   if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio();
+}
+
+/* ==================== nicho: Música & Relax ==================== */
+let rxChipsInit = false;
+
+function empezarRelax() {
+  if (!configApp.pexels) {
+    abrirClaves();
+    const msg = $('cl-msg');
+    msg.style.color = 'var(--acento)';
+    msg.textContent = L(
+      '⚠ Para empezar necesitas tu clave GRATIS de Pexels (2 minutos): entra a pexels.com/api, copia tu clave y pégala arriba.',
+      '⚠ To start you need your FREE Pexels key (2 minutes): go to pexels.com/api, copy your key and paste it above.');
+    return;
+  }
+  irA('relax');
+  rxInitChips();
+  $('rx-form').style.display = '';
+  $('rx-progreso').classList.remove('on');
+  $('rx-resultado').classList.remove('on');
+  $('rx-crear-msg').textContent = '';
+  const hayEleven = configApp.elevenlabs;
+  $('rx-musica-on').disabled = !hayEleven;
+  $('rx-musica-toggle-l').style.opacity = hayEleven ? '' : '.55';
+  if (!hayEleven) { $('rx-musica-on').checked = false; rxToggleMusica(); }
+  $('rx-musica-aviso').textContent = hayEleven
+    ? L('La música con IA gasta créditos de tu cuenta de ElevenLabs.',
+        'AI music uses credits from your ElevenLabs account.')
+    : L('Para habilitar la música con IA, añade tu clave de ElevenLabs en 🔑 Claves API.',
+        'To enable AI music, add your ElevenLabs key in 🔑 API Keys.');
+  rxAvisoDur();
+}
+
+function rxInitChips() {
+  if (rxChipsInit) return;
+  rxChipsInit = true;
+  ['rx-sonidos', 'rx-visuales'].forEach(id =>       // multi-selección
+    $(id).addEventListener('click', e => {
+      const c = e.target.closest('.rx-chip'); if (c) c.classList.toggle('on');
+    }));
+  [['rx-musica-mood', '.rx-chip'], ['rx-dur', 'button'], ['rx-formato', 'button']].forEach(([id, sel]) =>
+    $(id).addEventListener('click', e => {          // selección única
+      const b = e.target.closest(sel); if (!b) return;
+      $(id).querySelectorAll(sel).forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      if (id === 'rx-dur') rxAvisoDur();
+    }));
+}
+
+function rxToggleMusica() { $('rx-musica-caja').classList.toggle('off', !$('rx-musica-on').checked); }
+function rxSel(id) { return [...$(id).querySelectorAll('.rx-chip.on')].map(c => c.dataset.val); }
+function rxUnica(id, sel, def) { const b = $(id).querySelector(sel + '.on'); return b ? b.dataset.val : def; }
+function rxAvisoDur() {
+  const min = +rxUnica('rx-dur', 'button', '10');
+  $('rx-dur-aviso').textContent = min >= 30
+    ? L(`⏱ Un video de ${min} min puede tardar unos minutos en generarse.`,
+        `⏱ A ${min}-min video may take a few minutes to generate.`)
+    : '';
+}
+
+async function crearRelax() {
+  const sonidos = rxSel('rx-sonidos'), visuales = rxSel('rx-visuales');
+  const msg = $('rx-crear-msg');
+  if (!sonidos.length) { msg.textContent = L('Elige al menos un sonido de ambiente.', 'Pick at least one ambient sound.'); return; }
+  if (!visuales.length) { msg.textContent = L('Elige al menos un visual.', 'Pick at least one visual.'); return; }
+  const musica = ($('rx-musica-on').checked && configApp.elevenlabs)
+    ? rxUnica('rx-musica-mood', '.rx-chip', 'ambient') : '';
+  const nombre = ($('rx-nombre').value || '').trim() || ('relax_' + Date.now());
+  const cuerpo = { nombre, sonidos, visuales, musica,
+                   minutos: +rxUnica('rx-dur', 'button', '10'),
+                   formato: rxUnica('rx-formato', 'button', '16:9') };
+  msg.textContent = '';
+  let r;
+  try {
+    r = await api('/api/relax', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
+  } catch (e) { msg.textContent = (e && e.message) || 'Error'; return; }
+  if (r.error) { msg.textContent = r.error; return; }
+  $('rx-form').style.display = 'none';
+  $('rx-progreso').classList.add('on');
+  $('rx-barra').style.width = '3%';
+  $('rx-detalle').textContent = L('Iniciando…', 'Starting…');
+  rxPolear(r.nombre);
+}
+
+async function rxPolear(nombre) {
+  for (let i = 0; i < 1800; i++) {
+    await new Promise(res => setTimeout(res, 2000));
+    let e;
+    try { e = await api(`/api/proyectos/${encodeURIComponent(nombre)}/estado`); } catch (_) { continue; }
+    const pc = Math.max(3, Math.round(e.progreso || 0));
+    $('rx-barra').style.width = pc + '%';
+    if (e.detalle) $('rx-detalle').textContent = e.detalle + (e.progreso ? ` · ${pc}%` : '');
+    if (e.fase === 'error') {
+      $('rx-barra-out').style.opacity = '.4';
+      $('rx-detalle').textContent = '⚠ ' + (e.error || e.detalle || L('Ocurrió un error.', 'Something went wrong.'));
+      return;
+    }
+    if (e.fase === 'listo') { rxMostrarResultado(nombre); return; }
+  }
+}
+
+function rxMostrarResultado(nombre) {
+  $('rx-progreso').classList.remove('on');
+  $('rx-resultado').classList.add('on');
+  $('rx-video').src = `/api/proyectos/${encodeURIComponent(nombre)}/video?t=${Date.now()}`;
+  $('rx-exportar').onclick = async () => { await abrirProyecto(nombre); seleccionadas = []; abrirExportar(); };
+  $('rx-editar').onclick = () => abrirHistoriaEnEditor(nombre);
+  if (typeof cargarLista === 'function') cargarLista();
 }
 
 /* ---- página Mis historias ---- */

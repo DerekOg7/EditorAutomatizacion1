@@ -586,7 +586,42 @@ hacer su primer video demo. Todo en `static/index.html` (motor + contenido).
   los 9 controles reales (todos existen), abre proyecto real en el editor, cierre
   por botón/Esc, ambos botones de lanzamiento, i18n ES/EN, sin errores en consola.
 
-## Estado actual: v0.22 (tutorial interactivo; zip v0.22 en ~/Documents/CLAUDE/)
+## Segundo nicho: Música & Sonidos Relajantes (v0.23)
+
+Canales de música/sonidos relajantes (lluvia, naturaleza, estrellas, chimenea…):
+NO hay narración — el audio se GENERA y las imágenes salen de temas que elige el
+usuario. Reusa la estructura de proyecto (audio.mp3 = pista relajante en vez de
+narración; escenas = loop visual corto; `ajustes.tipo="relax"`).
+
+Backend en `editor.py` (sección "NICHO: RELAX", antes del CLI):
+- **`generar_ambiente(tipos, dur, salida)`**: sintetiza el paisaje sonoro GRATIS
+  con ffmpeg (ruido `anoisesrc` filtrado + modulación de volumen por expresión
+  `eval=frame` para el vaivén natural). `AMBIENTES` = recetas por sonido (lluvia
+  agudo ~4.4kHz, mar grave ~620Hz, fuego ~730Hz, etc. — verificado por centro
+  espectral). Mezcla varias capas con `amix`+`alimiter`, fade in/out. Rápido a
+  cualquier duración (ruido es baratísimo), así los videos largos son viables.
+- **`elevenlabs_musica(mood, salida)`** (opcional, best-effort): música melódica
+  vía ElevenLabs `/v1/music` (`MUSICA_PROMPT` por mood: piano/ambient/lofi/
+  meditacion). Si falla o no hay acceso, se omite y queda solo el ambiente.
+- **`VISUALES`**: 12 temas → consulta Pexels (video preferido, imagen fallback).
+  `armar_escenas_relax` baja un medio por tema y escribe escenas.json (loop de
+  `RELAX_SEG`=24s por escena).
+- **`ensamblar_relax`** (clave para videos largos): arma el loop visual corto (una
+  codificación barata: `_clip_video`/`_clip_imagen` + concat) y lo REPITE con
+  `-c copy` hasta la duración pedida — NO recodifica la hora entera. Luego mezcla
+  el audio (ambiente + música en loop). `ensamblar_video` delega aquí si
+  `tipo=="relax"`. Verificado: 5 min reales renderizados en la app en ~1 min.
+- **`crear_relax(...)`** orquesta todo. Endpoint `POST /api/relax` +
+  `hilo_relax` en app.py (estado fase="relax"→"listo").
+
+Frontend: tarjeta de nicho activa en el home (`empezarRelax`, portada azul
+estrellada), página `#pg-relax` con chips (sonidos multi, visuales multi, música
+mood única) + duración (5/10/30/60) + formato + nombre. `crearRelax` hace POST y
+sondea `/estado` con barra de progreso; al terminar muestra el video en un panel
+con Exportar/Editar/Crear otro. i18n ES/EN (claves `rx_*`). El candado de Pexels
+también aplica. Música: bloque visible pero deshabilitado si no hay clave Eleven.
+
+## Estado actual: v0.23 (nicho Relax; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

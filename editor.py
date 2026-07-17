@@ -3020,6 +3020,8 @@ def _quemar_subtitulos(p, entrada, salida, clips_dir, dims=(ANCHO, ALTO)):
 
 def ensamblar_video(p, on_progreso=None):
     """Imágenes + audio → video.mp4. Devuelve (ruta, escenas_sin_imagen)."""
+    if leer_ajustes(p).get("tipo") == "relax":
+        return ensamblar_relax(p, on_progreso)       # ruta eficiente para videos largos
     escenas = leer_escenas(p)
     audio = buscar_audio(p)
     avisar = on_progreso or (lambda *_: None)
@@ -3427,6 +3429,286 @@ def unir_videos(nombres, salida_nombre, on_progreso=None):
     run(cmd)
     avisar("Listo", 100)
     return salida
+
+
+# ============================================================ NICHO: RELAX
+# Videos de música/sonidos relajantes (sin narración). El audio se GENERA:
+# los paisajes sonoros (lluvia, mar, fuego…) se sintetizan gratis con ffmpeg
+# (ruido filtrado + modulación lenta) a cualquier duración, y opcionalmente se
+# mezcla una capa de música melódica hecha con IA (ElevenLabs). Las imágenes
+# salen de los temas visuales que elige el usuario (lluvia, bosque, estrellas…).
+
+# Cada paisaje = una o más capas de ruido con su cadena de filtros. La modulación
+# de volumen con expresiones (eval=frame) da el vaivén natural (olas, viento…).
+AMBIENTES = {
+    "lluvia":   [("pink",  "highpass=f=600,lowpass=f=10000,volume=1.5")],
+    "tormenta": [("pink",  "highpass=f=600,lowpass=f=9000,volume=1.4"),
+                 ("brown", "lowpass=f=120,volume='0.55+0.4*sin(2*PI*0.045*t)':eval=frame,volume=1.4")],
+    "mar":      [("brown", "lowpass=f=1200,volume='0.35+0.55*(0.5+0.5*sin(2*PI*0.09*t))':eval=frame,volume=1.7")],
+    "rio":      [("pink",  "highpass=f=800,lowpass=f=6500,volume='0.85+0.15*sin(2*PI*1.4*t)':eval=frame,volume=1.3")],
+    "bosque":   [("brown", "bandpass=f=900:width_type=h:w=1400,volume='0.45+0.4*sin(2*PI*0.05*t)':eval=frame,volume=1.4"),
+                 ("pink",  "highpass=f=5000,lowpass=f=9000,volume=0.10")],
+    "fuego":    [("brown", "lowpass=f=1500,volume='0.6+0.25*sin(2*PI*0.7*t)+0.15*sin(2*PI*3.3*t)':eval=frame,volume=1.4")],
+    "viento":   [("brown", "bandpass=f=500:width_type=h:w=900,volume='0.3+0.6*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.5")],
+    "noche":    [("brown", "lowpass=f=400,volume=0.5"),
+                 ("pink",  "highpass=f=4500,lowpass=f=7500,volume='0.16*(0.5+0.5*sin(2*PI*2.2*t))':eval=frame,volume=1.2")],
+}
+AMBIENTES_NOMBRE = {
+    "lluvia": "Lluvia", "tormenta": "Tormenta", "mar": "Mar / Olas",
+    "rio": "Río / Arroyo", "bosque": "Bosque", "fuego": "Fuego / Chimenea",
+    "viento": "Viento", "noche": "Noche / Grillos",
+}
+
+
+def generar_ambiente(tipos, dur, salida, on_progreso=None):
+    """Sintetiza un paisaje sonoro de `dur` segundos mezclando los `tipos`
+    elegidos (lluvia, mar, fuego…) y lo escribe como mp3 en `salida`.
+    Todo con ffmpeg, sin claves ni internet, a cualquier duración."""
+    avisar = on_progreso or (lambda *_: None)
+    tipos = [t for t in (tipos or []) if t in AMBIENTES]
+    if not tipos:
+        err("Elige al menos un sonido de ambiente (lluvia, mar, fuego…).")
+    dur = max(3.0, float(dur))
+    avisar("Generando el paisaje sonoro…", 5)
+
+    entradas, filtros, etiquetas, idx = [], [], [], 0
+    for t in tipos:
+        for color, cadena in AMBIENTES[t]:
+            entradas += ["-f", "lavfi", "-t", f"{dur:.2f}",
+                         "-i", f"anoisesrc=c={color}:a=0.8:r=48000"]
+            filtros.append(f"[{idx}:a]{cadena}[a{idx}]")
+            etiquetas.append(f"[a{idx}]")
+            idx += 1
+    mezcla = (f"{''.join(etiquetas)}amix=inputs={idx}:normalize=0:"
+              f"duration=longest[mx]")
+    fin_fade = max(0.1, dur - 4.0)
+    post = (f"[mx]aformat=channel_layouts=stereo,alimiter=limit=0.9,"
+            f"afade=t=in:st=0:d=2,afade=t=out:st={fin_fade:.2f}:d=4[out]")
+    cmd = (["ffmpeg", "-y"] + entradas +
+           ["-filter_complex", ";".join(filtros + [mezcla, post]),
+            "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
+    run(cmd)
+    avisar("Paisaje sonoro listo", 100)
+    return salida
+
+
+# Música melódica opcional con IA (ElevenLabs Music). Es un extra: si falla o la
+# cuenta no tiene acceso, el proyecto se queda solo con el ambiente (que basta).
+MUSICA_PROMPT = {
+    "piano":      "calm slow solo piano, peaceful and gentle, for sleep and relaxation, no drums, no vocals",
+    "ambient":    "soft ambient pads, ethereal warm meditative drone, calming, no percussion, no vocals",
+    "lofi":       "lo-fi chill beats, mellow and warm, relaxing study music, soft, no vocals",
+    "meditacion": "meditation music, tibetan singing bowls and soft drones, deeply calming, no vocals",
+}
+MUSICA_NOMBRE = {"piano": "Piano suave", "ambient": "Ambient / Pads",
+                 "lofi": "Lo-fi chill", "meditacion": "Meditación"}
+
+
+def elevenlabs_musica(mood, salida, dur_s=180):
+    """Genera una pista de música relajante con ElevenLabs Music y la guarda en
+    `salida`. Best-effort: si la cuenta no tiene acceso, lanza y el llamador la
+    omite (el ambiente sigue funcionando)."""
+    import requests
+    key = _elevenlabs_key()
+    prompt = MUSICA_PROMPT.get(mood, MUSICA_PROMPT["ambient"])
+    length_ms = int(max(10.0, min(float(dur_s), 300.0)) * 1000)  # Eleven limita el largo
+    try:
+        r = requests.post("https://api.elevenlabs.io/v1/music", timeout=300,
+                          headers={"xi-api-key": key, "Accept": "audio/mpeg",
+                                   "Content-Type": "application/json"},
+                          json={"prompt": prompt, "music_length_ms": length_ms})
+    except requests.RequestException as e:
+        err(f"No pude conectar con ElevenLabs Music: {e}")
+    if not r.ok:
+        err(f"ElevenLabs Music rechazó la petición ({r.status_code}): {r.text[:200]}")
+    Path(salida).write_bytes(r.content)
+    return salida
+
+
+# Temas visuales → consulta en Pexels (en inglés funciona mejor) + tipo preferido.
+VISUALES = {
+    "lluvia_ventana": ("rain on window", "video"),
+    "bosque":         ("forest nature calm", "video"),
+    "estrellas":      ("starry night sky stars", "video"),
+    "chimenea":       ("fireplace fire cozy", "video"),
+    "playa":          ("ocean waves beach calm", "video"),
+    "nieve":          ("snow falling winter", "video"),
+    "montanas":       ("mountains landscape mist", "video"),
+    "nubes":          ("clouds sky timelapse", "video"),
+    "aurora":         ("aurora borealis northern lights", "video"),
+    "cafe":           ("cozy coffee shop rainy", "video"),
+    "lago":           ("calm lake reflection nature", "video"),
+    "espacio":        ("space stars nebula galaxy", "video"),
+}
+VISUALES_NOMBRE = {
+    "lluvia_ventana": "Lluvia en la ventana", "bosque": "Bosque",
+    "estrellas": "Cielo estrellado", "chimenea": "Chimenea", "playa": "Playa / Olas",
+    "nieve": "Nieve cayendo", "montanas": "Montañas", "nubes": "Nubes",
+    "aurora": "Aurora boreal", "cafe": "Cafetería acogedora", "lago": "Lago",
+    "espacio": "Espacio",
+}
+RELAX_SEG = 24.0    # segundos por escena en el loop visual
+
+
+def armar_escenas_relax(p, visuales, on_progreso=None):
+    """Descarga un video/imagen de Pexels por cada tema visual elegido y escribe
+    escenas.json (el loop visual corto que luego se repite hasta la duración)."""
+    avisar = on_progreso or (lambda *_: None)
+    aj = leer_ajustes(p)
+    orient = ORIENTACION.get(aj.get("formato", "16:9"), "landscape")
+    visuales = [v for v in (visuales or []) if v in VISUALES] or ["lluvia_ventana"]
+    escenas, t = [], 0.0
+    for i, v in enumerate(visuales, 1):
+        consulta, pref = VISUALES[v]
+        avisar(f"Buscando visual: {VISUALES_NOMBRE.get(v, v)}",
+               10 + i / len(visuales) * 75)
+        url, tipo = None, "imagen"
+        try:
+            if pref == "video":
+                vids = pexels_buscar_videos(consulta, cantidad=12, orientacion=orient)
+                vids = [x for x in vids if x.get("duracion", 0) >= 6]
+                vids.sort(key=lambda x: abs(x.get("duracion", 0) - 20))
+                if vids:
+                    url, tipo = vids[0]["url"], "video"
+            if url is None:
+                fotos = pexels_buscar(consulta, cantidad=8, orientacion=orient)
+                if fotos:
+                    url, tipo = fotos[0]["grande"], "imagen"
+        except Exception:
+            pass
+        if url:
+            descargar_a_escena(p, i, url, tipo=tipo, auto=True)
+        escenas.append({"n": i, "inicio": round(t, 3), "fin": round(t + RELAX_SEG, 3),
+                        "texto": VISUALES_NOMBRE.get(v, v), "consulta": consulta,
+                        "prompt": "", "imagen": f"{i:03d}.jpg",
+                        "efecto": "zoom_in", "transicion": "fundido",
+                        "medio_auto": True})
+        t += RELAX_SEG
+    (p / "escenas.json").write_text(
+        json.dumps({"duracion": round(t, 3), "escenas": escenas},
+                   ensure_ascii=False, indent=2))
+    return escenas
+
+
+def ensamblar_relax(p, on_progreso=None):
+    """Ensamblado eficiente para videos largos: arma un loop visual corto (una
+    codificación barata) y lo REPITE con `-c copy` hasta la duración pedida, sin
+    recodificar la hora entera. Luego mezcla el audio ya generado."""
+    avisar = on_progreso or (lambda *_: None)
+    aj = leer_ajustes(p)
+    escenas = leer_escenas(p)
+    dims = dims_proyecto(p)
+    clips_dir = p / "clips"
+    clips_dir.mkdir(exist_ok=True)
+    total = max(5.0, float(aj.get("relax_min", 10)) * 60)
+
+    # 1) Un clip por escena → loop visual corto (silencioso).
+    partes, faltantes = [], []
+    for i, e in enumerate(escenas):
+        medio, tipo = medio_de_escena(p, e["n"])
+        if medio is None:
+            medio, tipo = clips_dir / f"ph_{e['n']:03d}.png", "imagen"
+            _placeholder(medio, e["n"], dims=dims)
+            faltantes.append(e["n"])
+        clip = clips_dir / f"loop_{e['n']:03d}.mp4"
+        if tipo == "video":
+            _clip_video(medio, clip, RELAX_SEG, 0.0,
+                        float(aj.get("relax_vel", 0.85)), dims=dims)
+        else:
+            _clip_imagen(medio, clip, RELAX_SEG, "zoom_in", i, dims=dims)
+        partes.append(clip)
+        avisar(f"Preparando visual {i + 1}/{len(escenas)}",
+               20 + (i + 1) / len(escenas) * 45)
+
+    # loop.mp4 = las partes concatenadas (recodificado corto para uniformar).
+    loop = clips_dir / "loop.mp4"
+    if len(partes) == 1:
+        shutil.copy(partes[0], loop)
+    else:
+        lista = clips_dir / "loop_lista.txt"
+        lista.write_text("".join(f"file '{c.as_posix()}'\n" for c in partes))
+        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
+             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-r", str(FPS), "-an",
+             str(loop)])
+    loop_dur = RELAX_SEG * len(partes)
+
+    # 2) Repetir el loop hasta cubrir la duración total — SIN recodificar.
+    avisar("Extendiendo el video a la duración pedida…", 80)
+    repes = max(1, math.ceil(total / loop_dur))
+    lista2 = clips_dir / "repes.txt"
+    lista2.write_text("".join(f"file '{loop.as_posix()}'\n" for _ in range(repes)))
+    video_mudo = clips_dir / "relax_mudo.mp4"
+    run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista2),
+         "-c", "copy", str(video_mudo)])
+
+    # Textos/logos encima, si los hay.
+    overlays = leer_overlays(p)
+    if overlays:
+        con_ov = clips_dir / "relax_ov.mp4"
+        _aplicar_overlays(p, video_mudo, con_ov, overlays, clips_dir)
+        video_mudo = con_ov
+
+    # 3) Mezclar el audio (ambiente + música opcional en loop).
+    avisar("Uniendo audio y video…", 92)
+    audio = buscar_audio(p)
+    musica = buscar_musica(p)
+    salida = p / "video.mp4"
+    tmp = p / "video.tmp.mp4"
+    if musica:
+        vol = float(aj.get("musica_volumen", 0.55))
+        fade_ini = max(0.0, total - 4.0)
+        run(["ffmpeg", "-y", "-i", str(video_mudo), "-i", str(audio),
+             "-stream_loop", "-1", "-i", str(musica), "-filter_complex",
+             f"[1:a]aresample=48000[amb];"
+             f"[2:a]loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000,"
+             f"volume={vol:.3f},afade=t=out:st={fade_ini:.2f}:d=4[mus];"
+             f"[amb][mus]amix=inputs=2:duration=first:normalize=0[a]",
+             "-map", "0:v", "-map", "[a]", "-c:v", "copy",
+             "-c:a", "aac", "-b:a", "192k", "-t", f"{total:.2f}",
+             "-movflags", "+faststart", str(tmp)])
+    else:
+        run(["ffmpeg", "-y", "-i", str(video_mudo), "-i", str(audio),
+             "-map", "0:v", "-map", "1:a", "-c:v", "copy",
+             "-c:a", "aac", "-b:a", "192k", "-shortest",
+             "-movflags", "+faststart", str(tmp)])
+    if not video_valido(tmp):
+        tmp.unlink(missing_ok=True)
+        err("El render quedó incompleto (¿espacio en disco?).")
+    os.replace(tmp, salida)
+    avisar("Listo", 100)
+    return salida, faltantes
+
+
+def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9",
+                titulo="", musica_mood="", on_progreso=None):
+    """Orquesta un proyecto Relax completo: audio (ambiente + música IA opcional)
+    → visuales por tema → ensamblado del video final."""
+    avisar = on_progreso or (lambda *_: None)
+    dur_min = max(1, min(180, int(dur_min)))
+    guardar_ajustes(p, tipo="relax", formato=formato, relax_min=dur_min,
+                    sonidos=sonidos, visuales=visuales, titulo=titulo,
+                    musica=musica_mood, musica_volumen=0.55)
+
+    # 1) Música IA opcional (best-effort) → musica.mp3 (la mezcla el ensamblado).
+    if musica_mood:
+        avisar("Generando la música con IA…", 3)
+        try:
+            elevenlabs_musica(musica_mood, p / "musica.mp3", dur_s=180)
+        except Exception:
+            (p / "musica.mp3").unlink(missing_ok=True)   # sin música: solo ambiente
+
+    # 2) Paisaje sonoro a longitud completa → audio.mp3
+    generar_ambiente(sonidos, dur_min * 60, p / "audio.mp3",
+                     on_progreso=lambda t, pc: avisar(t, 5 + (pc or 0) * 0.15))
+
+    # 3) Visuales por tema → escenas.json
+    armar_escenas_relax(p, visuales,
+                        on_progreso=lambda t, pc: avisar(t, 20 + (pc or 0) * 0.0 + 0))
+
+    # 4) Ensamblar el video final (delegado a ensamblar_relax por tipo=relax)
+    _, faltantes = ensamblar_video(
+        p, on_progreso=lambda t, pc: avisar(t, 30 + (pc or 0) * 0.7))
+    return faltantes
 
 
 # ------------------------------------------------------------------ CLI

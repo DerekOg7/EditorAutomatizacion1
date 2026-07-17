@@ -192,6 +192,25 @@ def hilo_coherencia(nombre, proveedor, modelo):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
+def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica):
+    """Nicho Relax: genera el audio (ambiente sintetizado + música IA opcional),
+    baja los visuales por tema y ensambla un video largo de forma eficiente."""
+    p = PROYECTOS / nombre
+    try:
+        set_estado(nombre, fase="relax", progreso=1, error=None,
+                   detalle="Preparando tu video relajante…")
+        editor.crear_relax(
+            p, sonidos=sonidos, visuales=visuales, dur_min=minutos,
+            formato=formato, musica_mood=musica,
+            on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
+        set_estado(nombre, fase="listo", progreso=100,
+                   detalle="Tu video relajante está listo")
+    except ErrorPipeline as e:
+        set_estado(nombre, fase="error", error=str(e))
+    except Exception as e:
+        set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
+
+
 def hilo_imagenes_inteligente(nombre, guia, fuentes, mezclar, usar_ia,
                               proveedor, modelo):
     """Planea (opcional, con IA) y rellena cada escena buscando en varias
@@ -674,6 +693,35 @@ def crear_proyecto():
 
     modelo = request.form.get("modelo", "small")
     threading.Thread(target=hilo_procesar, args=(nombre, modelo),
+                     daemon=True).start()
+    return jsonify({"ok": True, "nombre": nombre})
+
+
+@app.post("/api/relax")
+def crear_relax_endpoint():
+    """Crea un proyecto del nicho Relax (música/sonidos relajantes, sin narración)."""
+    d = request.json or {}
+    nombre = nombre_valido(d.get("nombre", ""))
+    if not nombre:
+        return jsonify({"error": "Ponle un nombre al video."}), 400
+    sonidos = [s for s in (d.get("sonidos") or []) if isinstance(s, str)]
+    visuales = [v for v in (d.get("visuales") or []) if isinstance(v, str)]
+    if not sonidos:
+        return jsonify({"error": "Elige al menos un sonido de ambiente."}), 400
+    if not editor.leer_env().get("PEXELS_API_KEY"):
+        return jsonify({"error": "Falta la clave de Pexels (gratis en pexels.com/api)."}), 400
+    p = PROYECTOS / nombre
+    if p.exists():
+        return jsonify({"error": f"Ya existe un proyecto llamado '{nombre}'."}), 400
+    (p / "imagenes").mkdir(parents=True)
+    musica = (d.get("musica") or "").strip()
+    try:
+        minutos = max(1, min(180, int(d.get("minutos") or 10)))
+    except (TypeError, ValueError):
+        minutos = 10
+    formato = d.get("formato") if d.get("formato") in editor.FORMATOS else "16:9"
+    threading.Thread(target=hilo_relax,
+                     args=(nombre, sonidos, visuales, minutos, formato, musica),
                      daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
 

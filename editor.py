@@ -3460,11 +3460,13 @@ AMBIENTES_NOMBRE = {
 }
 
 
-def generar_ambiente(tipos, dur, salida, on_progreso=None):
+def generar_ambiente(tipos, dur, salida, volumenes=None, on_progreso=None):
     """Sintetiza un paisaje sonoro de `dur` segundos mezclando los `tipos`
-    elegidos (lluvia, mar, fuego…) y lo escribe como mp3 en `salida`.
-    Todo con ffmpeg, sin claves ni internet, a cualquier duración."""
+    elegidos (lluvia, mar, fuego…) y lo escribe como mp3 en `salida`. `volumenes`
+    es un dict opcional {tipo: ganancia} (1.0 = normal) para mezclar cada sonido
+    a un volumen distinto. Todo con ffmpeg, sin claves ni internet."""
     avisar = on_progreso or (lambda *_: None)
+    vols = volumenes or {}
     tipos = [t for t in (tipos or []) if t in AMBIENTES]
     if not tipos:
         err("Elige al menos un sonido de ambiente (lluvia, mar, fuego…).")
@@ -3473,10 +3475,12 @@ def generar_ambiente(tipos, dur, salida, on_progreso=None):
 
     entradas, filtros, etiquetas, idx = [], [], [], 0
     for t in tipos:
+        g = max(0.0, min(2.0, float(vols.get(t, 1.0))))
+        extra = f",volume={g:.3f}" if abs(g - 1.0) > 0.001 else ""
         for color, cadena in AMBIENTES[t]:
             entradas += ["-f", "lavfi", "-t", f"{dur:.2f}",
                          "-i", f"anoisesrc=c={color}:a=0.8:r=48000"]
-            filtros.append(f"[{idx}:a]{cadena}[a{idx}]")
+            filtros.append(f"[{idx}:a]{cadena}{extra}[a{idx}]")
             etiquetas.append(f"[a{idx}]")
             idx += 1
     mezcla = (f"{''.join(etiquetas)}amix=inputs={idx}:normalize=0:"
@@ -3724,16 +3728,42 @@ def ensamblar_relax(p, on_progreso=None):
     return salida, faltantes
 
 
+def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8):
+    """Muestra CORTA (≈8s) de la mezcla actual (sonidos a sus volúmenes + música)
+    para que el usuario la escuche antes de generar el video completo."""
+    import tempfile
+    d = Path(tempfile.mkdtemp(prefix="relaxprev_"))
+    try:
+        amb = d / "amb.mp3"
+        generar_ambiente(sonidos, dur, amb, volumenes=volumenes)
+        if musica:
+            mus = d / "mus.mp3"
+            generar_musica_ambiente(musica, dur, mus, loopable=True)
+            vol = max(0.0, min(1.5, float(musica_vol)))
+            run(["ffmpeg", "-y", "-i", str(amb), "-i", str(mus), "-filter_complex",
+                 f"[1:a]loudnorm=I=-16:TP=-1.5:LRA=11,volume={vol:.3f}[m];"
+                 f"[0:a][m]amix=inputs=2:duration=first:normalize=0[a]",
+                 "-map", "[a]", "-c:a", "libmp3lame", "-b:a", "160k", str(salida)])
+        else:
+            shutil.copy(amb, salida)
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return salida
+
+
 def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
-                musica_mood="", musica_ia=False, on_progreso=None):
+                musica_mood="", musica_ia=False, volumenes=None,
+                musica_volumen=0.5, on_progreso=None):
     """Orquesta un proyecto Relax completo: audio (ambiente sintetizado + música
     opcional, gratis o con IA) → visuales por tema → ensamblado del video final."""
     avisar = on_progreso or (lambda *_: None)
     dur_min = max(1, min(180, int(dur_min)))
+    volumenes = volumenes or {}
     guardar_ajustes(p, tipo="relax", formato=formato, relax_min=dur_min,
                     sonidos=sonidos, visuales=visuales, titulo=titulo,
                     musica=musica_mood, musica_ia=bool(musica_ia),
-                    musica_volumen=0.5)
+                    volumenes=volumenes,
+                    musica_volumen=max(0.0, min(1.5, float(musica_volumen))))
 
     # 1) Música opcional → musica.mp3 (la mezcla el ensamblado, en loop).
     if musica_mood:
@@ -3751,7 +3781,7 @@ def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
             generar_musica_ambiente(musica_mood, 90, p / "musica.mp3", loopable=True)
 
     # 2) Paisaje sonoro a longitud completa → audio.mp3
-    generar_ambiente(sonidos, dur_min * 60, p / "audio.mp3",
+    generar_ambiente(sonidos, dur_min * 60, p / "audio.mp3", volumenes=volumenes,
                      on_progreso=lambda t, pc: avisar(t, 6 + (pc or 0) * 0.14))
 
     # 3) Visuales por tema → escenas.json

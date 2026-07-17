@@ -178,6 +178,17 @@
   #rx-resultado { display: none; max-width: 780px; margin: 20px auto; }
   #rx-resultado.on { display: block; }
   #rx-resultado video { width: 100%; border-radius: 14px; background: #000; }
+  /* mezcla de pistas + preview */
+  #rx-mezcla-bloque { border: 1px solid var(--linea); border-radius: 14px; padding: 14px 16px; background: rgba(120,180,220,.05); }
+  .rx-fila { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .rx-fila-nom { min-width: 160px; font: 600 13px 'Roboto', sans-serif; color: var(--texto); }
+  .rx-fila input[type=range] { flex: 1; accent-color: var(--acento); cursor: pointer; }
+  .rx-fila-pct { width: 44px; text-align: right; font: 600 12px 'Roboto', sans-serif; color: var(--tenue); }
+  .rx-prev-uno { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--linea);
+    background: var(--panel2, #16171f); color: var(--texto); cursor: pointer; font-size: 12px; flex: none; }
+  .rx-prev-uno:hover { border-color: var(--acento); }
+  .rx-prev-uno:disabled { opacity: .6; cursor: default; }
+  #rx-prev-mezcla { margin-top: 12px; }
   .nicho .foto .badge { position: absolute; top: 12px; left: 12px; background: var(--acento); color: #fff;
     font: 700 11px 'Roboto', sans-serif; border-radius: 12px; padding: 4px 10px; letter-spacing: .4px; }
   .nicho .cuerpo { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -872,6 +883,14 @@
             </div>
           </div>
 
+          <div class="rx-bloque" id="rx-mezcla-bloque">
+            <label>🎚️ <span data-i18n="rx_l_mezcla">Mezcla y vista previa</span></label>
+            <div class="rx-ayuda" data-i18n="rx_h_mezcla">Ajusta el volumen de cada pista y escucha una muestra de 8 s antes de generar el video.</div>
+            <div id="rx-mezcla"></div>
+            <button id="rx-prev-mezcla" onclick="rxPreview()" data-i18n="rx_prev_mezcla">▶ Escuchar mezcla (8 s)</button>
+            <audio id="rx-prev-audio" style="display:none"></audio>
+          </div>
+
           <div class="rx-bloque">
             <label data-i18n="rx_l_visuales">3 · Imágenes / visuales</label>
             <div class="rx-ayuda" data-i18n="rx_h_visuales">De dónde salen las imágenes del video (se buscan en Pexels). Elige uno o varios.</div>
@@ -930,7 +949,7 @@
           <video id="rx-video" controls preload="metadata"></video>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
             <button class="primario" id="rx-exportar" data-i18n="rx_exportar">⬇ Exportar / Descargar</button>
-            <button id="rx-editar" data-i18n="rx_editar">✏️ Editar en el editor</button>
+            <button id="rx-editar" data-i18n="rx_editar">✏️ Ajustar y regenerar</button>
             <button id="rx-otro" onclick="empezarRelax()" data-i18n="rx_otro">＋ Crear otro</button>
           </div>
         </div>
@@ -1863,7 +1882,8 @@ const EN = {
   rx_v_aurora: "Northern lights", rx_v_cafe: "Coffee shop", rx_v_lago: "Lake", rx_v_espacio: "Space",
   rx_l_dur: "4 · Video length", rx_l_formato: "5 · Format", rx_l_nombre: "6 · Video name",
   rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
-  rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Edit in the editor", rx_otro: "＋ Create another",
+  rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Adjust & regenerate", rx_otro: "＋ Create another",
+  rx_l_mezcla: "Mix & preview", rx_h_mezcla: "Adjust each track's volume and hear an 8s sample before generating the video.", rx_prev_mezcla: "▶ Play mix (8s)",
   home_help_t: "First time here?",
   home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
   home_tutorial: "▶ Watch guided tour",
@@ -4681,7 +4701,7 @@ function empezarNicho() {
 }
 
 /* ==================== nicho: Música & Relax ==================== */
-let rxChipsInit = false;
+let rxChipsInit = false, rxVols = {}, rxMusVol = 0.5, rxEditando = null;
 
 function empezarRelax() {
   if (!configApp.pexels) {
@@ -4699,9 +4719,63 @@ function empezarRelax() {
   $('rx-progreso').classList.remove('on');
   $('rx-resultado').classList.remove('on');
   $('rx-crear-msg').textContent = '';
+  // modo creación (no edición): formulario en valores por defecto
+  rxEditando = null;
+  rxVols = {};
+  rxMusVol = 0.5;
+  $('rx-nombre').value = '';
+  $('rx-nombre').disabled = false;
+  const def = (id, vals) => $(id).querySelectorAll('.rx-chip, button')
+    .forEach(c => c.classList.toggle('on', vals.includes(c.dataset.val)));
+  def('rx-sonidos', ['lluvia']);
+  def('rx-visuales', ['lluvia_ventana']);
+  def('rx-musica-mood', ['pad_calido']);
+  def('rx-dur', ['10']);
+  def('rx-formato', ['16:9']);
+  $('rx-musica-on').checked = false;
+  rxToggleMusica();                     // sincroniza caja + mixer
+  $('rx-crear').textContent = L('🎬 Crear video relax', '🎬 Create relax video');
   // la música GRATIS está siempre disponible; ElevenLabs es un extra opcional
   $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
   if (!configApp.elevenlabs) $('rx-musica-ia').checked = false;
+  rxRenderMezcla();
+  rxAvisoDur();
+}
+
+// Editar/regenerar un proyecto relax existente: abre el formulario pre-rellenado.
+async function rxEditarProyecto(nombre) {
+  let d;
+  try { d = await api('/api/proyectos/' + encodeURIComponent(nombre)); }
+  catch (e) { return; }
+  const cfg = d.relax || {};
+  irA('relax');
+  rxInitChips();
+  $('rx-form').style.display = '';
+  $('rx-progreso').classList.remove('on');
+  $('rx-resultado').classList.remove('on');
+  $('rx-crear-msg').textContent = '';
+  const marca = (id, vals) => $(id).querySelectorAll('.rx-chip').forEach(
+    c => c.classList.toggle('on', (vals || []).includes(c.dataset.val)));
+  marca('rx-sonidos', cfg.sonidos);
+  marca('rx-visuales', cfg.visuales);
+  const mus = cfg.musica || '';
+  $('rx-musica-on').checked = !!mus;
+  if (mus) $('rx-musica-mood').querySelectorAll('.rx-chip').forEach(
+    c => c.classList.toggle('on', c.dataset.val === mus));
+  $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
+  $('rx-musica-ia').checked = !!cfg.musica_ia && configApp.elevenlabs;
+  rxToggleMusica();
+  rxVols = Object.assign({}, cfg.volumenes || {});
+  rxMusVol = (cfg.musica_volumen != null) ? cfg.musica_volumen : 0.5;
+  const min = String(cfg.relax_min || 10);
+  $('rx-dur').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === min));
+  const fmt = cfg.formato || '16:9';
+  $('rx-formato').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === fmt));
+  $('rx-nombre').value = nombre;
+  $('rx-nombre').disabled = true;      // el nombre no cambia al regenerar
+  rxEditando = nombre;
+  $('rx-crear').textContent = L('🔄 Regenerar video', '🔄 Regenerate video');
+  rxRenderMezcla();
   rxAvisoDur();
 }
 
@@ -4710,7 +4784,9 @@ function rxInitChips() {
   rxChipsInit = true;
   ['rx-sonidos', 'rx-visuales'].forEach(id =>       // multi-selección
     $(id).addEventListener('click', e => {
-      const c = e.target.closest('.rx-chip'); if (c) c.classList.toggle('on');
+      const c = e.target.closest('.rx-chip'); if (!c) return;
+      c.classList.toggle('on');
+      if (id === 'rx-sonidos') rxRenderMezcla();
     }));
   [['rx-musica-mood', '.rx-chip'], ['rx-dur', 'button'], ['rx-formato', 'button']].forEach(([id, sel]) =>
     $(id).addEventListener('click', e => {          // selección única
@@ -4718,10 +4794,86 @@ function rxInitChips() {
       $(id).querySelectorAll(sel).forEach(x => x.classList.remove('on'));
       b.classList.add('on');
       if (id === 'rx-dur') rxAvisoDur();
+      if (id === 'rx-musica-mood') rxRenderMezcla();
     }));
 }
 
-function rxToggleMusica() { $('rx-musica-caja').classList.toggle('off', !$('rx-musica-on').checked); }
+function rxToggleMusica() {
+  $('rx-musica-caja').classList.toggle('off', !$('rx-musica-on').checked);
+  rxRenderMezcla();
+}
+
+// ---- mezcla de pistas + preview ----
+function rxFilaNom(contId, key) {
+  const chip = $(contId).querySelector(`[data-val="${key}"]`);
+  if (!chip) return key;
+  const em = (chip.querySelector('.em') || {}).textContent || '';
+  const tx = (chip.querySelector('span:last-child') || {}).textContent || key;
+  return (em ? em + ' ' : '') + tx;
+}
+function rxRenderMezcla() {
+  const cont = $('rx-mezcla');
+  if (!cont) return;
+  const sonidos = rxSel('rx-sonidos');
+  let html = '';
+  sonidos.forEach(k => {
+    const pct = Math.round((rxVols[k] != null ? rxVols[k] : 1.0) * 100);
+    html += `<div class="rx-fila" data-key="${k}">
+      <button class="rx-prev-uno" title="${L('Escuchar', 'Play')}" onclick="rxPreview('${k}')">▶</button>
+      <span class="rx-fila-nom">${rxFilaNom('rx-sonidos', k)}</span>
+      <input type="range" min="0" max="150" value="${pct}" oninput="rxVolChange('${k}',this.value)">
+      <span class="rx-fila-pct">${pct}%</span></div>`;
+  });
+  if ($('rx-musica-on').checked) {
+    const mood = rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido');
+    const pct = Math.round(rxMusVol * 100);
+    html += `<div class="rx-fila" data-key="__musica">
+      <button class="rx-prev-uno" style="visibility:hidden">▶</button>
+      <span class="rx-fila-nom">🎵 ${rxFilaNom('rx-musica-mood', mood)}</span>
+      <input type="range" min="0" max="150" value="${pct}" oninput="rxMusVolChange(this.value)">
+      <span class="rx-fila-pct">${pct}%</span></div>`;
+  }
+  cont.innerHTML = html || `<div class="rx-ayuda">${L('Elige sonidos arriba para ajustar su volumen y escuchar una muestra.', 'Pick sounds above to adjust volume and hear a sample.')}</div>`;
+  $('rx-prev-mezcla').style.display = sonidos.length ? '' : 'none';
+}
+function rxVolChange(k, v) {
+  rxVols[k] = +v / 100;
+  const f = document.querySelector(`.rx-fila[data-key="${k}"] .rx-fila-pct`);
+  if (f) f.textContent = v + '%';
+}
+function rxMusVolChange(v) {
+  rxMusVol = +v / 100;
+  const f = document.querySelector('.rx-fila[data-key="__musica"] .rx-fila-pct');
+  if (f) f.textContent = v + '%';
+}
+async function rxPreview(soloKey) {
+  const audio = $('rx-prev-audio');
+  const sonidos = soloKey ? [soloKey] : rxSel('rx-sonidos');
+  if (!sonidos.length) return;
+  const volumenes = {};
+  sonidos.forEach(k => volumenes[k] = (rxVols[k] != null ? rxVols[k] : 1.0));
+  const musOn = !soloKey && $('rx-musica-on').checked;
+  const body = { sonidos, volumenes,
+                 musica: musOn ? rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido') : '',
+                 musica_volumen: rxMusVol };
+  const btn = soloKey
+    ? document.querySelector(`.rx-fila[data-key="${soloKey}"] .rx-prev-uno`)
+    : $('rx-prev-mezcla');
+  const txt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  try {
+    audio.pause();
+    const r = await fetch('/api/relax/preview', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error('preview');
+    const blob = await r.blob();
+    if (audio._url) URL.revokeObjectURL(audio._url);
+    audio._url = URL.createObjectURL(blob);
+    audio.src = audio._url;
+    audio.play();
+  } catch (e) { /* silencioso */ }
+  finally { if (btn) { btn.disabled = false; btn.textContent = txt; } }
+}
 function rxSel(id) { return [...$(id).querySelectorAll('.rx-chip.on')].map(c => c.dataset.val); }
 function rxUnica(id, sel, def) { const b = $(id).querySelector(sel + '.on'); return b ? b.dataset.val : def; }
 function rxAvisoDur() {
@@ -4740,8 +4892,11 @@ async function crearRelax() {
   const musOn = $('rx-musica-on').checked;
   const musica = musOn ? rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido') : '';
   const musica_ia = musOn && configApp.elevenlabs && $('rx-musica-ia').checked;
-  const nombre = ($('rx-nombre').value || '').trim() || ('relax_' + Date.now());
+  const volumenes = {};
+  sonidos.forEach(k => { if (rxVols[k] != null) volumenes[k] = rxVols[k]; });
+  const nombre = rxEditando || (($('rx-nombre').value || '').trim() || ('relax_' + Date.now()));
   const cuerpo = { nombre, sonidos, visuales, musica, musica_ia,
+                   volumenes, musica_volumen: rxMusVol, editar: !!rxEditando,
                    minutos: +rxUnica('rx-dur', 'button', '10'),
                    formato: rxUnica('rx-formato', 'button', '16:9') };
   msg.textContent = '';
@@ -4779,7 +4934,7 @@ function rxMostrarResultado(nombre) {
   $('rx-resultado').classList.add('on');
   $('rx-video').src = `/api/proyectos/${encodeURIComponent(nombre)}/video?t=${Date.now()}`;
   $('rx-exportar').onclick = async () => { await abrirProyecto(nombre); seleccionadas = []; abrirExportar(); };
-  $('rx-editar').onclick = () => abrirHistoriaEnEditor(nombre);
+  $('rx-editar').onclick = () => rxEditarProyecto(nombre);
   if (typeof cargarLista === 'function') cargarLista();
 }
 
@@ -4824,6 +4979,7 @@ function actualizarBarraHist() {
 async function abrirHistoriaEnEditor(nombre) {
   seleccionadas = [];
   await abrirProyecto(nombre);
+  if (actual && actual.tipo === 'relax') { rxEditarProyecto(nombre); return; }
   irA('editor');
 }
 function abrirSeleccionHist() { if (histSel) abrirHistoriaEnEditor(histSel); }

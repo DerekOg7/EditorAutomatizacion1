@@ -625,10 +625,25 @@ Frontend: tarjeta de nicho activa en el home (`empezarRelax`, portada azul
 estrellada), página `#pg-relax` con chips (sonidos multi, visuales multi, música
 mood única) + duración (5/10/30/60) + formato + nombre. `crearRelax` hace POST y
 sondea `/estado` con barra de progreso; al terminar muestra el video en un panel
-con Exportar/Editar/Crear otro. i18n ES/EN (claves `rx_*`). El candado de Pexels
-también aplica. Música: bloque visible pero deshabilitado si no hay clave Eleven.
+con Exportar/Ajustar/Crear otro. i18n ES/EN (claves `rx_*`). El candado de Pexels
+también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
 
-## Estado actual: v0.23 (nicho Relax; código commiteado — pendiente empaquetar zip)
+**Mezcla, preview y edición (mejoras posteriores):**
+- **Mixer** (`#rx-mezcla`, `rxRenderMezcla`): una fila por pista seleccionada
+  (cada sonido + la música) con slider 0–150 % → `rxVols`{tipo:ganancia} y
+  `rxMusVol`. `generar_ambiente` aplica un `volume=` por sonido; la música va a su
+  `musica_volumen`. Se re-pinta al togglear sonidos/música/mood.
+- **Preview** (`POST /api/relax/preview` → `generar_preview_relax`): genera una
+  muestra de ~8 s de la mezcla actual (sonidos a sus volúmenes + música) y la
+  devuelve como mp3; el front la reproduce (blob). Botón ▶ por sonido (solo) y
+  "▶ Escuchar mezcla". Deja escuchar ANTES de generar el video largo.
+- **Editar/regenerar** (`rxEditarProyecto`): `POST /api/relax` con `editar:true`
+  sobreescribe un proyecto relax existente (borra medios/render viejos, conserva
+  el nombre). `ver_proyecto` devuelve `tipo` + `relax` (config) para pre-rellenar
+  el formulario. Abrir un proyecto relax desde "Mis historias" enruta al formulario
+  pre-rellenado (no al editor de escenas). `empezarRelax` resetea a defaults limpios.
+
+## Estado actual: v0.23 (nicho Relax + mixer/preview/edición; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

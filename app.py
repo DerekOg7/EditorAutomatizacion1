@@ -8,6 +8,8 @@ App web del editor — corre local y abre http://localhost:5178
 import datetime
 import os
 import re
+import shutil
+import tempfile
 import threading
 import time
 import traceback
@@ -192,7 +194,8 @@ def hilo_coherencia(nombre, proveedor, modelo):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia):
+def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia,
+               volumenes, musica_volumen):
     """Nicho Relax: genera el audio (ambiente sintetizado + música opcional,
     gratis o con IA), baja los visuales por tema y ensambla un video largo."""
     p = PROYECTOS / nombre
@@ -202,6 +205,7 @@ def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia):
         editor.crear_relax(
             p, sonidos=sonidos, visuales=visuales, dur_min=minutos,
             formato=formato, musica_mood=musica, musica_ia=musica_ia,
+            volumenes=volumenes, musica_volumen=musica_volumen,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
         set_estado(nombre, fase="listo", progreso=100,
                    detalle="Tu video relajante está listo")
@@ -697,9 +701,21 @@ def crear_proyecto():
     return jsonify({"ok": True, "nombre": nombre})
 
 
+def _limpiar_vols(v):
+    """Normaliza el dict {tipo: ganancia} de volúmenes a floats en [0, 2]."""
+    out = {}
+    if isinstance(v, dict):
+        for k, val in v.items():
+            try:
+                out[str(k)] = max(0.0, min(2.0, float(val)))
+            except (TypeError, ValueError):
+                pass
+    return out
+
+
 @app.post("/api/relax")
 def crear_relax_endpoint():
-    """Crea un proyecto del nicho Relax (música/sonidos relajantes, sin narración)."""
+    """Crea (o REGENERA, si editar=true) un proyecto del nicho Relax."""
     d = request.json or {}
     nombre = nombre_valido(d.get("nombre", ""))
     if not nombre:
@@ -711,11 +727,24 @@ def crear_relax_endpoint():
     if not editor.leer_env().get("PEXELS_API_KEY"):
         return jsonify({"error": "Falta la clave de Pexels (gratis en pexels.com/api)."}), 400
     p = PROYECTOS / nombre
+    editar = bool(d.get("editar"))
     if p.exists():
-        return jsonify({"error": f"Ya existe un proyecto llamado '{nombre}'."}), 400
-    (p / "imagenes").mkdir(parents=True)
+        if not (editar and (p / "ajustes.json").exists()
+                and editor.leer_ajustes(p).get("tipo") == "relax"):
+            return jsonify({"error": f"Ya existe un proyecto llamado '{nombre}'."}), 400
+        # regenerar: borra los medios/render viejos, conserva la carpeta
+        for sub in ("imagenes", "clips"):
+            shutil.rmtree(p / sub, ignore_errors=True)
+        for f in ("audio.mp3", "musica.mp3", "video.mp4", "escenas.json"):
+            (p / f).unlink(missing_ok=True)
+    (p / "imagenes").mkdir(parents=True, exist_ok=True)
     musica = (d.get("musica") or "").strip()
     musica_ia = bool(d.get("musica_ia"))
+    volumenes = _limpiar_vols(d.get("volumenes"))
+    try:
+        musica_volumen = max(0.0, min(1.5, float(d.get("musica_volumen", 0.5))))
+    except (TypeError, ValueError):
+        musica_volumen = 0.5
     try:
         minutos = max(1, min(180, int(d.get("minutos") or 10)))
     except (TypeError, ValueError):
@@ -723,9 +752,33 @@ def crear_relax_endpoint():
     formato = d.get("formato") if d.get("formato") in editor.FORMATOS else "16:9"
     threading.Thread(
         target=hilo_relax,
-        args=(nombre, sonidos, visuales, minutos, formato, musica, musica_ia),
+        args=(nombre, sonidos, visuales, minutos, formato, musica, musica_ia,
+              volumenes, musica_volumen),
         daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
+
+
+@app.post("/api/relax/preview")
+def relax_preview():
+    """Genera una muestra corta (≈8s) de la mezcla actual (sonidos + música) para
+    escucharla antes de generar el video. Devuelve el mp3 directamente."""
+    d = request.json or {}
+    sonidos = [s for s in (d.get("sonidos") or []) if isinstance(s, str)]
+    if not sonidos:
+        return jsonify({"error": "Elige al menos un sonido."}), 400
+    volumenes = _limpiar_vols(d.get("volumenes"))
+    musica = (d.get("musica") or "").strip()
+    try:
+        musica_vol = max(0.0, min(1.5, float(d.get("musica_volumen", 0.5))))
+    except (TypeError, ValueError):
+        musica_vol = 0.5
+    tmp = Path(tempfile.gettempdir()) / f"relax_prev_{os.getpid()}.mp3"
+    try:
+        editor.generar_preview_relax(sonidos, volumenes, musica, musica_vol, tmp, dur=8)
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
+    return send_file(tmp, mimetype="audio/mpeg", conditional=False,
+                     max_age=0, download_name="preview.mp3")
 
 
 @app.get("/api/proyectos/<nombre>")
@@ -761,6 +814,12 @@ def ver_proyecto(nombre):
     except ErrorPipeline:
         pass
     musica = editor.buscar_musica(p)
+    aj = editor.leer_ajustes(p)
+    relax = None
+    if aj.get("tipo") == "relax":
+        relax = {k: aj.get(k) for k in
+                 ("sonidos", "visuales", "musica", "musica_ia", "musica_volumen",
+                  "volumenes", "relax_min", "formato", "titulo")}
     return jsonify({
         "nombre": nombre,
         "audio": audio,
@@ -769,11 +828,13 @@ def ver_proyecto(nombre):
         "video": (p / "video.mp4").exists(),
         "video_desactualizado": video_desactualizado(p),
         "formato": editor.formato_proyecto(p),
-        "guia_imagenes": editor.leer_ajustes(p).get("guia_imagenes", ""),
+        "guia_imagenes": aj.get("guia_imagenes", ""),
         "overlays": editor.leer_overlays(p),
         "musica": ({"archivo": musica.name,
-                    "volumen": editor.leer_ajustes(p).get("musica_volumen", 0.12)}
+                    "volumen": aj.get("musica_volumen", 0.12)}
                    if musica else None),
+        "tipo": aj.get("tipo", ""),
+        "relax": relax,
         "estado": get_estado(nombre),
     })
 

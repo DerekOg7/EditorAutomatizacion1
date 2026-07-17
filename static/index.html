@@ -188,7 +188,21 @@
     background: var(--panel2, #16171f); color: var(--texto); cursor: pointer; font-size: 12px; flex: none; }
   .rx-prev-uno:hover { border-color: var(--acento); }
   .rx-prev-uno:disabled { opacity: .6; cursor: default; }
-  #rx-prev-mezcla { margin-top: 12px; }
+  #rx-prev-mezcla { margin-top: 0; }
+  .rx-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .rx-tab { padding: 7px 13px; border-radius: 10px; border: 1px solid var(--linea);
+    background: var(--panel2, #16171f); color: var(--tenue); font: 700 12.5px 'Roboto', sans-serif; cursor: pointer; }
+  .rx-tab:hover { color: var(--texto); }
+  .rx-tab.on { border-color: var(--acento); color: var(--texto); background: rgba(120,180,220,.12); }
+  .rx-master { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--linea); }
+  .rx-mute { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--linea);
+    background: var(--panel2, #16171f); color: var(--tenue); cursor: pointer; font-size: 12px; flex: none; }
+  .rx-mute:hover { border-color: var(--tenue); }
+  .rx-mute.on { border-color: var(--alerta, #c4231b); color: var(--alerta, #c4231b); background: rgba(196,35,27,.10); }
+  .rx-fila.silenciada .rx-fila-nom, .rx-fila.silenciada input { opacity: .4; }
+  #rx-presets .rx-chip { position: relative; }
+  .rx-preset-del { margin-left: 4px; color: var(--tenue2); font-weight: 700; }
+  .rx-preset-del:hover { color: var(--alerta, #c4231b); }
   .nicho .foto .badge { position: absolute; top: 12px; left: 12px; background: var(--acento); color: #fff;
     font: 700 11px 'Roboto', sans-serif; border-radius: 12px; padding: 4px 10px; letter-spacing: .4px; }
   .nicho .cuerpo { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -849,33 +863,26 @@
           <p style="color:var(--tenue);margin:0 0 8px" data-i18n="rx_sub">Elige el ambiente, los visuales y la duración. La app genera el audio y arma el video largo, sin narración.</p>
 
           <div class="rx-bloque">
+            <label data-i18n="rx_l_presets">⭐ Presets · mezclas listas</label>
+            <div class="rx-ayuda" data-i18n="rx_h_presets">Un clic carga una mezcla completa. Puedes ajustarla y guardar la tuya.</div>
+            <div class="rx-chips" id="rx-presets"></div>
+          </div>
+
+          <div class="rx-bloque">
             <label data-i18n="rx_l_sonidos">1 · Sonidos de ambiente</label>
-            <div class="rx-ayuda" data-i18n="rx_h_sonidos">Se generan gratis en tu equipo. Puedes combinar varios (ej. lluvia + fuego).</div>
-            <div class="rx-chips" id="rx-sonidos">
-              <div class="rx-chip on" data-val="lluvia"><span class="em">🌧️</span><span data-i18n="rx_s_lluvia">Lluvia</span></div>
-              <div class="rx-chip" data-val="tormenta"><span class="em">⛈️</span><span data-i18n="rx_s_tormenta">Tormenta</span></div>
-              <div class="rx-chip" data-val="mar"><span class="em">🌊</span><span data-i18n="rx_s_mar">Mar / Olas</span></div>
-              <div class="rx-chip" data-val="rio"><span class="em">🏞️</span><span data-i18n="rx_s_rio">Río / Arroyo</span></div>
-              <div class="rx-chip" data-val="bosque"><span class="em">🌲</span><span data-i18n="rx_s_bosque">Bosque</span></div>
-              <div class="rx-chip" data-val="fuego"><span class="em">🔥</span><span data-i18n="rx_s_fuego">Fuego / Chimenea</span></div>
-              <div class="rx-chip" data-val="viento"><span class="em">💨</span><span data-i18n="rx_s_viento">Viento</span></div>
-              <div class="rx-chip" data-val="noche"><span class="em">🌙</span><span data-i18n="rx_s_noche">Noche / Grillos</span></div>
-            </div>
+            <div class="rx-ayuda" data-i18n="rx_h_sonidos">Se generan gratis en tu equipo. Combina los que quieras (ej. lluvia + fuego).</div>
+            <div class="rx-tabs" id="rx-son-tabs"></div>
+            <div class="rx-chips" id="rx-sonidos"></div>
           </div>
 
           <div class="rx-bloque" id="rx-musica-bloque">
             <label data-i18n="rx_l_musica">2 · Música relajante (opcional)</label>
-            <div class="rx-ayuda" data-i18n="rx_h_musica">Una cama de música suave que se mezcla bajo el ambiente. GRATIS, generada en tu equipo.</div>
+            <div class="rx-ayuda" data-i18n="rx_h_musica">Una cama de música o tonos de meditación bajo el ambiente. GRATIS, en tu equipo.</div>
             <label class="rx-chip" style="cursor:pointer" id="rx-musica-toggle-l">
               <input type="checkbox" id="rx-musica-on" onchange="rxToggleMusica()" style="margin:0"> <span data-i18n="rx_musica_add">Añadir música</span>
             </label>
             <div id="rx-musica-caja" class="off" style="margin-top:10px">
-              <div class="rx-chips" id="rx-musica-mood">
-                <div class="rx-chip on" data-val="pad_calido"><span class="em">🌅</span><span data-i18n="rx_m_calido">Pad cálido</span></div>
-                <div class="rx-chip" data-val="pad_sonador"><span class="em">🌌</span><span data-i18n="rx_m_sonador">Pad soñador</span></div>
-                <div class="rx-chip" data-val="drone"><span class="em">🧘</span><span data-i18n="rx_m_drone">Drone / Meditación</span></div>
-                <div class="rx-chip" data-val="campanas"><span class="em">🔔</span><span data-i18n="rx_m_campanas">Campanas</span></div>
-              </div>
+              <div class="rx-chips" id="rx-musica-mood"></div>
               <label class="rx-chip" id="rx-eleven-l" style="cursor:pointer;margin-top:10px;display:none">
                 <input type="checkbox" id="rx-musica-ia" style="margin:0"> <span data-i18n="rx_m_eleven">Mejor calidad con ElevenLabs (IA, gasta créditos)</span>
               </label>
@@ -885,29 +892,29 @@
 
           <div class="rx-bloque" id="rx-mezcla-bloque">
             <label>🎚️ <span data-i18n="rx_l_mezcla">Mezcla y vista previa</span></label>
-            <div class="rx-ayuda" data-i18n="rx_h_mezcla">Ajusta el volumen de cada pista y escucha una muestra de 8 s antes de generar el video.</div>
+            <div class="rx-ayuda" data-i18n="rx_h_mezcla">Ajusta volumen (y silencia) cada pista, dale calidez/reverb y escucha una muestra de 8 s antes de generar.</div>
             <div id="rx-mezcla"></div>
-            <button id="rx-prev-mezcla" onclick="rxPreview()" data-i18n="rx_prev_mezcla">▶ Escuchar mezcla (8 s)</button>
+            <div class="rx-master">
+              <div class="rx-fila"><button class="rx-prev-uno" onclick="rxPreview()" title="Escuchar">▶</button>
+                <span class="rx-fila-nom" data-i18n="rx_calidez">🎛️ Calidez / tono</span>
+                <input type="range" min="0" max="100" value="0" id="rx-calidez" oninput="rxMaestro()">
+                <span class="rx-fila-pct" id="rx-calidez-pct">0%</span></div>
+              <div class="rx-fila"><span class="rx-prev-uno" style="visibility:hidden">▶</span>
+                <span class="rx-fila-nom" data-i18n="rx_reverb">🌫️ Reverb / espacio</span>
+                <input type="range" min="0" max="100" value="0" id="rx-reverb" oninput="rxMaestro()">
+                <span class="rx-fila-pct" id="rx-reverb-pct">0%</span></div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+              <button id="rx-prev-mezcla" onclick="rxPreview()" data-i18n="rx_prev_mezcla">▶ Escuchar mezcla (8 s)</button>
+              <button id="rx-guardar-preset" onclick="rxGuardarPreset()" data-i18n="rx_guardar_preset">⭐ Guardar mezcla</button>
+            </div>
             <audio id="rx-prev-audio" style="display:none"></audio>
           </div>
 
           <div class="rx-bloque">
             <label data-i18n="rx_l_visuales">3 · Imágenes / visuales</label>
             <div class="rx-ayuda" data-i18n="rx_h_visuales">De dónde salen las imágenes del video (se buscan en Pexels). Elige uno o varios.</div>
-            <div class="rx-chips" id="rx-visuales">
-              <div class="rx-chip on" data-val="lluvia_ventana"><span class="em">🪟</span><span data-i18n="rx_v_lluvia">Lluvia en la ventana</span></div>
-              <div class="rx-chip" data-val="bosque"><span class="em">🌲</span><span data-i18n="rx_v_bosque">Bosque</span></div>
-              <div class="rx-chip" data-val="estrellas"><span class="em">✨</span><span data-i18n="rx_v_estrellas">Cielo estrellado</span></div>
-              <div class="rx-chip" data-val="chimenea"><span class="em">🔥</span><span data-i18n="rx_v_chimenea">Chimenea</span></div>
-              <div class="rx-chip" data-val="playa"><span class="em">🏖️</span><span data-i18n="rx_v_playa">Playa / Olas</span></div>
-              <div class="rx-chip" data-val="nieve"><span class="em">❄️</span><span data-i18n="rx_v_nieve">Nieve cayendo</span></div>
-              <div class="rx-chip" data-val="montanas"><span class="em">🏔️</span><span data-i18n="rx_v_montanas">Montañas</span></div>
-              <div class="rx-chip" data-val="nubes"><span class="em">☁️</span><span data-i18n="rx_v_nubes">Nubes</span></div>
-              <div class="rx-chip" data-val="aurora"><span class="em">🌌</span><span data-i18n="rx_v_aurora">Aurora boreal</span></div>
-              <div class="rx-chip" data-val="cafe"><span class="em">☕</span><span data-i18n="rx_v_cafe">Cafetería</span></div>
-              <div class="rx-chip" data-val="lago"><span class="em">🏞️</span><span data-i18n="rx_v_lago">Lago</span></div>
-              <div class="rx-chip" data-val="espacio"><span class="em">🪐</span><span data-i18n="rx_v_espacio">Espacio</span></div>
-            </div>
+            <div class="rx-chips" id="rx-visuales"></div>
           </div>
 
           <div class="rx-bloque">
@@ -1883,7 +1890,9 @@ const EN = {
   rx_l_dur: "4 · Video length", rx_l_formato: "5 · Format", rx_l_nombre: "6 · Video name",
   rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
   rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Adjust & regenerate", rx_otro: "＋ Create another",
-  rx_l_mezcla: "Mix & preview", rx_h_mezcla: "Adjust each track's volume and hear an 8s sample before generating the video.", rx_prev_mezcla: "▶ Play mix (8s)",
+  rx_l_mezcla: "Mix & preview", rx_h_mezcla: "Adjust each track's volume (and mute), add warmth/reverb and hear an 8s sample before generating.", rx_prev_mezcla: "▶ Play mix (8s)",
+  rx_l_presets: "⭐ Presets · ready-made mixes", rx_h_presets: "One click loads a full mix. Tweak it and save your own.",
+  rx_calidez: "🎛️ Warmth / tone", rx_reverb: "🌫️ Reverb / space", rx_guardar_preset: "⭐ Save mix",
   home_help_t: "First time here?",
   home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
   home_tutorial: "▶ Watch guided tour",
@@ -4701,7 +4710,98 @@ function empezarNicho() {
 }
 
 /* ==================== nicho: Música & Relax ==================== */
-let rxChipsInit = false, rxVols = {}, rxMusVol = 0.5, rxEditando = null;
+let rxCat = null, rxSonSel = new Set(), rxSonTab = 'naturaleza', rxVisSel = new Set(),
+    rxMusMood = 'pad_calido', rxVols = {}, rxMuted = new Set(),
+    rxMusVol = 0.5, rxCalidez = 0, rxReverb = 0, rxEditando = null, rxBotonesInit = false;
+
+async function rxCargarCatalogo() {
+  if (rxCat) return;
+  try { rxCat = await api('/api/relax/catalogo'); }
+  catch (e) { rxCat = { categorias: [], sonidos: [], musica: [], visuales: [], presets: [], presets_usuario: [] }; }
+}
+function rxInitBotones() {         // clic en botones estáticos de duración/formato
+  if (rxBotonesInit) return; rxBotonesInit = true;
+  ['rx-dur', 'rx-formato'].forEach(id => $(id).addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    $(id).querySelectorAll('button').forEach(x => x.classList.remove('on'));
+    b.classList.add('on');
+    if (id === 'rx-dur') rxAvisoDur();
+  }));
+}
+function rxChip(key, emoji, nombre, on, extra) {
+  return `<div class="rx-chip${on ? ' on' : ''}" data-val="${key}"><span class="em">${emoji || ''}</span><span>${nombre}</span>${extra || ''}</div>`;
+}
+function rxNomSonido(k) { const s = rxCat && rxCat.sonidos.find(x => x.key === k); return s ? `${s.emoji} ${L(s.es, s.en)}` : k; }
+function rxNomMusica(k) { const m = rxCat && rxCat.musica.find(x => x.key === k); return m ? `${m.emoji} ${L(m.es, m.en)}` : k; }
+
+function rxRenderSonTabs() {
+  $('rx-son-tabs').innerHTML = rxCat.categorias.map(c =>
+    `<button class="rx-tab${c.key === rxSonTab ? ' on' : ''}" data-cat="${c.key}">${c.emoji} ${L(c.es, c.en)}</button>`).join('');
+  $('rx-son-tabs').querySelectorAll('.rx-tab').forEach(b => b.onclick = () => {
+    rxSonTab = b.dataset.cat; rxRenderSonTabs(); rxRenderSonChips();
+  });
+}
+function rxRenderSonChips() {
+  const chips = rxCat.sonidos.filter(s => s.cat === rxSonTab);
+  $('rx-sonidos').innerHTML = chips.map(s => rxChip(s.key, s.emoji, L(s.es, s.en), rxSonSel.has(s.key))).join('');
+  $('rx-sonidos').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
+    const k = c.dataset.val;
+    if (rxSonSel.has(k)) { rxSonSel.delete(k); rxMuted.delete(k); } else rxSonSel.add(k);
+    c.classList.toggle('on'); rxRenderMezcla();
+  });
+}
+function rxRenderMusica() {
+  const pads = rxCat.musica.filter(m => m.cat === 'pad');
+  const tonos = rxCat.musica.filter(m => m.cat === 'tono');
+  const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood)).join('');
+  $('rx-musica-mood').innerHTML = grupo(pads) + '<div style="flex-basis:100%;height:0"></div>' + grupo(tonos);
+  $('rx-musica-mood').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
+    rxMusMood = c.dataset.val; rxRenderMusica(); rxRenderMezcla();
+  });
+}
+function rxRenderVisuales() {
+  $('rx-visuales').innerHTML = rxCat.visuales.map(v => rxChip(v.key, '', v.es, rxVisSel.has(v.key))).join('');
+  $('rx-visuales').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
+    const k = c.dataset.val;
+    if (rxVisSel.has(k)) rxVisSel.delete(k); else rxVisSel.add(k);
+    c.classList.toggle('on');
+  });
+}
+function rxRenderPresets() {
+  const fab = (rxCat.presets || []).map(p =>
+    `<div class="rx-chip" data-preset="${p.id}"><span class="em">${p.emoji || '⭐'}</span><span>${L(p.es, p.en)}</span></div>`).join('');
+  const usr = (rxCat.presets_usuario || []).map(p =>
+    `<div class="rx-chip" data-preset="${p.id}"><span class="em">${p.emoji || '⭐'}</span><span>${p.es}</span><span class="rx-preset-del" data-del="${p.id}">✕</span></div>`).join('');
+  $('rx-presets').innerHTML = fab + usr || `<div class="rx-ayuda">${L('Sin presets todavía.', 'No presets yet.')}</div>`;
+  $('rx-presets').querySelectorAll('.rx-chip').forEach(c => c.onclick = e => {
+    if (e.target.dataset.del) { rxBorrarPreset(e.target.dataset.del); return; }
+    const id = c.dataset.preset;
+    const p = [...(rxCat.presets || []), ...(rxCat.presets_usuario || [])].find(x => x.id === id);
+    if (p) rxCargarPreset(p);
+  });
+}
+function rxCargarPreset(p) {
+  rxSonSel = new Set(Object.keys(p.sonidos || {}));
+  rxVols = Object.assign({}, p.sonidos || {});
+  rxMuted = new Set();
+  rxMusMood = p.musica || rxMusMood;
+  $('rx-musica-on').checked = !!p.musica;
+  $('rx-musica-caja').classList.toggle('off', !p.musica);
+  rxMusVol = (p.musica_volumen != null) ? p.musica_volumen : 0.5;
+  rxCalidez = p.calidez || 0; rxReverb = p.reverb || 0;
+  const first = [...rxSonSel][0];
+  if (first) { const s = rxCat.sonidos.find(x => x.key === first); if (s) rxSonTab = s.cat; }
+  rxSincronizarControles();
+  rxRenderSonTabs(); rxRenderSonChips(); rxRenderMusica(); rxRenderMezcla();
+}
+function rxSincronizarControles() {
+  $('rx-calidez').value = Math.round(rxCalidez); $('rx-calidez-pct').textContent = Math.round(rxCalidez) + '%';
+  $('rx-reverb').value = Math.round(rxReverb); $('rx-reverb-pct').textContent = Math.round(rxReverb) + '%';
+}
+function rxMaestro() {
+  rxCalidez = +$('rx-calidez').value; rxReverb = +$('rx-reverb').value;
+  $('rx-calidez-pct').textContent = rxCalidez + '%'; $('rx-reverb-pct').textContent = rxReverb + '%';
+}
 
 function empezarRelax() {
   if (!configApp.pexels) {
@@ -4714,32 +4814,28 @@ function empezarRelax() {
     return;
   }
   irA('relax');
-  rxInitChips();
-  $('rx-form').style.display = '';
-  $('rx-progreso').classList.remove('on');
-  $('rx-resultado').classList.remove('on');
-  $('rx-crear-msg').textContent = '';
-  // modo creación (no edición): formulario en valores por defecto
-  rxEditando = null;
-  rxVols = {};
-  rxMusVol = 0.5;
-  $('rx-nombre').value = '';
-  $('rx-nombre').disabled = false;
-  const def = (id, vals) => $(id).querySelectorAll('.rx-chip, button')
-    .forEach(c => c.classList.toggle('on', vals.includes(c.dataset.val)));
-  def('rx-sonidos', ['lluvia']);
-  def('rx-visuales', ['lluvia_ventana']);
-  def('rx-musica-mood', ['pad_calido']);
-  def('rx-dur', ['10']);
-  def('rx-formato', ['16:9']);
-  $('rx-musica-on').checked = false;
-  rxToggleMusica();                     // sincroniza caja + mixer
-  $('rx-crear').textContent = L('🎬 Crear video relax', '🎬 Create relax video');
-  // la música GRATIS está siempre disponible; ElevenLabs es un extra opcional
-  $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
-  if (!configApp.elevenlabs) $('rx-musica-ia').checked = false;
-  rxRenderMezcla();
-  rxAvisoDur();
+  rxCargarCatalogo().then(() => {
+    rxInitBotones();
+    $('rx-form').style.display = '';
+    $('rx-progreso').classList.remove('on');
+    $('rx-resultado').classList.remove('on');
+    $('rx-crear-msg').textContent = '';
+    rxEditando = null;
+    $('rx-nombre').value = ''; $('rx-nombre').disabled = false;
+    $('rx-crear').textContent = L('🎬 Crear video relax', '🎬 Create relax video');
+    // valores por defecto (formulario limpio)
+    rxSonSel = new Set(['lluvia']); rxVisSel = new Set(['lluvia_ventana']);
+    rxVols = {}; rxMuted = new Set(); rxMusMood = 'pad_calido';
+    rxMusVol = 0.5; rxCalidez = 0; rxReverb = 0; rxSonTab = 'naturaleza';
+    $('rx-musica-on').checked = false; $('rx-musica-caja').classList.add('off');
+    $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
+    if (!configApp.elevenlabs) $('rx-musica-ia').checked = false;
+    $('rx-dur').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === '10'));
+    $('rx-formato').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === '16:9'));
+    rxSincronizarControles();
+    rxRenderPresets(); rxRenderSonTabs(); rxRenderSonChips();
+    rxRenderMusica(); rxRenderVisuales(); rxRenderMezcla(); rxAvisoDur();
+  });
 }
 
 // Editar/regenerar un proyecto relax existente: abre el formulario pre-rellenado.
@@ -4749,92 +4845,69 @@ async function rxEditarProyecto(nombre) {
   catch (e) { return; }
   const cfg = d.relax || {};
   irA('relax');
-  rxInitChips();
+  await rxCargarCatalogo();
+  rxInitBotones();
   $('rx-form').style.display = '';
   $('rx-progreso').classList.remove('on');
   $('rx-resultado').classList.remove('on');
   $('rx-crear-msg').textContent = '';
-  const marca = (id, vals) => $(id).querySelectorAll('.rx-chip').forEach(
-    c => c.classList.toggle('on', (vals || []).includes(c.dataset.val)));
-  marca('rx-sonidos', cfg.sonidos);
-  marca('rx-visuales', cfg.visuales);
-  const mus = cfg.musica || '';
-  $('rx-musica-on').checked = !!mus;
-  if (mus) $('rx-musica-mood').querySelectorAll('.rx-chip').forEach(
-    c => c.classList.toggle('on', c.dataset.val === mus));
+  rxSonSel = new Set(cfg.sonidos || []); rxVisSel = new Set(cfg.visuales || []);
+  rxVols = Object.assign({}, cfg.volumenes || {}); rxMuted = new Set();
+  rxMusMood = cfg.musica || 'pad_calido';
+  $('rx-musica-on').checked = !!cfg.musica;
+  $('rx-musica-caja').classList.toggle('off', !cfg.musica);
   $('rx-eleven-l').style.display = configApp.elevenlabs ? '' : 'none';
   $('rx-musica-ia').checked = !!cfg.musica_ia && configApp.elevenlabs;
-  rxToggleMusica();
-  rxVols = Object.assign({}, cfg.volumenes || {});
   rxMusVol = (cfg.musica_volumen != null) ? cfg.musica_volumen : 0.5;
+  rxCalidez = cfg.calidez || 0; rxReverb = cfg.reverb || 0;
+  const first = [...rxSonSel][0];
+  if (first) { const s = rxCat.sonidos.find(x => x.key === first); if (s) rxSonTab = s.cat; }
   const min = String(cfg.relax_min || 10);
   $('rx-dur').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === min));
   const fmt = cfg.formato || '16:9';
   $('rx-formato').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === fmt));
-  $('rx-nombre').value = nombre;
-  $('rx-nombre').disabled = true;      // el nombre no cambia al regenerar
+  $('rx-nombre').value = nombre; $('rx-nombre').disabled = true;
   rxEditando = nombre;
   $('rx-crear').textContent = L('🔄 Regenerar video', '🔄 Regenerate video');
-  rxRenderMezcla();
-  rxAvisoDur();
-}
-
-function rxInitChips() {
-  if (rxChipsInit) return;
-  rxChipsInit = true;
-  ['rx-sonidos', 'rx-visuales'].forEach(id =>       // multi-selección
-    $(id).addEventListener('click', e => {
-      const c = e.target.closest('.rx-chip'); if (!c) return;
-      c.classList.toggle('on');
-      if (id === 'rx-sonidos') rxRenderMezcla();
-    }));
-  [['rx-musica-mood', '.rx-chip'], ['rx-dur', 'button'], ['rx-formato', 'button']].forEach(([id, sel]) =>
-    $(id).addEventListener('click', e => {          // selección única
-      const b = e.target.closest(sel); if (!b) return;
-      $(id).querySelectorAll(sel).forEach(x => x.classList.remove('on'));
-      b.classList.add('on');
-      if (id === 'rx-dur') rxAvisoDur();
-      if (id === 'rx-musica-mood') rxRenderMezcla();
-    }));
+  rxSincronizarControles();
+  rxRenderPresets(); rxRenderSonTabs(); rxRenderSonChips();
+  rxRenderMusica(); rxRenderVisuales(); rxRenderMezcla(); rxAvisoDur();
 }
 
 function rxToggleMusica() {
   $('rx-musica-caja').classList.toggle('off', !$('rx-musica-on').checked);
   rxRenderMezcla();
 }
+function rxToggleMute(k) {
+  if (rxMuted.has(k)) rxMuted.delete(k); else rxMuted.add(k);
+  rxRenderMezcla();
+}
 
 // ---- mezcla de pistas + preview ----
-function rxFilaNom(contId, key) {
-  const chip = $(contId).querySelector(`[data-val="${key}"]`);
-  if (!chip) return key;
-  const em = (chip.querySelector('.em') || {}).textContent || '';
-  const tx = (chip.querySelector('span:last-child') || {}).textContent || key;
-  return (em ? em + ' ' : '') + tx;
-}
 function rxRenderMezcla() {
-  const cont = $('rx-mezcla');
-  if (!cont) return;
-  const sonidos = rxSel('rx-sonidos');
+  const cont = $('rx-mezcla'); if (!cont) return;
+  const sonidos = [...rxSonSel];
   let html = '';
   sonidos.forEach(k => {
     const pct = Math.round((rxVols[k] != null ? rxVols[k] : 1.0) * 100);
-    html += `<div class="rx-fila" data-key="${k}">
-      <button class="rx-prev-uno" title="${L('Escuchar', 'Play')}" onclick="rxPreview('${k}')">▶</button>
-      <span class="rx-fila-nom">${rxFilaNom('rx-sonidos', k)}</span>
+    const m = rxMuted.has(k);
+    html += `<div class="rx-fila${m ? ' silenciada' : ''}" data-key="${k}">
+      <button class="rx-mute${m ? ' on' : ''}" title="${L('Silenciar', 'Mute')}" onclick="rxToggleMute('${k}')">${m ? '🔇' : '🔊'}</button>
+      <span class="rx-fila-nom">${rxNomSonido(k)}</span>
       <input type="range" min="0" max="150" value="${pct}" oninput="rxVolChange('${k}',this.value)">
-      <span class="rx-fila-pct">${pct}%</span></div>`;
+      <span class="rx-fila-pct">${pct}%</span>
+      <button class="rx-prev-uno" title="${L('Escuchar', 'Play')}" onclick="rxPreview('${k}')">▶</button></div>`;
   });
-  if ($('rx-musica-on').checked) {
-    const mood = rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido');
+  if ($('rx-musica-on').checked && rxMusMood) {
     const pct = Math.round(rxMusVol * 100);
     html += `<div class="rx-fila" data-key="__musica">
-      <button class="rx-prev-uno" style="visibility:hidden">▶</button>
-      <span class="rx-fila-nom">🎵 ${rxFilaNom('rx-musica-mood', mood)}</span>
+      <span class="rx-mute" style="visibility:hidden"></span>
+      <span class="rx-fila-nom">🎵 ${rxNomMusica(rxMusMood)}</span>
       <input type="range" min="0" max="150" value="${pct}" oninput="rxMusVolChange(this.value)">
-      <span class="rx-fila-pct">${pct}%</span></div>`;
+      <span class="rx-fila-pct">${pct}%</span>
+      <button class="rx-prev-uno" style="visibility:hidden">▶</button></div>`;
   }
-  cont.innerHTML = html || `<div class="rx-ayuda">${L('Elige sonidos arriba para ajustar su volumen y escuchar una muestra.', 'Pick sounds above to adjust volume and hear a sample.')}</div>`;
-  $('rx-prev-mezcla').style.display = sonidos.length ? '' : 'none';
+  cont.innerHTML = html || `<div class="rx-ayuda">${L('Elige sonidos arriba para mezclarlos.', 'Pick sounds above to mix them.')}</div>`;
 }
 function rxVolChange(k, v) {
   rxVols[k] = +v / 100;
@@ -4848,19 +4921,23 @@ function rxMusVolChange(v) {
 }
 async function rxPreview(soloKey) {
   const audio = $('rx-prev-audio');
-  const sonidos = soloKey ? [soloKey] : rxSel('rx-sonidos');
-  if (!sonidos.length) return;
+  let sonidos, musica = '';
   const volumenes = {};
-  sonidos.forEach(k => volumenes[k] = (rxVols[k] != null ? rxVols[k] : 1.0));
-  const musOn = !soloKey && $('rx-musica-on').checked;
-  const body = { sonidos, volumenes,
-                 musica: musOn ? rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido') : '',
-                 musica_volumen: rxMusVol };
+  if (soloKey) {
+    sonidos = [soloKey]; volumenes[soloKey] = (rxVols[soloKey] != null ? rxVols[soloKey] : 1.0);
+  } else {
+    sonidos = [...rxSonSel].filter(k => !rxMuted.has(k));
+    if (!sonidos.length) return;
+    sonidos.forEach(k => volumenes[k] = (rxVols[k] != null ? rxVols[k] : 1.0));
+    if ($('rx-musica-on').checked) musica = rxMusMood;
+  }
+  const body = { sonidos, volumenes, musica, musica_volumen: rxMusVol,
+                 calidez: rxCalidez, reverb: rxReverb };
   const btn = soloKey
     ? document.querySelector(`.rx-fila[data-key="${soloKey}"] .rx-prev-uno`)
     : $('rx-prev-mezcla');
   const txt = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  if (btn) { btn.disabled = true; btn.textContent = soloKey ? '⏳' : L('⏳ Generando…', '⏳ Generating…'); }
   try {
     audio.pause();
     const r = await fetch('/api/relax/preview', { method: 'POST',
@@ -4869,12 +4946,28 @@ async function rxPreview(soloKey) {
     const blob = await r.blob();
     if (audio._url) URL.revokeObjectURL(audio._url);
     audio._url = URL.createObjectURL(blob);
-    audio.src = audio._url;
-    audio.play();
+    audio.src = audio._url; audio.play();
   } catch (e) { /* silencioso */ }
   finally { if (btn) { btn.disabled = false; btn.textContent = txt; } }
 }
-function rxSel(id) { return [...$(id).querySelectorAll('.rx-chip.on')].map(c => c.dataset.val); }
+async function rxGuardarPreset() {
+  const activos = [...rxSonSel].filter(k => !rxMuted.has(k));
+  if (!activos.length) { $('rx-crear-msg').textContent = L('Elige sonidos para guardar la mezcla.', 'Pick sounds to save the mix.'); return; }
+  const nombre = prompt(L('Nombre de tu mezcla:', 'Name your mix:'));
+  if (!nombre) return;
+  const sonidos = {}; activos.forEach(k => sonidos[k] = (rxVols[k] != null ? rxVols[k] : 1.0));
+  const body = { nombre, sonidos, musica: ($('rx-musica-on').checked ? rxMusMood : ''),
+                 musica_volumen: rxMusVol, calidez: rxCalidez, reverb: rxReverb };
+  try {
+    const r = await api('/api/relax/presets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (r.preset) { rxCat.presets_usuario = rxCat.presets_usuario || []; rxCat.presets_usuario.push(r.preset); rxRenderPresets(); }
+  } catch (e) { /* noop */ }
+}
+async function rxBorrarPreset(id) {
+  try { await api('/api/relax/presets/' + encodeURIComponent(id), { method: 'DELETE' }); } catch (e) { /* noop */ }
+  if (rxCat.presets_usuario) rxCat.presets_usuario = rxCat.presets_usuario.filter(p => p.id !== id);
+  rxRenderPresets();
+}
 function rxUnica(id, sel, def) { const b = $(id).querySelector(sel + '.on'); return b ? b.dataset.val : def; }
 function rxAvisoDur() {
   const min = +rxUnica('rx-dur', 'button', '10');
@@ -4885,19 +4978,20 @@ function rxAvisoDur() {
 }
 
 async function crearRelax() {
-  const sonidos = rxSel('rx-sonidos'), visuales = rxSel('rx-visuales');
+  const sonidos = [...rxSonSel].filter(k => !rxMuted.has(k));
+  const visuales = [...rxVisSel];
   const msg = $('rx-crear-msg');
-  if (!sonidos.length) { msg.textContent = L('Elige al menos un sonido de ambiente.', 'Pick at least one ambient sound.'); return; }
+  if (!sonidos.length) { msg.textContent = L('Elige (y no silencies) al menos un sonido.', 'Pick at least one unmuted sound.'); return; }
   if (!visuales.length) { msg.textContent = L('Elige al menos un visual.', 'Pick at least one visual.'); return; }
   const musOn = $('rx-musica-on').checked;
-  const musica = musOn ? rxUnica('rx-musica-mood', '.rx-chip', 'pad_calido') : '';
+  const musica = musOn ? rxMusMood : '';
   const musica_ia = musOn && configApp.elevenlabs && $('rx-musica-ia').checked;
   const volumenes = {};
   sonidos.forEach(k => { if (rxVols[k] != null) volumenes[k] = rxVols[k]; });
   const nombre = rxEditando || (($('rx-nombre').value || '').trim() || ('relax_' + Date.now()));
-  const cuerpo = { nombre, sonidos, visuales, musica, musica_ia,
-                   volumenes, musica_volumen: rxMusVol, editar: !!rxEditando,
-                   minutos: +rxUnica('rx-dur', 'button', '10'),
+  const cuerpo = { nombre, sonidos, visuales, musica, musica_ia, volumenes,
+                   musica_volumen: rxMusVol, calidez: rxCalidez, reverb: rxReverb,
+                   editar: !!rxEditando, minutos: +rxUnica('rx-dur', 'button', '10'),
                    formato: rxUnica('rx-formato', 'button', '16:9') };
   msg.textContent = '';
   let r;

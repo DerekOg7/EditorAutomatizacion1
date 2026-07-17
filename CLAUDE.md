@@ -643,7 +643,31 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
   el formulario. Abrir un proyecto relax desde "Mis historias" enruta al formulario
   pre-rellenado (no al editor de escenas). `empezarRelax` resetea a defaults limpios.
 
-## Estado actual: v0.23 (nicho Relax + mixer/preview/edición; código commiteado — pendiente empaquetar zip)
+**Relax PRO (más control — mejora grande):**
+- **Catálogo dinámico**: `editor.catalogo_relax()` + `GET /api/relax/catalogo`; el
+  frontend arma los chips desde ahí (ya no hardcodeados). 25 sonidos en 4
+  categorías (`AMBIENTES_META`/`SONIDOS_CATEGORIAS`: naturaleza/agua/ambientes/
+  ruido) con tabs; incluye ruido blanco/rosa/marrón, avión, tren, ventilador,
+  cascada, variantes de lluvia/mar, etc.
+- **Música ampliada**: 7 pads + 6 tonos de meditación (`MUSICA_META`):
+  binaurales alpha/theta/delta (`_musica_binaural`, estéreo real L/R), solfeggio
+  432/528, cuenco (parciales inarmónicos). `generar_musica_ambiente` despacha por
+  tipo de mood.
+- **Control fino**: `generar_ambiente(..., calidez, reverb)` — `_cadena_tono_reverb`
+  añade lowpass (calidez 0-100 → 18k…700 Hz) y aecho (reverb). En el mixer:
+  volumen + **mute** por pista + sliders maestros calidez/reverb. Se pasan por
+  preview y crear_relax; se guardan en ajustes.
+- **Presets**: de fábrica (`PRESETS_FABRICA`: Noche de tormenta, Bosque al amanecer,
+  Cabaña, Sueño profundo, Concentración, Meditación zen, Playa) + del usuario
+  (`relax_presets.json`; `GET/POST/DELETE /api/relax/presets`). Un clic carga la
+  mezcla completa; "Guardar mezcla" persiste la actual.
+- Frontend catalog-driven: estado en Sets (`rxSonSel`/`rxVisSel`) + `rxVols`/
+  `rxMuted`/`rxMusMood`/`rxCalidez`/`rxReverb`; render por `rxRenderSonTabs/
+  SonChips/Musica/Visuales/Presets/Mezcla`. Verificado e2e: tabs, presets,
+  mute, calidez/reverb, preview, guardar/borrar preset, y render real con
+  sonidos+tono+calidez+reverb (60s, 3.45 Mbps).
+
+## Estado actual: v0.23 (nicho Relax PRO: catálogo, tonos, control fino, presets; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

@@ -3441,30 +3441,91 @@ def unir_videos(nombres, salida_nombre, on_progreso=None):
 # Cada paisaje = una o más capas de ruido con su cadena de filtros. La modulación
 # de volumen con expresiones (eval=frame) da el vaivén natural (olas, viento…).
 AMBIENTES = {
-    "lluvia":   [("pink",  "highpass=f=600,lowpass=f=10000,volume=1.5")],
-    "tormenta": [("pink",  "highpass=f=600,lowpass=f=9000,volume=1.4"),
-                 ("brown", "lowpass=f=120,volume='0.55+0.4*sin(2*PI*0.045*t)':eval=frame,volume=1.4")],
-    "mar":      [("brown", "lowpass=f=1200,volume='0.35+0.55*(0.5+0.5*sin(2*PI*0.09*t))':eval=frame,volume=1.7")],
-    "rio":      [("pink",  "highpass=f=800,lowpass=f=6500,volume='0.85+0.15*sin(2*PI*1.4*t)':eval=frame,volume=1.3")],
-    "bosque":   [("brown", "bandpass=f=900:width_type=h:w=1400,volume='0.45+0.4*sin(2*PI*0.05*t)':eval=frame,volume=1.4"),
-                 ("pink",  "highpass=f=5000,lowpass=f=9000,volume=0.10")],
-    "fuego":    [("brown", "lowpass=f=1500,volume='0.6+0.25*sin(2*PI*0.7*t)+0.15*sin(2*PI*3.3*t)':eval=frame,volume=1.4")],
-    "viento":   [("brown", "bandpass=f=500:width_type=h:w=900,volume='0.3+0.6*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.5")],
-    "noche":    [("brown", "lowpass=f=400,volume=0.5"),
-                 ("pink",  "highpass=f=4500,lowpass=f=7500,volume='0.16*(0.5+0.5*sin(2*PI*2.2*t))':eval=frame,volume=1.2")],
+    # --- Naturaleza ---
+    "lluvia":       [("pink",  "highpass=f=600,lowpass=f=10000,volume=1.5")],
+    "lluvia_suave": [("pink",  "highpass=f=400,lowpass=f=6000,volume=1.1")],
+    "lluvia_fuerte":[("pink",  "highpass=f=700,lowpass=f=12000,volume=1.8"),
+                     ("brown", "lowpass=f=200,volume=0.5")],
+    "tejado":       [("pink",  "highpass=f=800,lowpass=f=9000,volume=1.2"),
+                     ("brown", "lowpass=f=260,volume='0.4+0.3*sin(2*PI*2.3*t)':eval=frame,volume=1.1")],
+    "tormenta":     [("pink",  "highpass=f=600,lowpass=f=9000,volume=1.4"),
+                     ("brown", "lowpass=f=120,volume='0.55+0.4*sin(2*PI*0.045*t)':eval=frame,volume=1.4")],
+    "bosque":       [("brown", "bandpass=f=900:width_type=h:w=1400,volume='0.45+0.4*sin(2*PI*0.05*t)':eval=frame,volume=1.4"),
+                     ("pink",  "highpass=f=5000,lowpass=f=9000,volume=0.10")],
+    "hojas":        [("brown", "bandpass=f=2200:width_type=h:w=2600,volume='0.4+0.45*sin(2*PI*0.13*t)':eval=frame,volume=1.3")],
+    "viento":       [("brown", "bandpass=f=500:width_type=h:w=900,volume='0.3+0.6*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.5")],
+    "grillos":      [("brown", "lowpass=f=350,volume=0.35"),
+                     ("pink",  "highpass=f=4200,lowpass=f=6500,volume='0.22*(0.5+0.5*sin(2*PI*9*t))':eval=frame,volume=1.4")],
+    "noche":        [("brown", "lowpass=f=400,volume=0.5"),
+                     ("pink",  "highpass=f=4500,lowpass=f=7500,volume='0.16*(0.5+0.5*sin(2*PI*2.2*t))':eval=frame,volume=1.2")],
+    # --- Agua ---
+    "mar":          [("brown", "lowpass=f=1200,volume='0.35+0.55*(0.5+0.5*sin(2*PI*0.09*t))':eval=frame,volume=1.7")],
+    "mar_suave":    [("brown", "lowpass=f=900,volume='0.3+0.45*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.4")],
+    "mar_fuerte":   [("brown", "lowpass=f=1600,volume='0.45+0.55*(0.5+0.5*sin(2*PI*0.12*t))':eval=frame,volume=1.9")],
+    "rio":          [("pink",  "highpass=f=800,lowpass=f=6500,volume='0.85+0.15*sin(2*PI*1.4*t)':eval=frame,volume=1.3")],
+    "arroyo":       [("pink",  "highpass=f=1100,lowpass=f=5200,volume='0.8+0.2*sin(2*PI*2.1*t)':eval=frame,volume=1.2")],
+    "cascada":      [("brown", "lowpass=f=3200,volume=1.0"),
+                     ("pink",  "highpass=f=1500,lowpass=f=8000,volume=0.7")],
+    "bajo_agua":    [("brown", "lowpass=f=380,volume='0.6+0.3*sin(2*PI*0.15*t)':eval=frame,volume=1.5")],
+    # --- Ambientes ---
+    "fuego":        [("brown", "lowpass=f=1500,volume='0.6+0.25*sin(2*PI*0.7*t)+0.15*sin(2*PI*3.3*t)':eval=frame,volume=1.4")],
+    "ventilador":   [("brown", "lowpass=f=800,volume=1.0"),
+                     ("brown", "lowpass=f=120,volume=0.6")],
+    "avion":        [("brown", "lowpass=f=600,volume=1.3"),
+                     ("brown", "lowpass=f=95,volume=0.6")],
+    "tren":         [("brown", "lowpass=f=320,volume='0.55+0.4*sin(2*PI*1.6*t)':eval=frame,volume=1.4"),
+                     ("brown", "lowpass=f=90,volume=0.5")],
+    "cafeteria":    [("pink",  "bandpass=f=900:width_type=h:w=1500,volume='0.4+0.25*sin(2*PI*0.3*t)':eval=frame,volume=1.2")],
+    # --- Ruido (sueño/concentración) ---
+    "blanco":       [("white", "lowpass=f=16000,volume=1.0")],
+    "rosa":         [("pink",  "volume=1.1")],
+    "marron":       [("brown", "volume=1.4")],
 }
-AMBIENTES_NOMBRE = {
-    "lluvia": "Lluvia", "tormenta": "Tormenta", "mar": "Mar / Olas",
-    "rio": "Río / Arroyo", "bosque": "Bosque", "fuego": "Fuego / Chimenea",
-    "viento": "Viento", "noche": "Noche / Grillos",
+# Metadatos del catálogo: categoría, nombre ES/EN y emoji de cada sonido.
+AMBIENTES_META = {
+    "lluvia":       ("naturaleza", "Lluvia", "Rain", "🌧️"),
+    "lluvia_suave": ("naturaleza", "Lluvia suave", "Light rain", "🌦️"),
+    "lluvia_fuerte":("naturaleza", "Lluvia fuerte", "Heavy rain", "⛈️"),
+    "tejado":       ("naturaleza", "Lluvia en tejado", "Rain on roof", "🏠"),
+    "tormenta":     ("naturaleza", "Tormenta", "Thunderstorm", "🌩️"),
+    "bosque":       ("naturaleza", "Bosque", "Forest", "🌲"),
+    "hojas":        ("naturaleza", "Hojas / Ramas", "Rustling leaves", "🍃"),
+    "viento":       ("naturaleza", "Viento", "Wind", "💨"),
+    "grillos":      ("naturaleza", "Grillos", "Crickets", "🦗"),
+    "noche":        ("naturaleza", "Noche", "Night", "🌙"),
+    "mar":          ("agua", "Mar / Olas", "Ocean waves", "🌊"),
+    "mar_suave":    ("agua", "Olas suaves", "Gentle waves", "🏖️"),
+    "mar_fuerte":   ("agua", "Olas fuertes", "Strong waves", "🌊"),
+    "rio":          ("agua", "Río", "River", "🏞️"),
+    "arroyo":       ("agua", "Arroyo", "Stream", "💧"),
+    "cascada":      ("agua", "Cascada", "Waterfall", "🗻"),
+    "bajo_agua":    ("agua", "Bajo el agua", "Underwater", "🌊"),
+    "fuego":        ("ambientes", "Fuego / Chimenea", "Fire / Fireplace", "🔥"),
+    "ventilador":   ("ambientes", "Ventilador", "Fan", "🌀"),
+    "avion":        ("ambientes", "Avión (cabina)", "Airplane cabin", "✈️"),
+    "tren":         ("ambientes", "Tren", "Train", "🚆"),
+    "cafeteria":    ("ambientes", "Cafetería", "Coffee shop", "☕"),
+    "blanco":       ("ruido", "Ruido blanco", "White noise", "⚪"),
+    "rosa":         ("ruido", "Ruido rosa", "Pink noise", "🌸"),
+    "marron":       ("ruido", "Ruido marrón", "Brown noise", "🟤"),
 }
+# nombre ES suelto (compat con armar_escenas_relax / usos previos)
+AMBIENTES_NOMBRE = {k: v[1] for k, v in AMBIENTES_META.items()}
+# categorías en orden de presentación
+SONIDOS_CATEGORIAS = [
+    ("naturaleza", "Naturaleza", "Nature", "🌿"),
+    ("agua",       "Agua",       "Water",  "💧"),
+    ("ambientes",  "Ambientes",  "Ambient", "🏠"),
+    ("ruido",      "Ruido",      "Noise",  "🔊"),
+]
 
 
-def generar_ambiente(tipos, dur, salida, volumenes=None, on_progreso=None):
+def generar_ambiente(tipos, dur, salida, volumenes=None, calidez=None, reverb=0,
+                     on_progreso=None):
     """Sintetiza un paisaje sonoro de `dur` segundos mezclando los `tipos`
     elegidos (lluvia, mar, fuego…) y lo escribe como mp3 en `salida`. `volumenes`
-    es un dict opcional {tipo: ganancia} (1.0 = normal) para mezclar cada sonido
-    a un volumen distinto. Todo con ffmpeg, sin claves ni internet."""
+    es un dict opcional {tipo: ganancia}. `calidez` (0-100) amortigua el tono con
+    un lowpass y `reverb` (0-100) añade espacio. Todo con ffmpeg, sin internet."""
     avisar = on_progreso or (lambda *_: None)
     vols = volumenes or {}
     tipos = [t for t in (tipos or []) if t in AMBIENTES]
@@ -3486,14 +3547,30 @@ def generar_ambiente(tipos, dur, salida, volumenes=None, on_progreso=None):
     mezcla = (f"{''.join(etiquetas)}amix=inputs={idx}:normalize=0:"
               f"duration=longest[mx]")
     fin_fade = max(0.1, dur - 4.0)
-    post = (f"[mx]aformat=channel_layouts=stereo,alimiter=limit=0.9,"
-            f"afade=t=in:st=0:d=2,afade=t=out:st={fin_fade:.2f}:d=4[out]")
+    post = ["aformat=channel_layouts=stereo"] + _cadena_tono_reverb(calidez, reverb)
+    post += ["alimiter=limit=0.9", "afade=t=in:st=0:d=2",
+             f"afade=t=out:st={fin_fade:.2f}:d=4"]
+    post = f"[mx]{','.join(post)}[out]"
     cmd = (["ffmpeg", "-y"] + entradas +
            ["-filter_complex", ";".join(filtros + [mezcla, post]),
             "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
     run(cmd)
     avisar("Paisaje sonoro listo", 100)
     return salida
+
+
+def _cadena_tono_reverb(calidez, reverb):
+    """Filtros ffmpeg para los controles maestros de calidez (lowpass) y reverb."""
+    fs = []
+    if calidez is not None:
+        c = max(0.0, min(100.0, float(calidez)))
+        corte = int(18000 * (700.0 / 18000.0) ** (c / 100.0))   # 0→18k, 100→700 Hz
+        fs.append(f"lowpass=f={corte}")
+    rv = max(0.0, min(100.0, float(reverb or 0)))
+    if rv > 1:
+        dec = 0.2 + 0.55 * (rv / 100.0)
+        fs.append(f"aecho=0.85:0.9:400|900:{dec:.2f}|{dec * 0.8:.2f}")
+    return fs
 
 
 # Música melódica opcional con IA (ElevenLabs Music). Es un extra: si falla o la
@@ -3598,31 +3675,87 @@ def armar_escenas_relax(p, visuales, on_progreso=None):
 # una melodía "real", pero los pads ambientales son un subgénero legítimo de música
 # relajante y combinan perfecto con los sonidos de la naturaleza. Sin claves.
 ACORDES = {
-    "pad_calido":  [130.81, 164.81, 196.00, 261.63],   # Do mayor, cálido
-    "pad_sonador": [130.81, 196.00, 293.66, 392.00],   # quintas abiertas + 9ª, etéreo
-    "drone":       [110.00, 164.81, 220.00],           # La grave + quinta, meditación
-    "campanas":    [261.63, 329.63, 392.00, 523.25],   # Do mayor agudo, brillante
+    "pad_calido":   [130.81, 164.81, 196.00, 261.63],   # Do mayor, cálido
+    "pad_sonador":  [130.81, 196.00, 293.66, 392.00],   # quintas abiertas + 9ª, etéreo
+    "pad_menor":    [110.00, 130.81, 164.81, 220.00],   # La menor, melancólico
+    "pad_etereo":   [130.81, 146.83, 196.00, 261.63],   # Do sus2, abierto/flotante
+    "pad_brillante":[196.00, 246.94, 293.66, 392.00],   # Sol mayor, brillante
+    "drone":        [110.00, 164.81, 220.00],           # La grave + quinta, meditación
+    "campanas":     [261.63, 329.63, 392.00, 523.25],   # Do mayor agudo, brillante
 }
-MUSICA_GRATIS_NOMBRE = {"pad_calido": "Pad cálido", "pad_sonador": "Pad soñador",
-                        "drone": "Drone / Meditación", "campanas": "Campanas"}
-# equivalencia pad → prompt de ElevenLabs (si el usuario activa la versión IA)
+# Tonos de meditación: ondas binaurales (beat en Hz) y frecuencias solfeggio (Hz).
+BINAURAL = {"binaural_alpha": 10.0, "binaural_theta": 5.5, "binaural_delta": 2.5}
+# Catálogo de música (pads + tonos): key → (categoria, es, en, emoji)
+MUSICA_META = {
+    "pad_calido":     ("pad", "Pad cálido", "Warm pad", "🌅"),
+    "pad_sonador":    ("pad", "Pad soñador", "Dreamy pad", "🌌"),
+    "pad_menor":      ("pad", "Pad melancólico", "Melancholic pad", "🌫️"),
+    "pad_etereo":     ("pad", "Pad etéreo", "Ethereal pad", "☁️"),
+    "pad_brillante":  ("pad", "Pad brillante", "Bright pad", "✨"),
+    "drone":          ("pad", "Drone", "Drone", "🌊"),
+    "campanas":       ("pad", "Campanas", "Bells", "🔔"),
+    "binaural_alpha": ("tono", "Ondas Alpha (relax)", "Alpha waves (relax)", "🧠"),
+    "binaural_theta": ("tono", "Ondas Theta (meditar)", "Theta waves (meditate)", "🧘"),
+    "binaural_delta": ("tono", "Ondas Delta (dormir)", "Delta waves (sleep)", "😴"),
+    "solfeggio_432":  ("tono", "432 Hz", "432 Hz", "🎵"),
+    "solfeggio_528":  ("tono", "528 Hz", "528 Hz", "💚"),
+    "cuenco":         ("tono", "Cuenco tibetano", "Singing bowl", "🎎"),
+}
+MUSICA_GRATIS_NOMBRE = {k: v[1] for k, v in MUSICA_META.items()}
+# equivalencia mood → prompt de ElevenLabs (si el usuario activa la versión IA)
 _ELEVEN_DE_PAD = {"pad_calido": "piano", "pad_sonador": "ambient",
-                  "drone": "meditacion", "campanas": "ambient"}
+                  "pad_menor": "ambient", "pad_etereo": "ambient",
+                  "pad_brillante": "piano", "drone": "meditacion",
+                  "campanas": "ambient", "binaural_alpha": "meditacion",
+                  "binaural_theta": "meditacion", "binaural_delta": "meditacion",
+                  "solfeggio_432": "meditacion", "solfeggio_528": "meditacion",
+                  "cuenco": "meditacion"}
+
+
+def _musica_binaural(mood, dur, salida, loopable):
+    """Ondas binaurales: un tono distinto en cada oído; su diferencia (beat) crea
+    el pulso (Alpha/Theta/Delta). Mejor con auriculares."""
+    beat = BINAURAL.get(mood, 6.0)
+    base = 160.0
+    cadena = "aecho=0.8:0.9:800:0.3,alimiter=limit=0.9"
+    if not loopable:
+        fin = max(0.1, dur - 4.0)
+        cadena += f",afade=t=in:st=0:d=3,afade=t=out:st={fin:.2f}:d=4"
+    run(["ffmpeg", "-y",
+         "-f", "lavfi", "-t", f"{dur:.2f}", "-i", f"sine=f={base}:r=48000",
+         "-f", "lavfi", "-t", f"{dur:.2f}", "-i", f"sine=f={base + beat}:r=48000",
+         "-filter_complex",
+         f"[0:a]volume=0.32[l];[1:a]volume=0.32[r];"
+         f"[l][r]join=inputs=2:channel_layout=stereo[st];[st]{cadena}[out]",
+         "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
+    return salida
 
 
 def generar_musica_ambiente(mood, dur, salida, loopable=False, on_progreso=None):
-    """Sintetiza un pad/drone ambiental GRATIS con ffmpeg (acordes de sinusoides
-    con vibrato/tremolo lentos + reverb). Se usa como cama de música relajante."""
-    freqs = ACORDES.get(mood, ACORDES["pad_calido"])
+    """Sintetiza una cama musical GRATIS con ffmpeg: pads (acordes de sinusoides),
+    tonos solfeggio, cuenco tibetano u ondas binaurales, según `mood`."""
     dur = max(3.0, float(dur))
+    if mood.startswith("binaural_"):
+        return _musica_binaural(mood, dur, salida, loopable)
+    if mood.startswith("solfeggio_"):
+        try:
+            base = float(mood.split("_")[1])
+        except ValueError:
+            base = 432.0
+        voces = [(base, 0.30), (base / 2, 0.12), (base * 2, 0.06)]
+    elif mood == "cuenco":
+        base = 220.0
+        voces = [(base, 0.28), (base * 2.7, 0.12), (base * 5.4, 0.06)]  # parciales del cuenco
+    else:
+        voces = [(f, 0.22) for f in ACORDES.get(mood, ACORDES["pad_calido"])]
     entradas, filtros, etiquetas = [], [], []
-    for i, f in enumerate(freqs):
+    for i, (f, amp) in enumerate(voces):
         entradas += ["-f", "lavfi", "-t", f"{dur:.2f}", "-i", f"sine=f={f}:r=48000"]
         rate = 0.12 + 0.03 * i           # tremolo lento (>=0.1Hz) distinto por voz → coro
         filtros.append(f"[{i}:a]vibrato=f=0.12:d=0.6,tremolo=f={rate:.3f}:d=0.5,"
-                       f"volume=0.22[v{i}]")
+                       f"volume={amp:.3f}[v{i}]")
         etiquetas.append(f"[v{i}]")
-    mezcla = f"{''.join(etiquetas)}amix=inputs={len(freqs)}:normalize=0[mx]"
+    mezcla = f"{''.join(etiquetas)}amix=inputs={len(voces)}:normalize=0[mx]"
     # reverb suave + filtro cálido; si es loopable, sin fades (se repite sin cortes)
     cadena = "lowpass=f=2600,aecho=0.8:0.9:700|1300:0.35|0.25,alimiter=limit=0.9"
     if not loopable:
@@ -3728,14 +3861,57 @@ def ensamblar_relax(p, on_progreso=None):
     return salida, faltantes
 
 
-def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8):
+# Presets de fábrica: mezclas listas de un clic. `vol` en ganancia (1.0 = normal).
+PRESETS_FABRICA = [
+    {"id": "tormenta_noche", "es": "Noche de tormenta", "en": "Stormy night", "emoji": "⛈️",
+     "sonidos": {"lluvia_fuerte": 1.0, "tormenta": 0.9, "viento": 0.5},
+     "musica": "drone", "musica_volumen": 0.35, "calidez": 25, "reverb": 20},
+    {"id": "bosque_amanecer", "es": "Bosque al amanecer", "en": "Forest at dawn", "emoji": "🌲",
+     "sonidos": {"bosque": 1.0, "arroyo": 0.7, "hojas": 0.5},
+     "musica": "pad_calido", "musica_volumen": 0.45, "calidez": 10, "reverb": 15},
+    {"id": "cabana", "es": "Cabaña con chimenea", "en": "Cabin fireplace", "emoji": "🔥",
+     "sonidos": {"fuego": 1.0, "lluvia": 0.6, "viento": 0.4},
+     "musica": "pad_sonador", "musica_volumen": 0.4, "calidez": 35, "reverb": 15},
+    {"id": "sueno_profundo", "es": "Sueño profundo", "en": "Deep sleep", "emoji": "😴",
+     "sonidos": {"marron": 1.0, "lluvia_suave": 0.5},
+     "musica": "binaural_delta", "musica_volumen": 0.3, "calidez": 55, "reverb": 10},
+    {"id": "concentracion", "es": "Concentración", "en": "Focus", "emoji": "🎯",
+     "sonidos": {"rosa": 0.9, "lluvia_suave": 0.6},
+     "musica": "", "musica_volumen": 0.4, "calidez": 20, "reverb": 5},
+    {"id": "meditacion_zen", "es": "Meditación zen", "en": "Zen meditation", "emoji": "🧘",
+     "sonidos": {"viento": 0.6, "arroyo": 0.5},
+     "musica": "cuenco", "musica_volumen": 0.6, "calidez": 15, "reverb": 40},
+    {"id": "playa_tropical", "es": "Playa tropical", "en": "Tropical beach", "emoji": "🏝️",
+     "sonidos": {"mar": 1.0, "viento": 0.4},
+     "musica": "pad_brillante", "musica_volumen": 0.35, "calidez": 5, "reverb": 20},
+]
+
+
+def catalogo_relax():
+    """Catálogo completo para que el frontend arme la UI (sonidos por categoría,
+    música/tonos, visuales y presets de fábrica)."""
+    return {
+        "categorias": [{"key": c[0], "es": c[1], "en": c[2], "emoji": c[3]}
+                       for c in SONIDOS_CATEGORIAS],
+        "sonidos": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
+                    for k, m in AMBIENTES_META.items()],
+        "musica": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
+                   for k, m in MUSICA_META.items()],
+        "visuales": [{"key": k, "es": VISUALES_NOMBRE.get(k, k)} for k in VISUALES],
+        "presets": PRESETS_FABRICA,
+    }
+
+
+def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8,
+                          calidez=None, reverb=0):
     """Muestra CORTA (≈8s) de la mezcla actual (sonidos a sus volúmenes + música)
     para que el usuario la escuche antes de generar el video completo."""
     import tempfile
     d = Path(tempfile.mkdtemp(prefix="relaxprev_"))
     try:
         amb = d / "amb.mp3"
-        generar_ambiente(sonidos, dur, amb, volumenes=volumenes)
+        generar_ambiente(sonidos, dur, amb, volumenes=volumenes,
+                         calidez=calidez, reverb=reverb)
         if musica:
             mus = d / "mus.mp3"
             generar_musica_ambiente(musica, dur, mus, loopable=True)
@@ -3753,7 +3929,7 @@ def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8)
 
 def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
                 musica_mood="", musica_ia=False, volumenes=None,
-                musica_volumen=0.5, on_progreso=None):
+                musica_volumen=0.5, calidez=None, reverb=0, on_progreso=None):
     """Orquesta un proyecto Relax completo: audio (ambiente sintetizado + música
     opcional, gratis o con IA) → visuales por tema → ensamblado del video final."""
     avisar = on_progreso or (lambda *_: None)
@@ -3763,7 +3939,8 @@ def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
                     sonidos=sonidos, visuales=visuales, titulo=titulo,
                     musica=musica_mood, musica_ia=bool(musica_ia),
                     volumenes=volumenes,
-                    musica_volumen=max(0.0, min(1.5, float(musica_volumen))))
+                    musica_volumen=max(0.0, min(1.5, float(musica_volumen))),
+                    calidez=calidez, reverb=reverb)
 
     # 1) Música opcional → musica.mp3 (la mezcla el ensamblado, en loop).
     if musica_mood:
@@ -3782,6 +3959,7 @@ def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
 
     # 2) Paisaje sonoro a longitud completa → audio.mp3
     generar_ambiente(sonidos, dur_min * 60, p / "audio.mp3", volumenes=volumenes,
+                     calidez=calidez, reverb=reverb,
                      on_progreso=lambda t, pc: avisar(t, 6 + (pc or 0) * 0.14))
 
     # 3) Visuales por tema → escenas.json

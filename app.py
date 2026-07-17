@@ -6,6 +6,7 @@ App web del editor — corre local y abre http://localhost:5178
 """
 
 import datetime
+import json
 import os
 import re
 import shutil
@@ -195,7 +196,7 @@ def hilo_coherencia(nombre, proveedor, modelo):
 
 
 def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia,
-               volumenes, musica_volumen):
+               volumenes, musica_volumen, calidez, reverb):
     """Nicho Relax: genera el audio (ambiente sintetizado + música opcional,
     gratis o con IA), baja los visuales por tema y ensambla un video largo."""
     p = PROYECTOS / nombre
@@ -206,6 +207,7 @@ def hilo_relax(nombre, sonidos, visuales, minutos, formato, musica, musica_ia,
             p, sonidos=sonidos, visuales=visuales, dur_min=minutos,
             formato=formato, musica_mood=musica, musica_ia=musica_ia,
             volumenes=volumenes, musica_volumen=musica_volumen,
+            calidez=calidez, reverb=reverb,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
         set_estado(nombre, fase="listo", progreso=100,
                    detalle="Tu video relajante está listo")
@@ -713,6 +715,16 @@ def _limpiar_vols(v):
     return out
 
 
+def _num_o_none(v, lo, hi):
+    """Float acotado a [lo, hi], o None si viene vacío/inválido."""
+    if v is None or v == "":
+        return None
+    try:
+        return max(lo, min(hi, float(v)))
+    except (TypeError, ValueError):
+        return None
+
+
 @app.post("/api/relax")
 def crear_relax_endpoint():
     """Crea (o REGENERA, si editar=true) un proyecto del nicho Relax."""
@@ -750,10 +762,12 @@ def crear_relax_endpoint():
     except (TypeError, ValueError):
         minutos = 10
     formato = d.get("formato") if d.get("formato") in editor.FORMATOS else "16:9"
+    calidez = _num_o_none(d.get("calidez"), 0, 100)
+    reverb = _num_o_none(d.get("reverb"), 0, 100) or 0
     threading.Thread(
         target=hilo_relax,
         args=(nombre, sonidos, visuales, minutos, formato, musica, musica_ia,
-              volumenes, musica_volumen),
+              volumenes, musica_volumen, calidez, reverb),
         daemon=True).start()
     return jsonify({"ok": True, "nombre": nombre})
 
@@ -772,13 +786,70 @@ def relax_preview():
         musica_vol = max(0.0, min(1.5, float(d.get("musica_volumen", 0.5))))
     except (TypeError, ValueError):
         musica_vol = 0.5
+    calidez = _num_o_none(d.get("calidez"), 0, 100)
+    reverb = _num_o_none(d.get("reverb"), 0, 100) or 0
     tmp = Path(tempfile.gettempdir()) / f"relax_prev_{os.getpid()}.mp3"
     try:
-        editor.generar_preview_relax(sonidos, volumenes, musica, musica_vol, tmp, dur=8)
+        editor.generar_preview_relax(sonidos, volumenes, musica, musica_vol, tmp,
+                                     dur=8, calidez=calidez, reverb=reverb)
     except ErrorPipeline as e:
         return jsonify({"error": str(e)}), 400
     return send_file(tmp, mimetype="audio/mpeg", conditional=False,
                      max_age=0, download_name="preview.mp3")
+
+
+# ---- catálogo y presets del nicho Relax ----
+PRESETS_USUARIO = PROYECTOS.parent / "relax_presets.json"
+
+
+def _leer_presets_usuario():
+    if PRESETS_USUARIO.exists():
+        try:
+            return json.loads(PRESETS_USUARIO.read_text())
+        except (ValueError, OSError):
+            pass
+    return []
+
+
+def _guardar_presets_usuario(lst):
+    PRESETS_USUARIO.write_text(json.dumps(lst, ensure_ascii=False, indent=2))
+
+
+@app.get("/api/relax/catalogo")
+def relax_catalogo():
+    cat = editor.catalogo_relax()
+    cat["presets_usuario"] = _leer_presets_usuario()
+    return jsonify(cat)
+
+
+@app.post("/api/relax/presets")
+def relax_guardar_preset():
+    d = request.json or {}
+    nombre = (d.get("nombre") or "").strip()[:60]
+    if not nombre:
+        return jsonify({"error": "Ponle un nombre al preset."}), 400
+    lst = _leer_presets_usuario()
+    preset = {
+        "id": "u" + str(int(time.time() * 1000)),
+        "es": nombre, "en": nombre, "emoji": "⭐", "usuario": True,
+        "sonidos": _limpiar_vols(d.get("sonidos")),
+        "musica": (d.get("musica") or "").strip(),
+        "musica_volumen": _num_o_none(d.get("musica_volumen"), 0, 1.5) or 0.5,
+        "calidez": _num_o_none(d.get("calidez"), 0, 100),
+        "reverb": _num_o_none(d.get("reverb"), 0, 100) or 0,
+    }
+    if not preset["sonidos"]:
+        return jsonify({"error": "El preset necesita al menos un sonido."}), 400
+    lst.append(preset)
+    _guardar_presets_usuario(lst)
+    return jsonify({"ok": True, "preset": preset})
+
+
+@app.delete("/api/relax/presets/<pid>")
+def relax_borrar_preset(pid):
+    _guardar_presets_usuario([x for x in _leer_presets_usuario()
+                              if x.get("id") != pid])
+    return jsonify({"ok": True})
 
 
 @app.get("/api/proyectos/<nombre>")
@@ -819,7 +890,7 @@ def ver_proyecto(nombre):
     if aj.get("tipo") == "relax":
         relax = {k: aj.get(k) for k in
                  ("sonidos", "visuales", "musica", "musica_ia", "musica_volumen",
-                  "volumenes", "relax_min", "formato", "titulo")}
+                  "volumenes", "relax_min", "formato", "titulo", "calidez", "reverb")}
     return jsonify({
         "nombre": nombre,
         "audio": audio,

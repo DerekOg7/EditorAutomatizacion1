@@ -20,3 +20,6 @@ licencias_emitidas.json
 
 # datos de usuario del nicho Relax (presets guardados)
 relax_presets.json
+
+# sonidos reales descargados (banco Relax, se bajan de archive.org)
+sonidos/

@@ -3511,6 +3511,83 @@ AMBIENTES_META = {
 }
 # nombre ES suelto (compat con armar_escenas_relax / usos previos)
 AMBIENTES_NOMBRE = {k: v[1] for k, v in AMBIENTES_META.items()}
+
+# --- Sonidos REALES (grabaciones de campo, dominio público / CC0) ---
+# Se descargan de archive.org la 1ª vez que se usan → DATOS/sonidos/<key>.mp3
+# (normalizados a 90s máx, 48k estéreo, sonoridad pareja). key → (cat, es, en,
+# emoji, url, crédito).
+_AO = "https://archive.org/download/"
+SONIDOS_REALES = {
+    "lluvia_real":   ("naturaleza", "Lluvia real", "Real rain", "🌧️",
+                      _AO + "naturesounds-soundtheraphy/Light%20Gentle%20Rain.ogg",
+                      "CC0 · archive.org/naturesounds-soundtheraphy"),
+    "tormenta_real": ("naturaleza", "Tormenta real", "Real thunderstorm", "⛈️",
+                      _AO + "aporee_23709_27560/MKEStorm201406180918.ogg",
+                      "Dominio público · radio aporee (Milwaukee, EE.UU.)"),
+    "pajaros_real":  ("naturaleza", "Pájaros del bosque", "Forest birds", "🐦",
+                      _AO + "aporee_71360_83253/AMBNatrForestBirdsMorningCalmNoWindSunny.mp3",
+                      "Dominio público · radio aporee (Kaluga, Rusia)"),
+    "ranas_real":    ("naturaleza", "Noche de ranas", "Frog night", "🐸",
+                      _AO + "frogs-toads-spring-peepers-crickets-sound-effects/"
+                            "Frogs%2C%20Toads%2C%20Spring%20Peepers%2C%20%26%20Crickets%20-%20Sound%20Effects.mp3",
+                      "CC0 · archive.org"),
+    "viento_real":   ("naturaleza", "Viento en árboles", "Wind in trees", "🌬️",
+                      _AO + "GOLD_TAPE_55_56_Weather-Wind/G55-03-Wind%20in%20Trees.mp3",
+                      "CC0 · archive.org/GOLD_TAPE"),
+    "olas_real":     ("agua", "Olas reales", "Real ocean waves", "🌊",
+                      _AO + "aporee_64047_73856/LammaIslandRecording.mp3",
+                      "Dominio público · radio aporee (Lamma Island, HK)"),
+    "arroyo_real":   ("agua", "Arroyo de montaña", "Mountain stream", "🏞️",
+                      _AO + "aporee_26411_30501/bergstreamjl.ogg",
+                      "Dominio público · radio aporee (Allentown, EE.UU.)"),
+    "fuego_real":    ("ambientes", "Fogata real", "Real campfire", "🔥",
+                      _AO + "aporee_27776_32009/soundcamp2015dartingtoncracklingfire.ogg",
+                      "Dominio público · radio aporee (Dartington, UK)"),
+    "cafe_real":     ("ambientes", "Café europeo", "European café", "☕",
+                      _AO + "aporee_31082_35727/Relaxedvillagesquare.ogg",
+                      "Dominio público · radio aporee (Villars-sur-Var, FR)"),
+}
+
+
+def _ruta_sonido_real(key, on_progreso=None):
+    """Devuelve la ruta local del sonido real `key`, descargándolo y
+    normalizándolo la primera vez (90s máx, 48k estéreo, sonoridad pareja)."""
+    import requests
+    cat, es, en, emoji, url, credito = SONIDOS_REALES[key]
+    d = DATOS / "sonidos"
+    d.mkdir(exist_ok=True)
+    f = d / f"{key}.mp3"
+    if f.exists() and f.stat().st_size > 50_000:
+        return f
+    avisar = on_progreso or (lambda *_: None)
+    avisar(f"Descargando sonido real: {es}…", None)
+    bruto = d / f"{key}.descarga"
+    try:
+        r = requests.get(url, timeout=300, stream=True)
+        if not r.ok:
+            err(f"No pude descargar '{es}' ({r.status_code}). Revisa tu internet "
+                f"y vuelve a intentar.")
+        with open(bruto, "wb") as out:
+            for trozo in r.iter_content(1 << 18):
+                out.write(trozo)
+        # normalizar: recortar, sonoridad pareja con los sintetizados, estéreo,
+        # y fades suaves en los bordes para que el loop no haga clic.
+        # fades relativos a AMBOS bordes (el de salida vía areverse, así vale
+        # para cualquier duración) → el loop con -stream_loop no hace clic.
+        # OJO: -t 90 como opción de ENTRADA (antes de -i): areverse bufferiza
+        # todo lo que recibe, y hay grabaciones de 30+ min.
+        run(["ffmpeg", "-y", "-t", "90", "-i", str(bruto),
+             "-af", "loudnorm=I=-20:TP=-2:LRA=11,aformat=channel_layouts=stereo,"
+                    "afade=t=in:st=0:d=0.4,areverse,afade=t=in:st=0:d=0.6,areverse",
+             "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "160k", str(f)])
+    except requests.RequestException as e:
+        err(f"No pude descargar '{es}': {e}. Revisa tu internet.")
+    finally:
+        bruto.unlink(missing_ok=True)
+    if not f.exists() or f.stat().st_size < 50_000:
+        f.unlink(missing_ok=True)
+        err(f"La descarga de '{es}' quedó incompleta. Vuelve a intentar.")
+    return f
 # categorías en orden de presentación
 SONIDOS_CATEGORIAS = [
     ("naturaleza", "Naturaleza", "Nature", "🌿"),
@@ -3528,16 +3605,31 @@ def generar_ambiente(tipos, dur, salida, volumenes=None, calidez=None, reverb=0,
     un lowpass y `reverb` (0-100) añade espacio. Todo con ffmpeg, sin internet."""
     avisar = on_progreso or (lambda *_: None)
     vols = volumenes or {}
-    tipos = [t for t in (tipos or []) if t in AMBIENTES]
+    tipos = [t for t in (tipos or [])
+             if t in AMBIENTES or t in SONIDOS_REALES]
     if not tipos:
         err("Elige al menos un sonido de ambiente (lluvia, mar, fuego…).")
     dur = max(3.0, float(dur))
+
+    # Los sonidos reales se descargan primero (con aviso), fuera del comando.
+    reales = {t: _ruta_sonido_real(t, on_progreso=avisar)
+              for t in tipos if t in SONIDOS_REALES}
     avisar("Generando el paisaje sonoro…", 5)
 
     entradas, filtros, etiquetas, idx, n_in = [], [], [], 0, 0
     for t in tipos:
         g = max(0.0, min(2.0, float(vols.get(t, 1.0))))
         extra = f",volume={g:.3f}" if abs(g - 1.0) > 0.001 else ""
+        if t in reales:
+            # grabación real en loop hasta cubrir la duración pedida
+            entradas += ["-stream_loop", "-1", "-t", f"{dur:.2f}",
+                         "-i", str(reales[t])]
+            filtros.append(f"[{n_in}:a]aresample=48000,"
+                           f"aformat=channel_layouts=stereo{extra}[a{idx}]")
+            etiquetas.append(f"[a{idx}]")
+            idx += 1
+            n_in += 1
+            continue
         for color, cadena in AMBIENTES[t]:
             # Dos generadores de ruido con semillas distintas → canal L y R
             # decorrelacionados = estéreo REAL con sensación de amplitud
@@ -3900,8 +3992,11 @@ def catalogo_relax():
     return {
         "categorias": [{"key": c[0], "es": c[1], "en": c[2], "emoji": c[3]}
                        for c in SONIDOS_CATEGORIAS],
-        "sonidos": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
-                    for k, m in AMBIENTES_META.items()],
+        "sonidos": ([{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
+                     for k, m in AMBIENTES_META.items()] +
+                    [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3],
+                      "real": True, "credito": m[5]}
+                     for k, m in SONIDOS_REALES.items()]),
         "musica": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
                    for k, m in MUSICA_META.items()],
         "visuales": [{"key": k, "es": VISUALES_NOMBRE.get(k, k)} for k in VISUALES],

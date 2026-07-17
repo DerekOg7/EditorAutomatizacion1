@@ -683,7 +683,23 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
   distintas) unidos con `join=stereo` → canales decorrelacionados (sensación de
   amplitud; antes era mono duplicado). Verificado con RMS de L−R en el video final.
 
-## Estado actual: v0.23 (nicho Relax PRO + UX premium; código commiteado — pendiente empaquetar zip)
+**Banco de sonidos REALES (mejora posterior):**
+- `SONIDOS_REALES` en editor.py: 9 grabaciones de campo dominio público/CC0 de
+  archive.org (lluvia, tormenta, pájaros, ranas, viento en árboles, olas, arroyo,
+  fogata, café europeo) con URL directa y crédito. Se descargan la 1ª vez que se
+  usan (`_ruta_sonido_real`) a `DATOS/sonidos/<key>.mp3` normalizadas: recorte a
+  90s, loudnorm I=-20, 48k estéreo, fades relativos a ambos bordes (el de salida
+  vía `areverse` — OJO: `-t 90` debe ir como opción de ENTRADA o areverse
+  bufferiza grabaciones de 30+ min y ffmpeg se cuelga, bug real).
+- `generar_ambiente` acepta claves reales: entrada `-stream_loop -1 -t dur` +
+  `aresample,aformat=stereo` — se mezclan con los sintetizados, mismos volúmenes/
+  calidez/reverb/mute. El catálogo las marca `real:true` + `credito`; la UI pinta
+  badge "🎙️ REAL" y tooltip con el crédito. `sonidos/` está gitignorado (datos).
+- Verificado: 9/9 descargan y normalizan (~7-10s c/u), mezcla real+sintético,
+  descarga automática al primer preview (9.4s → luego instantáneo con caché), y
+  render de video completo con sonidos reales.
+
+## Estado actual: v0.23 (nicho Relax PRO + UX premium + sonidos reales; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

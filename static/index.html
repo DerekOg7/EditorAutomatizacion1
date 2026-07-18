@@ -151,14 +151,15 @@
 
   /* página del nicho Relax */
   #pg-relax .relax-caja { max-width: 860px; margin: 0 auto; }
-  .rx-bloque { margin: 22px 0; }
-  .rx-bloque > label { display: block; font: 700 14px 'Roboto', sans-serif; color: var(--texto); margin-bottom: 4px; }
-  .rx-bloque .rx-ayuda { font: 400 12.5px 'Roboto', sans-serif; color: var(--tenue); margin-bottom: 10px; }
+  .rx-bloque { margin: 18px 0; background: var(--panel); border: 1px solid var(--linea);
+    border-radius: 16px; padding: 18px 20px; }
+  .rx-bloque > label { display: block; font: 800 16px 'Roboto', sans-serif; color: var(--texto); margin-bottom: 4px; }
+  .rx-bloque .rx-ayuda, .rx-ayuda { font: 400 13px/1.5 'Roboto', sans-serif; color: var(--tenue); margin-bottom: 12px; }
   .rx-chips { display: flex; flex-wrap: wrap; gap: 10px; }
   #pg-relax { --rxa: #2e86c1; }
   .rx-chip { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; position: relative;
     background: var(--panel2, #16171f); border: 1.5px solid var(--linea); border-radius: 12px;
-    padding: 9px 14px; font: 600 13.5px 'Roboto', sans-serif; color: var(--tenue);
+    padding: 10px 15px; font: 600 14px 'Roboto', sans-serif; color: var(--tenue);
     transition: transform .16s, box-shadow .16s, background .16s, border-color .16s, color .16s, filter .16s; }
   .rx-chip:hover { border-color: var(--rxa); color: var(--texto); transform: translateY(-1px);
     box-shadow: 0 5px 14px rgba(46,134,193,.20); }
@@ -177,6 +178,10 @@
   .rx-real { font: 800 8.5px 'Roboto', sans-serif; letter-spacing: .5px; padding: 2.5px 6px;
     border-radius: 8px; background: rgba(46,134,193,.14); color: var(--rxa); }
   .rx-chip.on .rx-real { background: rgba(255,255,255,.25); color: #fff; }
+  .rx-mic { font-size: 11px; opacity: .75; }
+  .rx-grupo { flex-basis: 100%; font: 800 11px 'Roboto', sans-serif; letter-spacing: .8px;
+    text-transform: uppercase; color: var(--tenue2); margin: 10px 0 2px; }
+  .rx-grupo:first-child { margin-top: 0; }
   /* vista previa de visuales (lo que llevará el video) */
   #rx-vis-prev { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
   .rx-vp { width: 224px; border: 1px solid var(--linea); border-radius: 12px; overflow: hidden;
@@ -222,20 +227,28 @@
   .rx-prev-uno.playing { border-color: var(--rxa); color: var(--rxa); background: rgba(46,134,193,.12); }
   .rx-prev-uno:disabled { opacity: .6; cursor: default; }
   #rx-prev-mezcla { margin-top: 0; }
-  .rx-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-  .rx-tab { padding: 7px 13px; border-radius: 10px; border: 1px solid var(--linea);
-    background: var(--panel2, #16171f); color: var(--tenue); font: 700 12.5px 'Roboto', sans-serif; cursor: pointer; }
-  .rx-tab:hover { color: var(--texto); }
-  .rx-tab { transition: all .16s; }
-  .rx-tab.on { border-color: var(--rxa); color: #fff; background: var(--rxa);
-    box-shadow: 0 4px 12px rgba(46,134,193,.32); }
+  .rx-tabs { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 14px;
+    border-bottom: 2px solid var(--linea); }
+  .rx-tab { padding: 9px 15px 8px; border: none; border-radius: 10px 10px 0 0;
+    background: none; color: var(--tenue); font: 700 13.5px 'Roboto', sans-serif;
+    cursor: pointer; transition: all .16s; margin-bottom: -2px; }
+  .rx-tab:hover { color: var(--texto); background: rgba(46,134,193,.07); }
+  .rx-tab.on { color: var(--rxa); background: rgba(46,134,193,.10);
+    box-shadow: inset 0 -3px 0 var(--rxa); }
   .rx-master { margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--linea); }
   .rx-mute { width: 28px; height: 28px; border-radius: 7px; border: 1px solid var(--linea);
     background: var(--panel2, #16171f); color: var(--tenue); cursor: pointer; font-size: 12px; flex: none; }
   .rx-mute:hover { border-color: var(--tenue); }
   .rx-mute.on { border-color: var(--alerta, #c4231b); color: var(--alerta, #c4231b); background: rgba(196,35,27,.10); }
   .rx-fila.silenciada .rx-fila-nom, .rx-fila.silenciada input { opacity: .4; }
-  #rx-presets .rx-chip { position: relative; }
+  #rx-presets .rx-chip { position: relative; flex-direction: column; width: 122px;
+    padding: 14px 8px 11px; gap: 7px; text-align: center; justify-content: flex-start; }
+  #rx-presets .rx-chip .em { font-size: 27px; }
+  #rx-presets .rx-chip > span:nth-child(2) { font-size: 12.5px; line-height: 1.3; }
+  #rx-presets .rx-preset-del { position: absolute; top: 6px; right: 8px; }
+  .rx-opcional { display: inline-block; font: 700 10px 'Roboto', sans-serif; letter-spacing: .6px;
+    padding: 3px 8px; border-radius: 9px; background: var(--linea); color: var(--tenue);
+    vertical-align: 2px; margin-left: 6px; text-transform: uppercase; }
   .rx-preset-del { margin-left: 4px; color: var(--tenue2); font-weight: 700; }
   .rx-preset-del:hover { color: var(--alerta, #c4231b); }
   .nicho .foto .badge { position: absolute; top: 12px; left: 12px; background: var(--acento); color: #fff;
@@ -898,14 +911,14 @@
           <p style="color:var(--tenue);margin:0 0 8px" data-i18n="rx_sub">Elige el ambiente, los visuales y la duración. La app genera el audio y arma el video largo, sin narración.</p>
 
           <div class="rx-bloque">
-            <label data-i18n="rx_l_presets">⭐ Presets · mezclas listas</label>
-            <div class="rx-ayuda" data-i18n="rx_h_presets">Un clic carga la mezcla completa y la reproduce. Ajústala a tu gusto y guarda la tuya.</div>
+            <label><span data-i18n="rx_l_presets">⭐ Mezclas listas</span><span class="rx-opcional" data-i18n="rx_opcional">atajo opcional</span></label>
+            <div class="rx-ayuda" data-i18n="rx_h_presets">Toca una tarjeta y se carga TODO (sonidos, música y ajustes) y la escuchas al momento. Después ajústala si quieres — o sáltate esto y arma la tuya paso a paso abajo.</div>
             <div class="rx-chips" id="rx-presets"></div>
           </div>
 
           <div class="rx-bloque">
             <label data-i18n="rx_l_sonidos">1 · Sonidos de ambiente</label>
-            <div class="rx-ayuda" data-i18n="rx_h_sonidos">Toca un sonido para elegirlo y escucharlo al instante. Combina los que quieras (ej. lluvia + fuego).</div>
+            <div class="rx-ayuda" data-i18n="rx_h_sonidos">Las pestañas de arriba son categorías. Toca un sonido para elegirlo y escucharlo al momento; combina los que quieras. Los que llevan 🎙️ son grabaciones reales.</div>
             <div class="rx-tabs" id="rx-son-tabs"></div>
             <div class="rx-chips" id="rx-sonidos"></div>
           </div>
@@ -926,7 +939,7 @@
           </div>
 
           <div class="rx-bloque" id="rx-mezcla-bloque">
-            <label>🎚️ <span data-i18n="rx_l_mezcla">Mezcla y vista previa</span></label>
+            <label>🎚️ <span data-i18n="rx_l_mezcla">Escucha y ajusta tu mezcla</span></label>
             <div class="rx-ayuda" data-i18n="rx_h_mezcla">Ajusta volumen (y silencia) cada pista, dale calidez/reverb y escucha una muestra de 8 s antes de generar.</div>
             <div id="rx-mezcla"></div>
             <div class="rx-master">
@@ -1908,7 +1921,7 @@ const EN = {
   // ---- nicho Relax ----
   rx_volver: "Back", rx_titulo: "🌧️ Relaxing Music & Sounds",
   rx_sub: "Pick the ambience, visuals and length. The app generates the audio and builds the long video, no narration.",
-  rx_l_sonidos: "1 · Ambient sounds", rx_h_sonidos: "Tap a sound to pick it and hear it instantly. Combine as many as you like (e.g. rain + fire).",
+  rx_l_sonidos: "1 · Ambient sounds", rx_h_sonidos: "The tabs above are categories. Tap a sound to pick it and hear it right away; combine as many as you like. Ones with 🎙️ are real recordings.",
   rx_s_lluvia: "Rain", rx_s_tormenta: "Thunderstorm", rx_s_mar: "Ocean / Waves", rx_s_rio: "River / Stream",
   rx_s_bosque: "Forest", rx_s_fuego: "Fire / Fireplace", rx_s_viento: "Wind", rx_s_noche: "Night / Crickets",
   rx_l_musica: "2 · Relaxing music (optional)", rx_h_musica: "A soft music bed mixed under the ambience. FREE, generated on your machine.",
@@ -1922,8 +1935,8 @@ const EN = {
   rx_l_dur: "4 · Length & format", rx_l_nombre: "5 · Video name",
   rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
   rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Adjust & regenerate", rx_otro: "＋ Create another",
-  rx_l_mezcla: "Mix & preview", rx_h_mezcla: "Adjust each track's volume (and mute), add warmth/reverb and hear an 8s sample before generating.", rx_prev_mezcla: "▶ Play mix (8s)",
-  rx_l_presets: "⭐ Presets · ready-made mixes", rx_h_presets: "One click loads the full mix and plays it. Tweak it and save your own.",
+  rx_l_mezcla: "Listen & adjust your mix", rx_h_mezcla: "Adjust each track's volume (and mute), add warmth/reverb and hear an 8s sample before generating.", rx_prev_mezcla: "▶ Play mix (8s)",
+  rx_l_presets: "⭐ Ready-made mixes", rx_opcional: "optional shortcut", rx_h_presets: "Tap a card and EVERYTHING loads (sounds, music, settings) and plays right away. Tweak it after — or skip this and build yours step by step below.",
   rx_calidez: "🎛️ Warmth / tone", rx_reverb: "🌫️ Reverb / space", rx_guardar_preset: "⭐ Save mix",
   home_help_t: "First time here?",
   home_help_d: "You don't need to know anything about editing. The app guides you at every step and you can always go back.",
@@ -4812,7 +4825,7 @@ function rxRenderSonChips() {
   const chips = rxCat.sonidos.filter(s => s.cat === rxSonTab);
   $('rx-sonidos').innerHTML = chips.map(s =>
     rxChip(s.key, s.emoji, L(s.es, s.en), rxSonSel.has(s.key),
-           s.real ? '<span class="rx-real">🎙️ REAL</span>' : '')).join('');
+           s.real ? '<span class="rx-mic">🎙️</span>' : '')).join('');
   chips.filter(s => s.real).forEach(s => {       // tooltip con el crédito
     const el = $('rx-sonidos').querySelector(`[data-val="${s.key}"]`);
     if (el) el.title = L('Grabación real · se descarga la 1ª vez · ',
@@ -4836,10 +4849,12 @@ function rxRenderMusica() {
   const reales = rxCat.musica.filter(m => m.cat === 'real');
   const pads = rxCat.musica.filter(m => m.cat === 'pad');
   const tonos = rxCat.musica.filter(m => m.cat === 'tono');
-  const sep = '<div style="flex-basis:100%;height:0"></div>';
-  const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood,
-                                           m.real ? '<span class="rx-real">🎙️ REAL</span>' : '')).join('');
-  $('rx-musica-mood').innerHTML = grupo(reales) + sep + grupo(pads) + sep + grupo(tonos);
+  const enc = t => `<div class="rx-grupo">${t}</div>`;
+  const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood)).join('');
+  $('rx-musica-mood').innerHTML =
+    enc(L('🎙️ Música real (se descarga la 1ª vez)', '🎙️ Real music (downloads on first use)')) + grupo(reales) +
+    enc(L('Fondos suaves (sintetizados)', 'Soft backgrounds (synth)')) + grupo(pads) +
+    enc(L('Tonos de meditación', 'Meditation tones')) + grupo(tonos);
   reales.forEach(m => {              // tooltip con crédito y aviso de descarga
     const el = $('rx-musica-mood').querySelector(`[data-val="${m.key}"]`);
     if (el) el.title = L('Música real · se descarga la 1ª vez · ',

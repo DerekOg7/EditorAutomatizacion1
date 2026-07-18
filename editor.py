@@ -3443,27 +3443,17 @@ def unir_videos(nombres, salida_nombre, on_progreso=None):
 AMBIENTES = {
     # --- Naturaleza ---
     "lluvia":       [("pink",  "highpass=f=600,lowpass=f=10000,volume=1.5")],
-    "lluvia_suave": [("pink",  "highpass=f=400,lowpass=f=6000,volume=1.1")],
-    "lluvia_fuerte":[("pink",  "highpass=f=700,lowpass=f=12000,volume=1.8"),
-                     ("brown", "lowpass=f=200,volume=0.5")],
-    "tejado":       [("pink",  "highpass=f=800,lowpass=f=9000,volume=1.2"),
-                     ("brown", "lowpass=f=260,volume='0.4+0.3*sin(2*PI*2.3*t)':eval=frame,volume=1.1")],
     "tormenta":     [("pink",  "highpass=f=600,lowpass=f=9000,volume=1.4"),
                      ("brown", "lowpass=f=120,volume='0.55+0.4*sin(2*PI*0.045*t)':eval=frame,volume=1.4")],
     "bosque":       [("brown", "bandpass=f=900:width_type=h:w=1400,volume='0.45+0.4*sin(2*PI*0.05*t)':eval=frame,volume=1.4"),
                      ("pink",  "highpass=f=5000,lowpass=f=9000,volume=0.10")],
     "hojas":        [("brown", "bandpass=f=2200:width_type=h:w=2600,volume='0.4+0.45*sin(2*PI*0.13*t)':eval=frame,volume=1.3")],
     "viento":       [("brown", "bandpass=f=500:width_type=h:w=900,volume='0.3+0.6*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.5")],
-    "grillos":      [("brown", "lowpass=f=350,volume=0.35"),
-                     ("pink",  "highpass=f=4200,lowpass=f=6500,volume='0.22*(0.5+0.5*sin(2*PI*9*t))':eval=frame,volume=1.4")],
     "noche":        [("brown", "lowpass=f=400,volume=0.5"),
                      ("pink",  "highpass=f=4500,lowpass=f=7500,volume='0.16*(0.5+0.5*sin(2*PI*2.2*t))':eval=frame,volume=1.2")],
     # --- Agua ---
     "mar":          [("brown", "lowpass=f=1200,volume='0.35+0.55*(0.5+0.5*sin(2*PI*0.09*t))':eval=frame,volume=1.7")],
-    "mar_suave":    [("brown", "lowpass=f=900,volume='0.3+0.45*(0.5+0.5*sin(2*PI*0.06*t))':eval=frame,volume=1.4")],
-    "mar_fuerte":   [("brown", "lowpass=f=1600,volume='0.45+0.55*(0.5+0.5*sin(2*PI*0.12*t))':eval=frame,volume=1.9")],
     "rio":          [("pink",  "highpass=f=800,lowpass=f=6500,volume='0.85+0.15*sin(2*PI*1.4*t)':eval=frame,volume=1.3")],
-    "arroyo":       [("pink",  "highpass=f=1100,lowpass=f=5200,volume='0.8+0.2*sin(2*PI*2.1*t)':eval=frame,volume=1.2")],
     "cascada":      [("brown", "lowpass=f=3200,volume=1.0"),
                      ("pink",  "highpass=f=1500,lowpass=f=8000,volume=0.7")],
     "bajo_agua":    [("brown", "lowpass=f=380,volume='0.6+0.3*sin(2*PI*0.15*t)':eval=frame,volume=1.5")],
@@ -3484,20 +3474,13 @@ AMBIENTES = {
 # Metadatos del catálogo: categoría, nombre ES/EN y emoji de cada sonido.
 AMBIENTES_META = {
     "lluvia":       ("naturaleza", "Lluvia", "Rain", "🌧️"),
-    "lluvia_suave": ("naturaleza", "Lluvia suave", "Light rain", "🌦️"),
-    "lluvia_fuerte":("naturaleza", "Lluvia fuerte", "Heavy rain", "⛈️"),
-    "tejado":       ("naturaleza", "Lluvia en tejado", "Rain on roof", "🏠"),
     "tormenta":     ("naturaleza", "Tormenta", "Thunderstorm", "🌩️"),
     "bosque":       ("naturaleza", "Bosque", "Forest", "🌲"),
     "hojas":        ("naturaleza", "Hojas / Ramas", "Rustling leaves", "🍃"),
     "viento":       ("naturaleza", "Viento", "Wind", "💨"),
-    "grillos":      ("naturaleza", "Grillos", "Crickets", "🦗"),
     "noche":        ("naturaleza", "Noche", "Night", "🌙"),
     "mar":          ("agua", "Mar / Olas", "Ocean waves", "🌊"),
-    "mar_suave":    ("agua", "Olas suaves", "Gentle waves", "🏖️"),
-    "mar_fuerte":   ("agua", "Olas fuertes", "Strong waves", "🌊"),
     "rio":          ("agua", "Río", "River", "🏞️"),
-    "arroyo":       ("agua", "Arroyo", "Stream", "💧"),
     "cascada":      ("agua", "Cascada", "Waterfall", "🗻"),
     "bajo_agua":    ("agua", "Bajo el agua", "Underwater", "🌊"),
     "fuego":        ("ambientes", "Fuego / Chimenea", "Fire / Fireplace", "🔥"),
@@ -3543,6 +3526,9 @@ SONIDOS_REALES = {
     "fuego_real":    ("ambientes", "Fogata real", "Real campfire", "🔥",
                       _AO + "aporee_27776_32009/soundcamp2015dartingtoncracklingfire.ogg",
                       "Dominio público · radio aporee (Dartington, UK)"),
+    "ventisca_real": ("naturaleza", "Ventisca real", "Real blizzard", "🌨️",
+                      _AO + "GOLD_TAPE_55_56_Weather-Wind/G55-01-Superman%20Blizzard.mp3",
+                      "CC0 · archive.org/GOLD_TAPE"),
     "cafe_real":     ("ambientes", "Café europeo", "European café", "☕",
                       _AO + "aporee_31082_35727/Relaxedvillagesquare.ogg",
                       "Dominio público · radio aporee (Villars-sur-Var, FR)"),
@@ -3727,6 +3713,36 @@ VISUALES_NOMBRE = {
     "aurora": "Aurora boreal", "cafe": "Cafetería acogedora", "lago": "Lago",
     "espacio": "Espacio",
 }
+
+# Visuales de ARTE generadas con IA (Pollinations, gratis): ilustraciones estilo
+# lofi/anime animadas con movimiento lento. key → (nombre ES, prompt, consulta
+# Pexels de respaldo si la IA falla).
+VISUALES_IA = {
+    "arte_lofi":    ("Habitación lofi", "lofi anime illustration, cozy bedroom at "
+                     "night, desk with warm lamp, rain on the window, plants and "
+                     "books, cat sleeping, soft colors, detailed, lofi girl style",
+                     "cozy room rain window"),
+    "arte_ventana": ("Ventana lluviosa (arte)", "beautiful anime illustration, rain "
+                     "drops sliding on a window at night, blurry city lights bokeh "
+                     "outside, warm cozy interior glow, lofi aesthetic, soft palette",
+                     "rain on window night"),
+    "arte_cabana":  ("Cabaña acogedora (arte)", "cozy cabin interior anime "
+                     "illustration, fireplace glowing warm, rain outside the window, "
+                     "soft blankets and warm light, studio ghibli style, detailed",
+                     "fireplace cozy cabin"),
+    "arte_nieve":   ("Aldea nevada (arte)", "peaceful snowy village at night, anime "
+                     "background art, falling snow, warm lights in windows, winter "
+                     "calm, soft blue palette, studio ghibli style",
+                     "snow village night"),
+    "arte_bosque":  ("Bosque mágico (arte)", "mystical forest with sun rays through "
+                     "tall trees, anime background art, peaceful atmosphere, studio "
+                     "ghibli style, soft light, detailed illustration",
+                     "forest sun rays"),
+    "arte_noche":   ("Cielo estrellado (arte)", "vast starry night sky over calm "
+                     "mountains, milky way, anime background art, deep blues and "
+                     "purples, serene and peaceful, detailed illustration",
+                     "starry night sky mountains"),
+}
 RELAX_SEG = 24.0    # segundos por escena en el loop visual
 
 
@@ -3736,12 +3752,36 @@ def armar_escenas_relax(p, visuales, on_progreso=None):
     avisar = on_progreso or (lambda *_: None)
     aj = leer_ajustes(p)
     orient = ORIENTACION.get(aj.get("formato", "16:9"), "landscape")
-    visuales = [v for v in (visuales or []) if v in VISUALES] or ["lluvia_ventana"]
+    visuales = [v for v in (visuales or [])
+                if v in VISUALES or v in VISUALES_IA] or ["lluvia_ventana"]
     escenas, t = [], 0.0
     for i, v in enumerate(visuales, 1):
-        consulta, pref = VISUALES[v]
-        avisar(f"Buscando visual: {VISUALES_NOMBRE.get(v, v)}",
-               10 + i / len(visuales) * 75)
+        prompt = ""
+        if v in VISUALES_IA:
+            nombre, prompt, consulta = VISUALES_IA[v]
+            avisar(f"Generando arte con IA: {nombre}…",
+                   10 + i / len(visuales) * 75)
+            hecho = False
+            try:
+                generar_imagen_ia(p, i, prompt)     # Pollinations, gratis
+                hecho = True
+            except Exception:
+                pass                                # respaldo: foto de Pexels
+            if hecho:
+                escenas.append({"n": i, "inicio": round(t, 3),
+                                "fin": round(t + RELAX_SEG, 3), "texto": nombre,
+                                "consulta": consulta, "prompt": prompt,
+                                "imagen": f"{i:03d}.jpg", "efecto": "zoom_in",
+                                "transicion": "fundido", "medio_auto": True})
+                t += RELAX_SEG
+                continue
+            pref = "imagen"
+            nombre_esc = nombre
+        else:
+            consulta, pref = VISUALES[v]
+            nombre_esc = VISUALES_NOMBRE.get(v, v)
+            avisar(f"Buscando visual: {nombre_esc}",
+                   10 + i / len(visuales) * 75)
         url, tipo = None, "imagen"
         try:
             if pref == "video":
@@ -3759,8 +3799,8 @@ def armar_escenas_relax(p, visuales, on_progreso=None):
         if url:
             descargar_a_escena(p, i, url, tipo=tipo, auto=True)
         escenas.append({"n": i, "inicio": round(t, 3), "fin": round(t + RELAX_SEG, 3),
-                        "texto": VISUALES_NOMBRE.get(v, v), "consulta": consulta,
-                        "prompt": "", "imagen": f"{i:03d}.jpg",
+                        "texto": nombre_esc, "consulta": consulta,
+                        "prompt": prompt, "imagen": f"{i:03d}.jpg",
                         "efecto": "zoom_in", "transicion": "fundido",
                         "medio_auto": True})
         t += RELAX_SEG
@@ -3784,8 +3824,143 @@ ACORDES = {
 }
 # Tonos de meditación: ondas binaurales (beat en Hz) y frecuencias solfeggio (Hz).
 BINAURAL = {"binaural_alpha": 10.0, "binaural_theta": 5.5, "binaural_delta": 2.5}
+
+# "Canciones" GRATIS: mini-motor procedural. Una progresión de 4 acordes que se
+# funden entre sí (crossfade triangular cíclico) + bajo, y en los moods lofi una
+# batería suave (bombo/caja/hats con envolventes exponenciales periódicas) y
+# siseo de vinilo. Cada acorde = (freq_bajo, [freqs del pad]).
+PROGRESIONES = {
+    # Cmaj7 – Am7 – Fmaj7 – G7 (cálido, clásico lofi)
+    "lofi_calido": (72, [
+        (65.41, [130.81, 164.81, 196.00, 246.94]),
+        (55.00, [110.00, 164.81, 196.00, 261.63]),
+        (87.31, [174.61, 220.00, 261.63, 329.63]),
+        (98.00, [196.00, 246.94, 293.66, 349.23]),
+    ]),
+    # Am – F – C – G (melancólico, para lluvia)
+    "lofi_lluvioso": (68, [
+        (55.00, [110.00, 164.81, 220.00, 261.63]),
+        (87.31, [174.61, 220.00, 261.63, 349.23]),
+        (65.41, [130.81, 196.00, 261.63, 329.63]),
+        (98.00, [196.00, 246.94, 293.66, 392.00]),
+    ]),
+    # Am – Em – F – C sin batería (ambient tipo "snowfall")
+    "ambient_nieve": (0, [
+        (55.00, [110.00, 164.81, 220.00]),
+        (82.41, [164.81, 246.94, 329.63]),
+        (87.31, [174.61, 261.63, 349.23]),
+        (65.41, [130.81, 196.00, 329.63]),
+    ]),
+}
+
+
+def _musica_cancion(mood, dur, salida, loopable):
+    """Renderiza una 'canción' procedural POR ETAPAS (comandos pequeños y
+    verificables — los grafos gigantes con envolventes cíclicas resultaron
+    frágiles): cada acorde es un pad que respira (fade in/out), se concatenan en
+    un ciclo, y encima va un compás de batería lofi en loop + siseo de vinilo."""
+    import tempfile
+    bpm, acordes = PROGRESIONES[mood]
+    beat = 60.0 / bpm if bpm else 0.0
+    seg = 8 * beat if bpm else 9.0            # 2 compases por acorde | 9s ambient
+    ciclo = seg * len(acordes)
+    dur = max(ciclo, float(dur))
+    d = Path(tempfile.mkdtemp(prefix="cancion_"))
+    try:
+        # 1) cada acorde = pad que respira (sube y baja dentro de su segmento)
+        piezas = []
+        for i, (bajo, pad) in enumerate(acordes):
+            ent, fil, et = [], [], []
+            # la fuente sine de ffmpeg genera a amplitud 0.125 → ganancias ×8
+            voces = [(bajo, 2.0, "lowpass=f=300")] + \
+                    [(f, 1.0, "vibrato=f=0.15:d=0.5") for f in pad]
+            for k, (f, amp, extra) in enumerate(voces):
+                ent += ["-f", "lavfi", "-t", f"{seg:.3f}",
+                        "-i", f"sine=f={f}:r=48000"]
+                fil.append(f"[{k}:a]{extra},volume={amp:.3f},"
+                           f"tremolo=f={0.14 + 0.03 * k:.3f}:d=0.35[v{k}]")
+                et.append(f"[v{k}]")
+            fin_fade = max(0.1, seg - 2.2)
+            post = (f"{''.join(et)}amix=inputs={len(voces)}:normalize=0,"
+                    f"afade=t=in:st=0:d=1.6,afade=t=out:st={fin_fade:.2f}:d=2.2,"
+                    f"aformat=channel_layouts=stereo[out]")
+            pieza = d / f"acorde{i}.wav"
+            run(["ffmpeg", "-y"] + ent +
+                ["-filter_complex", ";".join(fil + [post]),
+                 "-map", "[out]", str(pieza)])
+            piezas.append(pieza)
+
+        # 2) ciclo = los 4 acordes seguidos
+        lista = d / "lista.txt"
+        lista.write_text("".join(f"file '{p.as_posix()}'\n" for p in piezas))
+        ciclo_w = d / "ciclo.wav"
+        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
+             "-c:a", "pcm_s16le", str(ciclo_w)])
+
+        # 3) percusión lofi: golpes sueltos → un compás → se loopea al mezclar
+        capas = [("-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", str(ciclo_w))]
+        if bpm:
+            golpe = {}
+            for nom, src, filtro, dur_g in [
+                ("bombo", "sine=f=58:r=48000",
+                 "volume=4.0,afade=t=out:st=0.03:d=0.30,lowpass=f=160", 0.35),   # sine a 0.125
+                ("caja", "anoisesrc=c=white:a=0.5:r=48000:seed=7",
+                 "bandpass=f=1900:width_type=h:w=2600,volume=0.5,"
+                 "afade=t=out:st=0.02:d=0.16", 0.20),
+                ("hat", "anoisesrc=c=white:a=0.4:r=48000:seed=8",
+                 "highpass=f=8000,volume=0.32,afade=t=out:st=0.01:d=0.06", 0.08),
+            ]:
+                g = d / f"{nom}.wav"
+                run(["ffmpeg", "-y", "-f", "lavfi", "-t", f"{dur_g}", "-i", src,
+                     "-af", filtro + ",aformat=channel_layouts=stereo",
+                     str(g)])
+                golpe[nom] = g
+            # compás de 4 tiempos (boom-bap suave): bombo 1 y 3.5 · caja 2 y 4 · hats corcheas
+            ms = lambda t: int(round(t * beat * 1000))
+            hits = ([("bombo", 0.0), ("bombo", 2.5), ("caja", 1.0), ("caja", 3.0)]
+                    + [("hat", x / 2) for x in range(8)])
+            ent, fil, et = [], [], []
+            for k, (nom, pos) in enumerate(hits):
+                ent += ["-i", str(golpe[nom])]
+                delay = ms(pos)
+                fil.append(f"[{k}:a]adelay={delay}|{delay}[h{k}]")
+                et.append(f"[h{k}]")
+            compas = d / "compas.wav"
+            bar = 4 * beat
+            run(["ffmpeg", "-y"] + ent +
+                ["-filter_complex",
+                 f"{''.join(et)}amix=inputs={len(hits)}:normalize=0,"
+                 f"apad=whole_dur={bar:.4f},atrim=0:{bar:.4f}[out]",
+                 "-map", "[out]", str(compas)])
+            capas.append(("-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", str(compas)))
+            vinilo = d / "vinilo.wav"
+            run(["ffmpeg", "-y", "-f", "lavfi", "-t", f"{dur:.3f}",
+                 "-i", "anoisesrc=c=pink:a=0.5:r=48000:seed=9",
+                 "-af", "highpass=f=2500,lowpass=f=9000,volume=0.035,"
+                        "aformat=channel_layouts=stereo", str(vinilo)])
+            capas.append(("-i", str(vinilo)))
+
+        # 4) mezcla final + master cálido
+        ent = [x for capa in capas for x in capa]
+        n = len(capas)
+        et = "".join(f"[{k}:a]" for k in range(n))
+        cadena = "lowpass=f=5200,aecho=0.7:0.75:420:0.22,alimiter=limit=0.85:level=0"
+        if not loopable:
+            fin = max(0.1, dur - 4.0)
+            cadena += f",afade=t=in:st=0:d=2,afade=t=out:st={fin:.2f}:d=4"
+        run(["ffmpeg", "-y"] + ent +
+            ["-filter_complex",
+             f"{et}amix=inputs={n}:normalize=0,{cadena}[out]",
+             "-map", "[out]", "-t", f"{dur:.3f}",
+             "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+    return salida
 # Catálogo de música (pads + tonos): key → (categoria, es, en, emoji)
 MUSICA_META = {
+    "lofi_calido":    ("cancion", "Lofi cálido", "Warm lofi beats", "🎧"),
+    "lofi_lluvioso":  ("cancion", "Lofi lluvioso", "Rainy lofi beats", "🌧️"),
+    "ambient_nieve":  ("cancion", "Ambient nevado", "Snowy ambient", "❄️"),
     "pad_calido":     ("pad", "Pad cálido", "Warm pad", "🌅"),
     "pad_sonador":    ("pad", "Pad soñador", "Dreamy pad", "🌌"),
     "pad_menor":      ("pad", "Pad melancólico", "Melancholic pad", "🌫️"),
@@ -3802,7 +3977,9 @@ MUSICA_META = {
 }
 MUSICA_GRATIS_NOMBRE = {k: v[1] for k, v in MUSICA_META.items()}
 # equivalencia mood → prompt de ElevenLabs (si el usuario activa la versión IA)
-_ELEVEN_DE_PAD = {"pad_calido": "piano", "pad_sonador": "ambient",
+_ELEVEN_DE_PAD = {"lofi_calido": "lofi", "lofi_lluvioso": "lofi",
+                  "ambient_nieve": "ambient",
+                  "pad_calido": "piano", "pad_sonador": "ambient",
                   "pad_menor": "ambient", "pad_etereo": "ambient",
                   "pad_brillante": "piano", "drone": "meditacion",
                   "campanas": "ambient", "binaural_alpha": "meditacion",
@@ -3831,9 +4008,11 @@ def _musica_binaural(mood, dur, salida, loopable):
 
 
 def generar_musica_ambiente(mood, dur, salida, loopable=False, on_progreso=None):
-    """Sintetiza una cama musical GRATIS con ffmpeg: pads (acordes de sinusoides),
-    tonos solfeggio, cuenco tibetano u ondas binaurales, según `mood`."""
+    """Sintetiza una cama musical GRATIS con ffmpeg: canciones (lofi/ambient con
+    progresión de acordes), pads, tonos solfeggio, cuenco u ondas binaurales."""
     dur = max(3.0, float(dur))
+    if mood in PROGRESIONES:
+        return _musica_cancion(mood, dur, salida, loopable)
     if mood.startswith("binaural_"):
         return _musica_binaural(mood, dur, salida, loopable)
     if mood.startswith("solfeggio_"):
@@ -3962,27 +4141,33 @@ def ensamblar_relax(p, on_progreso=None):
 
 # Presets de fábrica: mezclas listas de un clic. `vol` en ganancia (1.0 = normal).
 PRESETS_FABRICA = [
+    {"id": "lofi_estudio", "es": "Lofi para estudiar", "en": "Lofi study", "emoji": "🎧",
+     "sonidos": {"lluvia_real": 0.8, "cafe_real": 0.4},
+     "musica": "lofi_calido", "musica_volumen": 0.8, "calidez": 10, "reverb": 5},
     {"id": "tormenta_noche", "es": "Noche de tormenta", "en": "Stormy night", "emoji": "⛈️",
-     "sonidos": {"lluvia_fuerte": 1.0, "tormenta": 0.9, "viento": 0.5},
-     "musica": "drone", "musica_volumen": 0.35, "calidez": 25, "reverb": 20},
+     "sonidos": {"lluvia_real": 1.0, "tormenta_real": 0.9, "viento": 0.4},
+     "musica": "", "musica_volumen": 0.4, "calidez": 25, "reverb": 20},
     {"id": "bosque_amanecer", "es": "Bosque al amanecer", "en": "Forest at dawn", "emoji": "🌲",
-     "sonidos": {"bosque": 1.0, "arroyo": 0.7, "hojas": 0.5},
-     "musica": "pad_calido", "musica_volumen": 0.45, "calidez": 10, "reverb": 15},
+     "sonidos": {"pajaros_real": 1.0, "arroyo_real": 0.7, "hojas": 0.3},
+     "musica": "pad_calido", "musica_volumen": 0.4, "calidez": 10, "reverb": 15},
     {"id": "cabana", "es": "Cabaña con chimenea", "en": "Cabin fireplace", "emoji": "🔥",
-     "sonidos": {"fuego": 1.0, "lluvia": 0.6, "viento": 0.4},
-     "musica": "pad_sonador", "musica_volumen": 0.4, "calidez": 35, "reverb": 15},
+     "sonidos": {"fuego_real": 1.0, "lluvia_real": 0.6},
+     "musica": "lofi_lluvioso", "musica_volumen": 0.6, "calidez": 25, "reverb": 10},
     {"id": "sueno_profundo", "es": "Sueño profundo", "en": "Deep sleep", "emoji": "😴",
-     "sonidos": {"marron": 1.0, "lluvia_suave": 0.5},
+     "sonidos": {"marron": 1.0, "lluvia_real": 0.4},
      "musica": "binaural_delta", "musica_volumen": 0.3, "calidez": 55, "reverb": 10},
     {"id": "concentracion", "es": "Concentración", "en": "Focus", "emoji": "🎯",
-     "sonidos": {"rosa": 0.9, "lluvia_suave": 0.6},
+     "sonidos": {"rosa": 0.9, "lluvia_real": 0.5},
      "musica": "", "musica_volumen": 0.4, "calidez": 20, "reverb": 5},
     {"id": "meditacion_zen", "es": "Meditación zen", "en": "Zen meditation", "emoji": "🧘",
-     "sonidos": {"viento": 0.6, "arroyo": 0.5},
+     "sonidos": {"viento": 0.5, "arroyo_real": 0.6},
      "musica": "cuenco", "musica_volumen": 0.6, "calidez": 15, "reverb": 40},
     {"id": "playa_tropical", "es": "Playa tropical", "en": "Tropical beach", "emoji": "🏝️",
-     "sonidos": {"mar": 1.0, "viento": 0.4},
-     "musica": "pad_brillante", "musica_volumen": 0.35, "calidez": 5, "reverb": 20},
+     "sonidos": {"olas_real": 1.0, "viento": 0.3},
+     "musica": "ambient_nieve", "musica_volumen": 0.5, "calidez": 5, "reverb": 20},
+    {"id": "noche_invierno", "es": "Noche de invierno", "en": "Winter night", "emoji": "❄️",
+     "sonidos": {"ventisca_real": 0.9, "fuego_real": 0.7},
+     "musica": "ambient_nieve", "musica_volumen": 0.55, "calidez": 20, "reverb": 15},
 ]
 
 
@@ -3999,7 +4184,9 @@ def catalogo_relax():
                      for k, m in SONIDOS_REALES.items()]),
         "musica": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
                    for k, m in MUSICA_META.items()],
-        "visuales": [{"key": k, "es": VISUALES_NOMBRE.get(k, k)} for k in VISUALES],
+        "visuales": ([{"key": k, "es": VISUALES_NOMBRE.get(k, k)} for k in VISUALES] +
+                     [{"key": k, "es": m[0], "ia": True}
+                      for k, m in VISUALES_IA.items()]),
         "presets": PRESETS_FABRICA,
     }
 

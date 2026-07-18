@@ -699,7 +699,29 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
   descarga automática al primer preview (9.4s → luego instantáneo con caché), y
   render de video completo con sonidos reales.
 
-## Estado actual: v0.23 (nicho Relax PRO + UX premium + sonidos reales; código commiteado — pendiente empaquetar zip)
+**Canciones + Arte IA + poda (mejora posterior, estilo lofi-girl):**
+- **Canciones procedurales GRATIS** (`PROGRESIONES` + `_musica_cancion`, cat
+  "cancion" en MUSICA_META): lofi_calido (Cmaj7-Am7-Fmaj7-G7, 72bpm),
+  lofi_lluvioso (Am-F-C-G, 68bpm) y ambient_nieve (sin batería). Arquitectura POR
+  ETAPAS (comandos chicos): cada acorde = pad que respira (fade in/out) → concat
+  en ciclo → compás de batería lofi (bombo/caja/hat como golpes sueltos +
+  `adelay` → un compás → `-stream_loop`) + siseo de vinilo → mezcla + master
+  cálido. GOTCHA APRENDIDO A GOLPES: (1) la fuente `sine` de ffmpeg genera a
+  amplitud **0.125**, no 1.0 → las ganancias van ×8 (los pads viejos "sonaban"
+  porque el alimiter default auto-nivela); (2) los grafos gigantes con
+  envolventes cíclicas (volume exprs con comas, quoted o escapadas) se
+  desincronizan y cuelan senos sin envolvente — NO volver a intentarlo, etapas.
+- **Visuales ARTE IA** (`VISUALES_IA`, 6 temas: habitación lofi, ventana lluviosa,
+  cabaña, aldea nevada, bosque mágico, cielo estrellado): ilustración generada
+  gratis con Pollinations (`generar_imagen_ia` con prompts curados estilo
+  lofi/anime/ghibli) + Ken Burns; si Pollinations falla, cae a foto de Pexels
+  (tercer elemento = consulta de respaldo). Badge "✨ ARTE IA" en la UI.
+- **Poda**: fuera 7 sintéticos que sonaban igual (lluvia_suave/fuerte, tejado,
+  mar_suave/fuerte, arroyo, grillos) → 18 sintéticos + 10 reales (se añadió
+  ventisca_real CC0). Los PRESETS_FABRICA ahora usan los sonidos REALES y
+  canciones (nuevos: "Lofi para estudiar" 🎧 y "Noche de invierno" ❄️).
+
+## Estado actual: v0.23 (nicho Relax completo: PRO + UX + reales + canciones/arte IA; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

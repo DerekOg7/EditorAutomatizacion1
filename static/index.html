@@ -4821,10 +4821,12 @@ function rxRenderSonChips() {
   });
 }
 function rxRenderMusica() {
+  const canciones = rxCat.musica.filter(m => m.cat === 'cancion');
   const pads = rxCat.musica.filter(m => m.cat === 'pad');
   const tonos = rxCat.musica.filter(m => m.cat === 'tono');
+  const sep = '<div style="flex-basis:100%;height:0"></div>';
   const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood)).join('');
-  $('rx-musica-mood').innerHTML = grupo(pads) + '<div style="flex-basis:100%;height:0"></div>' + grupo(tonos);
+  $('rx-musica-mood').innerHTML = grupo(canciones) + sep + grupo(pads) + sep + grupo(tonos);
   $('rx-musica-mood').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
     rxMusMood = c.dataset.val; rxRenderMusica(); rxRenderMezcla();
     // escucha inmediata del pad/tono elegido
@@ -4834,7 +4836,14 @@ function rxRenderMusica() {
   });
 }
 function rxRenderVisuales() {
-  $('rx-visuales').innerHTML = rxCat.visuales.map(v => rxChip(v.key, '', v.es, rxVisSel.has(v.key))).join('');
+  $('rx-visuales').innerHTML = rxCat.visuales.map(v =>
+    rxChip(v.key, '', v.es, rxVisSel.has(v.key),
+           v.ia ? '<span class="rx-real">✨ ARTE IA</span>' : '')).join('');
+  rxCat.visuales.filter(v => v.ia).forEach(v => {     // tooltip
+    const el = $('rx-visuales').querySelector(`[data-val="${v.key}"]`);
+    if (el) el.title = L('Ilustración generada con IA gratis (Pollinations) · estilo lofi/anime',
+                         'Illustration generated with free AI (Pollinations) · lofi/anime style');
+  });
   $('rx-visuales').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
     const k = c.dataset.val;
     if (rxVisSel.has(k)) rxVisSel.delete(k); else rxVisSel.add(k);

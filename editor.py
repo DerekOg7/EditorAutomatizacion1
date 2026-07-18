@@ -1198,10 +1198,33 @@ def borrar_proyecto(nombre):
         _guardar_grupos(d)
 
 
+# --- Puente Premium: si la licencia es Premium y el usuario NO tiene clave
+# propia, las generaciones van por nuestro worker (que pone las claves y cuenta
+# el cupo). Ver puente/README.md. Se puede sobreescribir con AFS_PUENTE_URL.
+PUENTE_URL = os.environ.get("AFS_PUENTE_URL",
+                            "https://puente-autofaceless.derekog7.workers.dev")
+PLANES_PREMIUM = ("premium", "todo", "vip", "owner", "lifetime")
+
+
+def _licencia_premium():
+    """(es_premium, codigo_licencia) — para enrutar por el puente."""
+    try:
+        import licencia
+        st = licencia.estado()
+        if st.get("activa") and st.get("plan") in PLANES_PREMIUM:
+            return True, (licencia.leer_licencia_guardada() or "").strip()
+    except Exception:
+        pass
+    return False, ""
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")
     if not key:
+        premium, codigo = _licencia_premium()
+        if premium:                      # Premium sin clave propia → puente
+            return (codigo, "", PUENTE_URL + "/mmx")
         err("Falta MINIMAX_API_KEY en el .env. En tu cuenta de MiniMax "
             "(minimax.io) ve a API Keys, copia la clave y agrega:\n"
             "MINIMAX_API_KEY=tu_clave\nMINIMAX_GROUP_ID=tu_group_id")
@@ -1497,18 +1520,26 @@ def say_voz(texto, voz, velocidad=1.0, on_progreso=None):
 
 
 def _elevenlabs_key():
+    return _eleven_conf()[0]
+
+
+def _eleven_conf():
+    """(clave, base_url) de ElevenLabs — clave propia, o el puente si es Premium."""
     k = leer_env().get("ELEVENLABS_API_KEY")
-    if not k:
-        err("Falta ELEVENLABS_API_KEY en el .env. En tu cuenta de ElevenLabs "
-            "(elevenlabs.io) ve a tu perfil → API Keys, copia la clave y pégala "
-            "en el botón 🔑 Claves API.")
-    return k
+    if k:
+        return k, "https://api.elevenlabs.io"
+    premium, codigo = _licencia_premium()
+    if premium:
+        return codigo, PUENTE_URL + "/xi"
+    err("Falta ELEVENLABS_API_KEY en el .env. En tu cuenta de ElevenLabs "
+        "(elevenlabs.io) ve a tu perfil → API Keys, copia la clave y pégala "
+        "en el botón 🔑 Claves API.")
 
 
 def elevenlabs_voz(texto, voz, velocidad=1.0, on_progreso=None):
     """Voz con ElevenLabs (clave propia). Devuelve bytes de mp3."""
     import requests
-    key = _elevenlabs_key()
+    key, base_xi = _eleven_conf()
     voz = voz or "21m00Tcm4TlvDq8ikWAM"
     modelo = leer_env().get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
     avisar = on_progreso or (lambda *_: None)
@@ -1519,7 +1550,7 @@ def elevenlabs_voz(texto, voz, velocidad=1.0, on_progreso=None):
                (i + 1) / len(trozos) * 90)
         try:
             r = requests.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{voz}", timeout=300,
+                f"{base_xi}/v1/text-to-speech/{voz}", timeout=300,
                 headers={"xi-api-key": key, "Content-Type": "application/json",
                          "Accept": "audio/mpeg"},
                 json={"text": trozo, "model_id": modelo,
@@ -1568,11 +1599,12 @@ def proveedores_voz():
     if ES_MAC or ES_WIN:
         provs.append({"id": "sistema", "gratis": True, "disponible": True,
                       "custom": False, "voces": voces_sistema()})
+    premium = _licencia_premium()[0]
     provs.append({"id": "minimax", "gratis": False,
-                  "disponible": bool(env.get("MINIMAX_API_KEY")),
+                  "disponible": bool(env.get("MINIMAX_API_KEY")) or premium,
                   "custom": True, "voces": []})
     provs.append({"id": "elevenlabs", "gratis": False,
-                  "disponible": bool(env.get("ELEVENLABS_API_KEY")),
+                  "disponible": bool(env.get("ELEVENLABS_API_KEY")) or premium,
                   "custom": True, "voces": VOCES_ELEVEN})
     return provs
 
@@ -1667,14 +1699,19 @@ def gemini_imagen(p, n, prompt):
     import base64
     import requests
     key = leer_env().get("GEMINI_API_KEY")
+    base_gg = "https://generativelanguage.googleapis.com"
     if not key:
-        err("Falta GEMINI_API_KEY — pégala en 🔑 Claves API (gratis en "
-            "aistudio.google.com/apikey).")
+        premium, codigo = _licencia_premium()
+        if premium:                      # Premium sin clave propia → puente
+            key, base_gg = codigo, PUENTE_URL + "/gg"
+        else:
+            err("Falta GEMINI_API_KEY — pégala en 🔑 Claves API (gratis en "
+                "aistudio.google.com/apikey).")
     mod = leer_env().get("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image")
     aspecto = formato_proyecto(p)                      # 16:9 | 9:16 | 1:1
     try:
         r = requests.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent",
+            f"{base_gg}/v1beta/models/{mod}:generateContent",
             params={"key": key}, timeout=180,
             json={"contents": [{"parts": [{"text": prompt[:1500]}]}],
                   "generationConfig": {"responseModalities": ["IMAGE"],
@@ -3675,11 +3712,11 @@ def elevenlabs_musica(mood, salida, dur_s=180):
     `salida`. Best-effort: si la cuenta no tiene acceso, lanza y el llamador la
     omite (el ambiente sigue funcionando)."""
     import requests
-    key = _elevenlabs_key()
+    key, base_xi = _eleven_conf()
     prompt = MUSICA_PROMPT.get(mood, MUSICA_PROMPT["ambient"])
     length_ms = int(max(10.0, min(float(dur_s), 300.0)) * 1000)  # Eleven limita el largo
     try:
-        r = requests.post("https://api.elevenlabs.io/v1/music", timeout=300,
+        r = requests.post(base_xi + "/v1/music", timeout=300,
                           headers={"xi-api-key": key, "Accept": "audio/mpeg",
                                    "Content-Type": "application/json"},
                           json={"prompt": prompt, "music_length_ms": length_ms})

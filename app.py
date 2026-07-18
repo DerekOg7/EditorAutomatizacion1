@@ -815,6 +815,23 @@ def _guardar_presets_usuario(lst):
     PRESETS_USUARIO.write_text(json.dumps(lst, ensure_ascii=False, indent=2))
 
 
+@app.get("/api/premium/saldo")
+def premium_saldo():
+    """Cupo restante del plan Premium (consulta el puente con la licencia)."""
+    import requests as _rq
+    premium, codigo = editor._licencia_premium()
+    if not premium:
+        return jsonify({"premium": False})
+    try:
+        r = _rq.get(editor.PUENTE_URL + "/v1/saldo", timeout=20,
+                    headers={"X-Licencia": codigo})
+        d = r.json()
+        d["premium"] = True
+        return jsonify(d), r.status_code
+    except Exception as e:
+        return jsonify({"premium": True, "error": f"Sin conexión con el puente: {e}"}), 502
+
+
 @app.get("/api/relax/visual/<key>")
 def relax_visual(key):
     """Vista previa de una visual (imagen). regen=1 regenera el arte IA."""

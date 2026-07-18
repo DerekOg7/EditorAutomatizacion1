@@ -1,0 +1,13 @@
+# Puente de créditos Premium — Cloudflare Worker
+# Desplegar: ver README.md de esta carpeta.
+
+name = "puente-autofaceless"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+# KV donde se cuentan los cupos por licencia.
+# Crear con:  npx wrangler kv namespace create CUPOS
+# y pegar aquí el id que devuelva.
+[[kv_namespaces]]
+binding = "CUPOS"
+id = "PEGA_AQUI_EL_ID_DEL_KV"

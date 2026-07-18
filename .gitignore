@@ -23,3 +23,7 @@ relax_presets.json
 
 # sonidos reales descargados (banco Relax, se bajan de archive.org)
 sonidos/
+
+# cachés del nicho Relax (descargas del usuario)
+visuales/
+musica/

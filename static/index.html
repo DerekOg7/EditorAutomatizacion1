@@ -177,6 +177,20 @@
   .rx-real { font: 800 8.5px 'Roboto', sans-serif; letter-spacing: .5px; padding: 2.5px 6px;
     border-radius: 8px; background: rgba(46,134,193,.14); color: var(--rxa); }
   .rx-chip.on .rx-real { background: rgba(255,255,255,.25); color: #fff; }
+  /* vista previa de visuales (lo que llevará el video) */
+  #rx-vis-prev { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .rx-vp { width: 224px; border: 1px solid var(--linea); border-radius: 12px; overflow: hidden;
+    background: var(--panel2, #16171f); }
+  .rx-vp img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block;
+    background: repeating-linear-gradient(45deg, rgba(46,134,193,.06) 0 12px, rgba(46,134,193,.12) 12px 24px);
+    transition: opacity .25s; }
+  .rx-vp.v916 img { aspect-ratio: 9/16; }
+  .rx-vp-pie { display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 7px 10px; font: 600 12px 'Roboto', sans-serif; color: var(--texto); }
+  .rx-vp-pie button { border: 1px solid var(--linea); background: none; border-radius: 8px;
+    padding: 3px 8px; cursor: pointer; font-size: 12px; color: var(--tenue); }
+  .rx-vp-pie button:hover { border-color: var(--rxa); color: var(--rxa); }
+  .rx-vp-pie button:disabled { opacity: .5; cursor: default; }
   .rx-dur { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
   .rx-dur button { background: var(--panel2, #16171f); border: 1.5px solid var(--linea); border-radius: 12px;
     padding: 9px 16px; font: 700 14px 'Roboto', sans-serif; color: var(--tenue); cursor: pointer; }
@@ -934,31 +948,28 @@
 
           <div class="rx-bloque">
             <label data-i18n="rx_l_visuales">3 · Imágenes / visuales</label>
-            <div class="rx-ayuda" data-i18n="rx_h_visuales">De dónde salen las imágenes del video (se buscan en Pexels). Elige uno o varios.</div>
+            <div class="rx-ayuda" data-i18n="rx_h_visuales">Elige una o varias: ABAJO verás exactamente la imagen que llevará tu video. En las de arte, 🔄 genera otra hasta que te guste.</div>
             <div class="rx-chips" id="rx-visuales"></div>
+            <div id="rx-vis-prev"></div>
           </div>
 
           <div class="rx-bloque">
-            <label data-i18n="rx_l_dur">4 · Duración del video</label>
+            <label data-i18n="rx_l_dur">4 · Duración y formato</label>
             <div class="rx-dur" id="rx-dur">
               <button data-val="5">5 min</button>
               <button class="on" data-val="10">10 min</button>
               <button data-val="30">30 min</button>
               <button data-val="60">60 min</button>
             </div>
+            <div class="rx-dur rx-fmt" id="rx-formato" style="margin-top:10px">
+              <button class="on" data-val="16:9">16:9 · YouTube</button>
+              <button data-val="9:16">9:16 · Shorts</button>
+            </div>
             <div class="rx-aviso" id="rx-dur-aviso"></div>
           </div>
 
           <div class="rx-bloque">
-            <label data-i18n="rx_l_formato">5 · Formato</label>
-            <div class="rx-dur rx-fmt" id="rx-formato">
-              <button class="on" data-val="16:9">16:9 · YouTube</button>
-              <button data-val="9:16">9:16 · Shorts</button>
-            </div>
-          </div>
-
-          <div class="rx-bloque">
-            <label data-i18n="rx_l_nombre">6 · Nombre del video</label>
+            <label data-i18n="rx_l_nombre">5 · Nombre del video</label>
             <input id="rx-nombre" type="text" placeholder="Lluvia relajante para dormir" style="width:100%;max-width:420px">
           </div>
 
@@ -1904,11 +1915,11 @@ const EN = {
   rx_musica_add: "Add music", rx_m_calido: "Warm pad", rx_m_sonador: "Dreamy pad", rx_m_drone: "Drone / Meditation", rx_m_campanas: "Bells",
   rx_m_eleven: "Better quality with ElevenLabs (AI, uses credits)",
   rx_m_aviso: "Music is generated for free on your machine. ElevenLabs sounds more realistic but uses credits.",
-  rx_l_visuales: "3 · Images / visuals", rx_h_visuales: "Where the video's images come from (searched on Pexels). Pick one or several.",
+  rx_l_visuales: "3 · Images / visuals", rx_h_visuales: "Pick one or several: BELOW you'll see the exact image your video will use. On art ones, 🔄 generates another until you like it.",
   rx_v_lluvia: "Rain on window", rx_v_bosque: "Forest", rx_v_estrellas: "Starry sky", rx_v_chimenea: "Fireplace",
   rx_v_playa: "Beach / Waves", rx_v_nieve: "Falling snow", rx_v_montanas: "Mountains", rx_v_nubes: "Clouds",
   rx_v_aurora: "Northern lights", rx_v_cafe: "Coffee shop", rx_v_lago: "Lake", rx_v_espacio: "Space",
-  rx_l_dur: "4 · Video length", rx_l_formato: "5 · Format", rx_l_nombre: "6 · Video name",
+  rx_l_dur: "4 · Length & format", rx_l_nombre: "5 · Video name",
   rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
   rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Adjust & regenerate", rx_otro: "＋ Create another",
   rx_l_mezcla: "Mix & preview", rx_h_mezcla: "Adjust each track's volume (and mute), add warmth/reverb and hear an 8s sample before generating.", rx_prev_mezcla: "▶ Play mix (8s)",
@@ -4780,6 +4791,7 @@ function rxInitBotones() {         // clic en botones estáticos de duración/fo
     $(id).querySelectorAll('button').forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     if (id === 'rx-dur') rxAvisoDur();
+    if (id === 'rx-formato') rxRenderVisPrev();   // el preview cambia de formato
   }));
   $('rx-prev-audio').onended = rxLimpiarPlaying;   // al acabar la muestra, apagar el ecualizador
 }
@@ -4821,12 +4833,18 @@ function rxRenderSonChips() {
   });
 }
 function rxRenderMusica() {
-  const canciones = rxCat.musica.filter(m => m.cat === 'cancion');
+  const reales = rxCat.musica.filter(m => m.cat === 'real');
   const pads = rxCat.musica.filter(m => m.cat === 'pad');
   const tonos = rxCat.musica.filter(m => m.cat === 'tono');
   const sep = '<div style="flex-basis:100%;height:0"></div>';
-  const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood)).join('');
-  $('rx-musica-mood').innerHTML = grupo(canciones) + sep + grupo(pads) + sep + grupo(tonos);
+  const grupo = arr => arr.map(m => rxChip(m.key, m.emoji, L(m.es, m.en), m.key === rxMusMood,
+                                           m.real ? '<span class="rx-real">🎙️ REAL</span>' : '')).join('');
+  $('rx-musica-mood').innerHTML = grupo(reales) + sep + grupo(pads) + sep + grupo(tonos);
+  reales.forEach(m => {              // tooltip con crédito y aviso de descarga
+    const el = $('rx-musica-mood').querySelector(`[data-val="${m.key}"]`);
+    if (el) el.title = L('Música real · se descarga la 1ª vez · ',
+                         'Real music · downloads on first use · ') + (m.credito || '');
+  });
   $('rx-musica-mood').querySelectorAll('.rx-chip').forEach(c => c.onclick = () => {
     rxMusMood = c.dataset.val; rxRenderMusica(); rxRenderMezcla();
     // escucha inmediata del pad/tono elegido
@@ -4848,7 +4866,44 @@ function rxRenderVisuales() {
     const k = c.dataset.val;
     if (rxVisSel.has(k)) rxVisSel.delete(k); else rxVisSel.add(k);
     c.classList.toggle('on');
+    rxRenderVisPrev();
   });
+}
+
+// ---- vista previa de visuales: ves la imagen EXACTA que llevará tu video ----
+let rxVpT = {};
+function rxVisUrl(k, regen) {
+  const fmt = rxUnica('rx-formato', 'button', '16:9');
+  return `/api/relax/visual/${encodeURIComponent(k)}?formato=${encodeURIComponent(fmt)}`
+       + (regen ? '&regen=1' : '') + `&t=${rxVpT[k] || 0}`;
+}
+function rxRenderVisPrev() {
+  const cont = $('rx-vis-prev'); if (!cont) return;
+  const fmt = rxUnica('rx-formato', 'button', '16:9');
+  cont.innerHTML = [...rxVisSel].map(k => {
+    const v = (rxCat.visuales || []).find(x => x.key === k) || { es: k };
+    return `<div class="rx-vp${fmt === '9:16' ? ' v916' : ''}" data-key="${k}">
+      <img src="${rxVisUrl(k)}" loading="lazy"
+           onerror="this.style.opacity=.25">
+      <div class="rx-vp-pie"><span>${v.es}</span>
+        ${v.ia ? `<button onclick="rxRegenVisual('${k}')" title="${L('Generar otra', 'Generate another')}">🔄</button>` : ''}
+      </div></div>`;
+  }).join('') || `<div class="rx-ayuda">${L('Elige visuales arriba y aquí verás su imagen.', 'Pick visuals above to preview them here.')}</div>`;
+}
+function rxRegenVisual(k) {
+  const tarjeta = document.querySelector(`.rx-vp[data-key="${k}"]`);
+  if (!tarjeta) return;
+  const img = tarjeta.querySelector('img');
+  const btn = tarjeta.querySelector('button');
+  img.style.opacity = .3;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+  rxVpT[k] = Date.now();
+  const nueva = new Image();
+  nueva.onload = () => { img.src = nueva.src; img.style.opacity = 1;
+                         if (btn) { btn.disabled = false; btn.textContent = '🔄'; } };
+  nueva.onerror = () => { img.style.opacity = 1;
+                          if (btn) { btn.disabled = false; btn.textContent = '🔄'; } };
+  nueva.src = rxVisUrl(k, true);
 }
 function rxRenderPresets() {
   const eq = '<span class="rx-eq"><i></i><i></i><i></i></span>';
@@ -4926,7 +4981,7 @@ function empezarRelax() {
     $('rx-formato').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.val === '16:9'));
     rxSincronizarControles();
     rxRenderPresets(); rxRenderSonTabs(); rxRenderSonChips();
-    rxRenderMusica(); rxRenderVisuales(); rxRenderMezcla(); rxAvisoDur();
+    rxRenderMusica(); rxRenderVisuales(); rxRenderVisPrev(); rxRenderMezcla(); rxAvisoDur();
   });
 }
 
@@ -4965,7 +5020,7 @@ async function rxEditarProyecto(nombre) {
   $('rx-crear').textContent = L('🔄 Regenerar video', '🔄 Regenerate video');
   rxSincronizarControles();
   rxRenderPresets(); rxRenderSonTabs(); rxRenderSonChips();
-  rxRenderMusica(); rxRenderVisuales(); rxRenderMezcla(); rxAvisoDur();
+  rxRenderMusica(); rxRenderVisuales(); rxRenderVisPrev(); rxRenderMezcla(); rxAvisoDur();
 }
 
 function rxToggleMusica() {

@@ -3746,6 +3746,54 @@ VISUALES_IA = {
 RELAX_SEG = 24.0    # segundos por escena en el loop visual
 
 
+def visual_preview(key, formato="16:9", regen=False):
+    """Imagen de vista previa de una visual (lo que el usuario VERÁ en su video).
+    Arte IA: genera con Pollinations y cachea — el video reusa ESTA imagen.
+    Pexels: cachea la miniatura del primer resultado (el mismo del video)."""
+    import requests
+    d = DATOS / "visuales"
+    d.mkdir(exist_ok=True)
+    fmt = formato if formato in FORMATOS else "16:9"
+    f = d / f"{key}_{fmt.replace(':', 'x')}.jpg"
+    if f.exists() and not regen and f.stat().st_size > 10_000:
+        return f
+    if key in VISUALES_IA:
+        import random
+        from urllib.parse import quote
+        nombre, prompt, _ = VISUALES_IA[key]
+        ancho, alto = FORMATOS[fmt]
+        url = ("https://image.pollinations.ai/prompt/" + quote(prompt[:800]) +
+               f"?width={ancho}&height={alto}&model=flux"
+               f"&nologo=true&seed={random.randint(0, 10**9)}")
+        r = requests.get(url, timeout=180)
+        if not r.ok or not r.headers.get("Content-Type", "").startswith("image"):
+            err("El generador de arte no respondió. Intenta de nuevo en unos segundos.")
+        f.write_bytes(r.content)
+    elif key in VISUALES:
+        consulta, pref = VISUALES[key]
+        orient = ORIENTACION.get(fmt, "landscape")
+        url = None
+        if pref == "video":
+            vids = pexels_buscar_videos(consulta, cantidad=12, orientacion=orient)
+            vids = [x for x in vids if x.get("duracion", 0) >= 6]
+            vids.sort(key=lambda x: abs(x.get("duracion", 0) - 20))
+            if vids:
+                url = vids[0].get("miniatura")
+        if not url:
+            fotos = pexels_buscar(consulta, cantidad=8, orientacion=orient)
+            if fotos:
+                url = fotos[0]["miniatura"]
+        if not url:
+            err("Sin resultados para esta visual.")
+        r = requests.get(url, timeout=60)
+        if not r.ok:
+            err("No pude descargar la vista previa.")
+        f.write_bytes(r.content)
+    else:
+        err("Visual desconocida.")
+    return f
+
+
 def armar_escenas_relax(p, visuales, on_progreso=None):
     """Descarga un video/imagen de Pexels por cada tema visual elegido y escribe
     escenas.json (el loop visual corto que luego se repite hasta la duración)."""
@@ -3762,11 +3810,18 @@ def armar_escenas_relax(p, visuales, on_progreso=None):
             avisar(f"Generando arte con IA: {nombre}…",
                    10 + i / len(visuales) * 75)
             hecho = False
-            try:
-                generar_imagen_ia(p, i, prompt)     # Pollinations, gratis
+            fmt = aj.get("formato", "16:9")
+            cache = DATOS / "visuales" / f"{v}_{fmt.replace(':', 'x')}.jpg"
+            if cache.exists() and cache.stat().st_size > 10_000:
+                borrar_medio(p, i)                  # usa la imagen QUE YA VISTE
+                shutil.copy(cache, p / "imagenes" / f"{i:03d}.jpg")
                 hecho = True
-            except Exception:
-                pass                                # respaldo: foto de Pexels
+            if not hecho:
+                try:
+                    generar_imagen_ia(p, i, prompt)  # Pollinations, gratis
+                    hecho = True
+                except Exception:
+                    pass                             # respaldo: foto de Pexels
             if hecho:
                 escenas.append({"n": i, "inicio": round(t, 3),
                                 "fin": round(t + RELAX_SEG, 3), "texto": nombre,
@@ -3825,142 +3880,74 @@ ACORDES = {
 # Tonos de meditación: ondas binaurales (beat en Hz) y frecuencias solfeggio (Hz).
 BINAURAL = {"binaural_alpha": 10.0, "binaural_theta": 5.5, "binaural_delta": 2.5}
 
-# "Canciones" GRATIS: mini-motor procedural. Una progresión de 4 acordes que se
-# funden entre sí (crossfade triangular cíclico) + bajo, y en los moods lofi una
-# batería suave (bombo/caja/hats con envolventes exponenciales periódicas) y
-# siseo de vinilo. Cada acorde = (freq_bajo, [freqs del pad]).
-PROGRESIONES = {
-    # Cmaj7 – Am7 – Fmaj7 – G7 (cálido, clásico lofi)
-    "lofi_calido": (72, [
-        (65.41, [130.81, 164.81, 196.00, 246.94]),
-        (55.00, [110.00, 164.81, 196.00, 261.63]),
-        (87.31, [174.61, 220.00, 261.63, 329.63]),
-        (98.00, [196.00, 246.94, 293.66, 349.23]),
-    ]),
-    # Am – F – C – G (melancólico, para lluvia)
-    "lofi_lluvioso": (68, [
-        (55.00, [110.00, 164.81, 220.00, 261.63]),
-        (87.31, [174.61, 220.00, 261.63, 349.23]),
-        (65.41, [130.81, 196.00, 261.63, 329.63]),
-        (98.00, [196.00, 246.94, 293.66, 392.00]),
-    ]),
-    # Am – Em – F – C sin batería (ambient tipo "snowfall")
-    "ambient_nieve": (0, [
-        (55.00, [110.00, 164.81, 220.00]),
-        (82.41, [164.81, 246.94, 329.63]),
-        (87.31, [174.61, 261.63, 349.23]),
-        (65.41, [130.81, 196.00, 329.63]),
-    ]),
+# Música REAL (pistas CC0 de archive.org, como los sonidos reales). Se descargan
+# la 1ª vez → DATOS/musica/<key>.mp3. Para los álbumes de pistas de 1 hora se
+# baja solo el inicio con HTTP Range (~6 min, suficiente para loopear).
+# key → (es, en, emoji, url, crédito, bytes_max o None para completo)
+MUSICA_REAL = {
+    "lofi_nicer":  ("Lofi · Somewhere Nicer", "Lofi · Somewhere Nicer", "🎧",
+                    _AO + "man9ww/man9ww.mp3",
+                    "CC0 · archive.org/man9ww", None),
+    "lofi_okay":   ("Lofi · Everything Is Okay", "Lofi · Everything Is Okay", "🎧",
+                    _AO + "oe-beats-everything-is-okay/"
+                          "OE%20Beats%20-%20Everything%20Is%20Okay%20%20A%20Storytelling%20Hip%20Hop%20instru.mp3",
+                    "CC0 · OE Beats (archive.org)", None),
+    "amb_poetry":  ("Ambient · Tone Poetry", "Ambient · Tone Poetry", "🌌",
+                    _AO + "CalmPills/Uplifting_Pills_-_Calm_Pill_10_-_Tone_Poetry_"
+                          "E52E62AA-6353-44AE-BA40-2AE6AD7F1776.mp3",
+                    "CC0 · Alaeddin Hallak — Calm Pills", 14_000_000),
+    "amb_lake":    ("Ambient · Healing Lake", "Ambient · Healing Lake", "🏞️",
+                    _AO + "CalmPills/Uplifting_Pills_-_Calm_Pill_11_-_The_Healing_Lake_"
+                          "8BE609A8-7115-4273-8A1A-CE5738459E7A.mp3",
+                    "CC0 · Alaeddin Hallak — Calm Pills", 14_000_000),
+    "chill_beginnings": ("Chill · New Beginnings", "Chill · New Beginnings", "🌅",
+                    _AO + "ChillPills/Uplifting_Pills_-_Chill_Pill_10_-_New_Beginnings_"
+                          "0711CD74-C7DC-45C2-B5B0-62F595F7DCFA.mp3",
+                    "CC0 · Alaeddin Hallak — Chill Pills", 14_000_000),
+    "chill_island": ("Chill · Island of the Mind", "Chill · Island of the Mind", "🏝️",
+                    _AO + "ChillPills/Uplifting_Pills_-_Chill_Pill_12_-_Island_of_the_Mind_"
+                          "6F779460-24AC-47AB-AEC9-F7BE7C34DFDC.mp3",
+                    "CC0 · Alaeddin Hallak — Chill Pills", 14_000_000),
 }
 
 
-def _musica_cancion(mood, dur, salida, loopable):
-    """Renderiza una 'canción' procedural POR ETAPAS (comandos pequeños y
-    verificables — los grafos gigantes con envolventes cíclicas resultaron
-    frágiles): cada acorde es un pad que respira (fade in/out), se concatenan en
-    un ciclo, y encima va un compás de batería lofi en loop + siseo de vinilo."""
-    import tempfile
-    bpm, acordes = PROGRESIONES[mood]
-    beat = 60.0 / bpm if bpm else 0.0
-    seg = 8 * beat if bpm else 9.0            # 2 compases por acorde | 9s ambient
-    ciclo = seg * len(acordes)
-    dur = max(ciclo, float(dur))
-    d = Path(tempfile.mkdtemp(prefix="cancion_"))
+def _ruta_musica_real(key, on_progreso=None):
+    """Ruta local de la pista real `key`; la descarga y normaliza la 1ª vez."""
+    import requests
+    es, en, emoji, url, credito, rango = MUSICA_REAL[key]
+    d = DATOS / "musica"
+    d.mkdir(exist_ok=True)
+    f = d / f"{key}.mp3"
+    if f.exists() and f.stat().st_size > 200_000:
+        return f
+    avisar = on_progreso or (lambda *_: None)
+    avisar(f"Descargando música: {es}…", None)
+    bruto = d / f"{key}.descarga"
     try:
-        # 1) cada acorde = pad que respira (sube y baja dentro de su segmento)
-        piezas = []
-        for i, (bajo, pad) in enumerate(acordes):
-            ent, fil, et = [], [], []
-            # la fuente sine de ffmpeg genera a amplitud 0.125 → ganancias ×8
-            voces = [(bajo, 2.0, "lowpass=f=300")] + \
-                    [(f, 1.0, "vibrato=f=0.15:d=0.5") for f in pad]
-            for k, (f, amp, extra) in enumerate(voces):
-                ent += ["-f", "lavfi", "-t", f"{seg:.3f}",
-                        "-i", f"sine=f={f}:r=48000"]
-                fil.append(f"[{k}:a]{extra},volume={amp:.3f},"
-                           f"tremolo=f={0.14 + 0.03 * k:.3f}:d=0.35[v{k}]")
-                et.append(f"[v{k}]")
-            fin_fade = max(0.1, seg - 2.2)
-            post = (f"{''.join(et)}amix=inputs={len(voces)}:normalize=0,"
-                    f"afade=t=in:st=0:d=1.6,afade=t=out:st={fin_fade:.2f}:d=2.2,"
-                    f"aformat=channel_layouts=stereo[out]")
-            pieza = d / f"acorde{i}.wav"
-            run(["ffmpeg", "-y"] + ent +
-                ["-filter_complex", ";".join(fil + [post]),
-                 "-map", "[out]", str(pieza)])
-            piezas.append(pieza)
-
-        # 2) ciclo = los 4 acordes seguidos
-        lista = d / "lista.txt"
-        lista.write_text("".join(f"file '{p.as_posix()}'\n" for p in piezas))
-        ciclo_w = d / "ciclo.wav"
-        run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(lista),
-             "-c:a", "pcm_s16le", str(ciclo_w)])
-
-        # 3) percusión lofi: golpes sueltos → un compás → se loopea al mezclar
-        capas = [("-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", str(ciclo_w))]
-        if bpm:
-            golpe = {}
-            for nom, src, filtro, dur_g in [
-                ("bombo", "sine=f=58:r=48000",
-                 "volume=4.0,afade=t=out:st=0.03:d=0.30,lowpass=f=160", 0.35),   # sine a 0.125
-                ("caja", "anoisesrc=c=white:a=0.5:r=48000:seed=7",
-                 "bandpass=f=1900:width_type=h:w=2600,volume=0.5,"
-                 "afade=t=out:st=0.02:d=0.16", 0.20),
-                ("hat", "anoisesrc=c=white:a=0.4:r=48000:seed=8",
-                 "highpass=f=8000,volume=0.32,afade=t=out:st=0.01:d=0.06", 0.08),
-            ]:
-                g = d / f"{nom}.wav"
-                run(["ffmpeg", "-y", "-f", "lavfi", "-t", f"{dur_g}", "-i", src,
-                     "-af", filtro + ",aformat=channel_layouts=stereo",
-                     str(g)])
-                golpe[nom] = g
-            # compás de 4 tiempos (boom-bap suave): bombo 1 y 3.5 · caja 2 y 4 · hats corcheas
-            ms = lambda t: int(round(t * beat * 1000))
-            hits = ([("bombo", 0.0), ("bombo", 2.5), ("caja", 1.0), ("caja", 3.0)]
-                    + [("hat", x / 2) for x in range(8)])
-            ent, fil, et = [], [], []
-            for k, (nom, pos) in enumerate(hits):
-                ent += ["-i", str(golpe[nom])]
-                delay = ms(pos)
-                fil.append(f"[{k}:a]adelay={delay}|{delay}[h{k}]")
-                et.append(f"[h{k}]")
-            compas = d / "compas.wav"
-            bar = 4 * beat
-            run(["ffmpeg", "-y"] + ent +
-                ["-filter_complex",
-                 f"{''.join(et)}amix=inputs={len(hits)}:normalize=0,"
-                 f"apad=whole_dur={bar:.4f},atrim=0:{bar:.4f}[out]",
-                 "-map", "[out]", str(compas)])
-            capas.append(("-stream_loop", "-1", "-t", f"{dur:.3f}", "-i", str(compas)))
-            vinilo = d / "vinilo.wav"
-            run(["ffmpeg", "-y", "-f", "lavfi", "-t", f"{dur:.3f}",
-                 "-i", "anoisesrc=c=pink:a=0.5:r=48000:seed=9",
-                 "-af", "highpass=f=2500,lowpass=f=9000,volume=0.035,"
-                        "aformat=channel_layouts=stereo", str(vinilo)])
-            capas.append(("-i", str(vinilo)))
-
-        # 4) mezcla final + master cálido
-        ent = [x for capa in capas for x in capa]
-        n = len(capas)
-        et = "".join(f"[{k}:a]" for k in range(n))
-        cadena = "lowpass=f=5200,aecho=0.7:0.75:420:0.22,alimiter=limit=0.85:level=0"
-        if not loopable:
-            fin = max(0.1, dur - 4.0)
-            cadena += f",afade=t=in:st=0:d=2,afade=t=out:st={fin:.2f}:d=4"
-        run(["ffmpeg", "-y"] + ent +
-            ["-filter_complex",
-             f"{et}amix=inputs={n}:normalize=0,{cadena}[out]",
-             "-map", "[out]", "-t", f"{dur:.3f}",
-             "-c:a", "libmp3lame", "-b:a", "192k", str(salida)])
+        headers = {"Range": f"bytes=0-{rango}"} if rango else {}
+        r = requests.get(url, timeout=600, stream=True, headers=headers)
+        if r.status_code not in (200, 206):
+            err(f"No pude descargar '{es}' ({r.status_code}). Revisa tu internet.")
+        with open(bruto, "wb") as out:
+            for trozo in r.iter_content(1 << 18):
+                out.write(trozo)
+        # normalizar sonoridad + fades en ambos bordes (loop sin corte brusco)
+        run(["ffmpeg", "-y", "-t", "360", "-i", str(bruto),
+             "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,aformat=channel_layouts=stereo,"
+                    "afade=t=in:st=0:d=1.5,areverse,afade=t=in:st=0:d=2.5,areverse",
+             "-ar", "48000", "-c:a", "libmp3lame", "-b:a", "160k", str(f)])
+    except requests.RequestException as e:
+        err(f"No pude descargar '{es}': {e}. Revisa tu internet.")
     finally:
-        shutil.rmtree(d, ignore_errors=True)
-    return salida
+        bruto.unlink(missing_ok=True)
+    if not f.exists() or f.stat().st_size < 200_000:
+        f.unlink(missing_ok=True)
+        err(f"La descarga de '{es}' quedó incompleta. Vuelve a intentar.")
+    return f
+
+
 # Catálogo de música (pads + tonos): key → (categoria, es, en, emoji)
 MUSICA_META = {
-    "lofi_calido":    ("cancion", "Lofi cálido", "Warm lofi beats", "🎧"),
-    "lofi_lluvioso":  ("cancion", "Lofi lluvioso", "Rainy lofi beats", "🌧️"),
-    "ambient_nieve":  ("cancion", "Ambient nevado", "Snowy ambient", "❄️"),
     "pad_calido":     ("pad", "Pad cálido", "Warm pad", "🌅"),
     "pad_sonador":    ("pad", "Pad soñador", "Dreamy pad", "🌌"),
     "pad_menor":      ("pad", "Pad melancólico", "Melancholic pad", "🌫️"),
@@ -3977,8 +3964,9 @@ MUSICA_META = {
 }
 MUSICA_GRATIS_NOMBRE = {k: v[1] for k, v in MUSICA_META.items()}
 # equivalencia mood → prompt de ElevenLabs (si el usuario activa la versión IA)
-_ELEVEN_DE_PAD = {"lofi_calido": "lofi", "lofi_lluvioso": "lofi",
-                  "ambient_nieve": "ambient",
+_ELEVEN_DE_PAD = {"lofi_nicer": "lofi", "lofi_okay": "lofi",
+                  "amb_poetry": "ambient", "amb_lake": "ambient",
+                  "chill_beginnings": "ambient", "chill_island": "ambient",
                   "pad_calido": "piano", "pad_sonador": "ambient",
                   "pad_menor": "ambient", "pad_etereo": "ambient",
                   "pad_brillante": "piano", "drone": "meditacion",
@@ -4011,8 +3999,6 @@ def generar_musica_ambiente(mood, dur, salida, loopable=False, on_progreso=None)
     """Sintetiza una cama musical GRATIS con ffmpeg: canciones (lofi/ambient con
     progresión de acordes), pads, tonos solfeggio, cuenco u ondas binaurales."""
     dur = max(3.0, float(dur))
-    if mood in PROGRESIONES:
-        return _musica_cancion(mood, dur, salida, loopable)
     if mood.startswith("binaural_"):
         return _musica_binaural(mood, dur, salida, loopable)
     if mood.startswith("solfeggio_"):
@@ -4067,13 +4053,19 @@ def ensamblar_relax(p, on_progreso=None):
             medio, tipo = clips_dir / f"ph_{e['n']:03d}.png", "imagen"
             _placeholder(medio, e["n"], dims=dims)
             faltantes.append(e["n"])
-        clip = clips_dir / f"loop_{e['n']:03d}.mp4"
         if tipo == "video":
+            clip = clips_dir / f"loop_{e['n']:03d}.mp4"
             _clip_video(medio, clip, RELAX_SEG, 0.0,
                         float(aj.get("relax_vel", 0.85)), dims=dims)
+            partes.append(clip)
         else:
-            _clip_imagen(medio, clip, RELAX_SEG, "zoom_in", i, dims=dims)
-        partes.append(clip)
+            # ping-pong (acercar y luego alejar): el loop dura el doble y el
+            # movimiento nunca "salta" al reiniciar
+            clip_a = clips_dir / f"loop_{e['n']:03d}a.mp4"
+            clip_b = clips_dir / f"loop_{e['n']:03d}b.mp4"
+            _clip_imagen(medio, clip_a, RELAX_SEG, "zoom_in", i, dims=dims)
+            _clip_imagen(medio, clip_b, RELAX_SEG, "zoom_out", i, dims=dims)
+            partes += [clip_a, clip_b]
         avisar(f"Preparando visual {i + 1}/{len(escenas)}",
                25 + (i + 1) / len(escenas) * 45)
 
@@ -4143,7 +4135,7 @@ def ensamblar_relax(p, on_progreso=None):
 PRESETS_FABRICA = [
     {"id": "lofi_estudio", "es": "Lofi para estudiar", "en": "Lofi study", "emoji": "🎧",
      "sonidos": {"lluvia_real": 0.8, "cafe_real": 0.4},
-     "musica": "lofi_calido", "musica_volumen": 0.8, "calidez": 10, "reverb": 5},
+     "musica": "lofi_nicer", "musica_volumen": 0.8, "calidez": 10, "reverb": 5},
     {"id": "tormenta_noche", "es": "Noche de tormenta", "en": "Stormy night", "emoji": "⛈️",
      "sonidos": {"lluvia_real": 1.0, "tormenta_real": 0.9, "viento": 0.4},
      "musica": "", "musica_volumen": 0.4, "calidez": 25, "reverb": 20},
@@ -4152,7 +4144,7 @@ PRESETS_FABRICA = [
      "musica": "pad_calido", "musica_volumen": 0.4, "calidez": 10, "reverb": 15},
     {"id": "cabana", "es": "Cabaña con chimenea", "en": "Cabin fireplace", "emoji": "🔥",
      "sonidos": {"fuego_real": 1.0, "lluvia_real": 0.6},
-     "musica": "lofi_lluvioso", "musica_volumen": 0.6, "calidez": 25, "reverb": 10},
+     "musica": "lofi_okay", "musica_volumen": 0.6, "calidez": 25, "reverb": 10},
     {"id": "sueno_profundo", "es": "Sueño profundo", "en": "Deep sleep", "emoji": "😴",
      "sonidos": {"marron": 1.0, "lluvia_real": 0.4},
      "musica": "binaural_delta", "musica_volumen": 0.3, "calidez": 55, "reverb": 10},
@@ -4164,10 +4156,10 @@ PRESETS_FABRICA = [
      "musica": "cuenco", "musica_volumen": 0.6, "calidez": 15, "reverb": 40},
     {"id": "playa_tropical", "es": "Playa tropical", "en": "Tropical beach", "emoji": "🏝️",
      "sonidos": {"olas_real": 1.0, "viento": 0.3},
-     "musica": "ambient_nieve", "musica_volumen": 0.5, "calidez": 5, "reverb": 20},
+     "musica": "chill_island", "musica_volumen": 0.5, "calidez": 5, "reverb": 20},
     {"id": "noche_invierno", "es": "Noche de invierno", "en": "Winter night", "emoji": "❄️",
      "sonidos": {"ventisca_real": 0.9, "fuego_real": 0.7},
-     "musica": "ambient_nieve", "musica_volumen": 0.55, "calidez": 20, "reverb": 15},
+     "musica": "chill_island", "musica_volumen": 0.55, "calidez": 20, "reverb": 15},
 ]
 
 
@@ -4182,8 +4174,11 @@ def catalogo_relax():
                     [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3],
                       "real": True, "credito": m[5]}
                      for k, m in SONIDOS_REALES.items()]),
-        "musica": [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
-                   for k, m in MUSICA_META.items()],
+        "musica": ([{"key": k, "cat": "real", "es": m[0], "en": m[1],
+                      "emoji": m[2], "real": True, "credito": m[4]}
+                     for k, m in MUSICA_REAL.items()] +
+                    [{"key": k, "cat": m[0], "es": m[1], "en": m[2], "emoji": m[3]}
+                     for k, m in MUSICA_META.items()]),
         "visuales": ([{"key": k, "es": VISUALES_NOMBRE.get(k, k)} for k in VISUALES] +
                      [{"key": k, "es": m[0], "ia": True}
                       for k, m in VISUALES_IA.items()]),
@@ -4201,7 +4196,10 @@ def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8,
     try:
         if not sonidos and musica:            # música/tono solo, a volumen audible
             mus = d / "mus.mp3"
-            generar_musica_ambiente(musica, dur, mus, loopable=True)
+            if musica in MUSICA_REAL:
+                shutil.copy(_ruta_musica_real(musica), mus)
+            else:
+                generar_musica_ambiente(musica, dur, mus, loopable=True)
             run(["ffmpeg", "-y", "-i", str(mus),
                  "-af", "loudnorm=I=-16:TP=-1.5:LRA=11,volume=0.9",
                  "-t", f"{dur:.2f}", "-c:a", "libmp3lame", "-b:a", "160k",
@@ -4212,7 +4210,10 @@ def generar_preview_relax(sonidos, volumenes, musica, musica_vol, salida, dur=8,
                          calidez=calidez, reverb=reverb)
         if musica:
             mus = d / "mus.mp3"
-            generar_musica_ambiente(musica, dur, mus, loopable=True)
+            if musica in MUSICA_REAL:
+                shutil.copy(_ruta_musica_real(musica), mus)
+            else:
+                generar_musica_ambiente(musica, dur, mus, loopable=True)
             vol = max(0.0, min(1.5, float(musica_vol)))
             run(["ffmpeg", "-y", "-i", str(amb), "-i", str(mus), "-filter_complex",
                  f"[1:a]loudnorm=I=-16:TP=-1.5:LRA=11,volume={vol:.3f}[m];"
@@ -4251,6 +4252,10 @@ def crear_relax(p, sonidos, visuales, dur_min=10, formato="16:9", titulo="",
                 hecha = True
             except Exception:
                 (p / "musica.mp3").unlink(missing_ok=True)   # cae a la versión gratis
+        if not hecha and musica_mood in MUSICA_REAL:   # pista real CC0
+            shutil.copy(_ruta_musica_real(musica_mood, on_progreso=avisar),
+                        p / "musica.mp3")
+            hecha = True
         if not hecha:                       # música GRATIS sintetizada (pads/drones)
             avisar("Generando la música…", 3)
             generar_musica_ambiente(musica_mood, 90, p / "musica.mp3", loopable=True)

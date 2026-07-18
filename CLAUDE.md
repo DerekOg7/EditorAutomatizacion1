@@ -699,29 +699,28 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
   descarga automática al primer preview (9.4s → luego instantáneo con caché), y
   render de video completo con sonidos reales.
 
-**Canciones + Arte IA + poda (mejora posterior, estilo lofi-girl):**
-- **Canciones procedurales GRATIS** (`PROGRESIONES` + `_musica_cancion`, cat
-  "cancion" en MUSICA_META): lofi_calido (Cmaj7-Am7-Fmaj7-G7, 72bpm),
-  lofi_lluvioso (Am-F-C-G, 68bpm) y ambient_nieve (sin batería). Arquitectura POR
-  ETAPAS (comandos chicos): cada acorde = pad que respira (fade in/out) → concat
-  en ciclo → compás de batería lofi (bombo/caja/hat como golpes sueltos +
-  `adelay` → un compás → `-stream_loop`) + siseo de vinilo → mezcla + master
-  cálido. GOTCHA APRENDIDO A GOLPES: (1) la fuente `sine` de ffmpeg genera a
-  amplitud **0.125**, no 1.0 → las ganancias van ×8 (los pads viejos "sonaban"
-  porque el alimiter default auto-nivela); (2) los grafos gigantes con
-  envolventes cíclicas (volume exprs con comas, quoted o escapadas) se
-  desincronizan y cuelan senos sin envolvente — NO volver a intentarlo, etapas.
-- **Visuales ARTE IA** (`VISUALES_IA`, 6 temas: habitación lofi, ventana lluviosa,
-  cabaña, aldea nevada, bosque mágico, cielo estrellado): ilustración generada
-  gratis con Pollinations (`generar_imagen_ia` con prompts curados estilo
-  lofi/anime/ghibli) + Ken Burns; si Pollinations falla, cae a foto de Pexels
-  (tercer elemento = consulta de respaldo). Badge "✨ ARTE IA" en la UI.
-- **Poda**: fuera 7 sintéticos que sonaban igual (lluvia_suave/fuerte, tejado,
-  mar_suave/fuerte, arroyo, grillos) → 18 sintéticos + 10 reales (se añadió
-  ventisca_real CC0). Los PRESETS_FABRICA ahora usan los sonidos REALES y
-  canciones (nuevos: "Lofi para estudiar" 🎧 y "Noche de invierno" ❄️).
+**Música REAL + previsualizador de visuales + poda (v2 del nicho, estilo lofi-girl):**
+- **Música REAL CC0** (`MUSICA_REAL` + `_ruta_musica_real`): 6 pistas de verdad de
+  archive.org (2 lofi hip hop completas de man9ww/OE Beats + 4 ambient/chill de
+  los álbumes CC0 "Calm Pills"/"Chill Pills" de Alaeddin Hallak, cuyos tracks de
+  1 h/145 MB se bajan PARCIALES con HTTP Range ~14 MB ≈ 6 min). Descarga al 1er
+  uso → `DATOS/musica/<key>.mp3`, loudnorm + fades en bordes (areverse; `-t 360`
+  como opción de ENTRADA). En el catálogo van primero (cat "real", badge 🎙️).
+  Las "canciones" procedurales anteriores se ELIMINARON (sintetizar melodías con
+  senos de ffmpeg suena a órgano raro — Derek las rechazó con razón; no reintentar).
+- **Previsualizador de visuales** (`visual_preview` + `GET /api/relax/visual/<key>`
+  ?formato&regen=1): al elegir una visual aparece su imagen bajo los chips
+  (tarjetas `#rx-vis-prev`). Arte IA: genera con Pollinations y CACHEA en
+  `DATOS/visuales/<key>_<fmt>.jpg`; botón 🔄 regenera hasta que guste, y
+  `armar_escenas_relax` COPIA esa caché al proyecto → el video lleva EXACTAMENTE
+  la imagen vista (verificado por md5). Pexels: miniatura del primer resultado
+  (el mismo que usará el video).
+- **Loop ping-pong**: en `ensamblar_relax` las escenas de imagen renderizan DOS
+  clips (zoom_in + zoom_out) → el movimiento nunca "salta" al reiniciar el loop.
+- UX: Duración+Formato fusionados en un bloque, numeración 1-5, ayuda de visuales
+  explica el preview. `visuales/` y `musica/` gitignorados (cachés de usuario).
 
-## Estado actual: v0.23 (nicho Relax completo: PRO + UX + reales + canciones/arte IA; código commiteado — pendiente empaquetar zip)
+## Estado actual: v0.23 (nicho Relax v2: música real, preview de visuales, WYSIWYG; código commiteado — pendiente empaquetar zip)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

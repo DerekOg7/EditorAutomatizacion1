@@ -815,6 +815,18 @@ def _guardar_presets_usuario(lst):
     PRESETS_USUARIO.write_text(json.dumps(lst, ensure_ascii=False, indent=2))
 
 
+@app.get("/api/relax/visual/<key>")
+def relax_visual(key):
+    """Vista previa de una visual (imagen). regen=1 regenera el arte IA."""
+    formato = request.args.get("formato", "16:9")
+    regen = request.args.get("regen") == "1"
+    try:
+        f = editor.visual_preview(key, formato, regen)
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
+    return send_file(f, mimetype="image/jpeg", conditional=False, max_age=0)
+
+
 @app.get("/api/relax/catalogo")
 def relax_catalogo():
     cat = editor.catalogo_relax()

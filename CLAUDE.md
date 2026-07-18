@@ -732,7 +732,25 @@ add-on de video $4.99 = 12 clips).
 Premium requiere un puente de créditos en la nube (pendiente). OJO: migrar
 Nano Banana a Gemini 3.1 Flash Image antes del 2-oct-2026.
 
-## Estado actual: v0.23 (nicho Relax v2: música real, preview de visuales, WYSIWYG; código commiteado — pendiente empaquetar zip)
+## Lanzamiento v1.0 (jul-2026)
+
+MVP lanzado al mercado. Piezas del lanzamiento:
+- **Puente Premium** (`puente/`): worker de Cloudflare con cupos por licencia
+  (voz 90k chars / 80 img / 480s música / 4 videos al mes, tope diario 1/3).
+  Verifica Ed25519 con WebCrypto, KV `CUPOS`, secretos con nuestras claves.
+  DEPLOY PENDIENTE por Derek (puente/README.md, ~10 min); la URL final va en
+  `editor.PUENTE_URL` (hoy apunta a puente-autofaceless.derekog7.workers.dev;
+  se puede sobreescribir con AFS_PUENTE_URL sin reempaquetar).
+- App: enruta voz/imagen/música/video por el puente cuando la licencia es
+  Premium (`PLANES_PREMIUM`) y no hay clave propia (la clave propia SIEMPRE
+  tiene prioridad). `GET /api/premium/saldo`. Verificado e2e con mock local.
+- **Landing** (`landing/index.html`): campaña "la roca gana $1.240/mes" del
+  handoff de Claude Design, con precios y botones de descarga que apuntan a
+  GitHub Releases (assets `AutoFaceless-Studio-macOS.zip` / `-Windows.zip`).
+  PENDIENTES de Derek: ID de Formspree, publicar en Netlify/Vercel, y que las
+  Releases sean públicas.
+
+## Estado actual: v1.0 (LANZAMIENTO — MVP en el mercado)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.
 > Esta lista es la base v0.06. Zip vigente:

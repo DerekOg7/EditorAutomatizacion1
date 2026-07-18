@@ -3,332 +3,281 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AutoFaceless Video — Editor para canales faceless</title>
-<meta name="description" content="Convierte un guión en un video de YouTube listo para subir: guión y voz con IA, imágenes automáticas, timeline con control manual. Corre en tu Mac, sin mensualidad de SaaS.">
+<title>AutoFaceless Studio — Una roca gana $1.240/mes en YouTube</title>
+<meta name="description" content="Guión, voz en off y video final con IA, en minutos. Sin dar la cara, sin saber editar. Descarga gratis para Mac y Windows.">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" href="img/icono-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg: #0c0c13; --panel: #15151f; --panel2: #1c1c29; --borde: #2a2a3d;
-    --texto: #e7e7f2; --tenue: #9a9ab0; --acento: #8b5cf6; --acento2: #6d4bc4;
-    --ok: #34d399; --ambar: #fbbf24;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--texto); font: 16px/1.6 -apple-system, "Segoe UI", Roboto, sans-serif;
-    -webkit-font-smoothing: antialiased;
-  }
-  a { color: inherit; }
-  .envoltura { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
-  .boton {
-    display: inline-flex; align-items: center; gap: 8px; font: inherit; font-weight: 600;
-    padding: 14px 28px; border-radius: 10px; text-decoration: none; border: 0; cursor: pointer;
-  }
-  .boton.primario { background: var(--acento); color: #fff; }
-  .boton.primario:hover { background: var(--acento2); }
-  .boton.fantasma { background: transparent; color: var(--texto); border: 1px solid var(--borde); }
-  .boton.fantasma:hover { border-color: var(--acento); }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: #f4ece6; font-family: 'Roboto', system-ui, sans-serif; color: #0f0f0f; }
+  a { color: #c4231b; text-decoration: none; }
+  a:hover { text-decoration: underline; }
 
-  /* encabezado */
-  header { padding: 20px 0; border-bottom: 1px solid var(--borde); }
-  header .envoltura { display: flex; align-items: center; justify-content: space-between; }
-  .marca { font-weight: 700; font-size: 15px; letter-spacing: .5px; }
-  .marca small { display: block; color: var(--acento); font-weight: 600; font-size: 10px; letter-spacing: 2px; }
-  .cabecera-der { display: flex; align-items: center; gap: 10px; }
-  #btn-idioma-land { padding: 10px 14px; font-size: 13px; }
+  /* NAV */
+  header { display: flex; align-items: center; justify-content: space-between; padding: 22px 64px;
+    border-bottom: 2px solid #0f0f0f; background: #f4ece6; position: sticky; top: 0; z-index: 10; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo img { width: 40px; height: 40px; border-radius: 9px; }
+  .logo span { font: 900 20px/1 'Roboto', sans-serif; letter-spacing: -.4px; }
+  .logo b { color: #c4231b; }
+  nav { display: flex; align-items: center; gap: 28px; }
+  nav a { font: 500 15px 'Roboto', sans-serif; color: #0f0f0f; }
+  .btn-nav { background: #c4231b; color: #fff !important; font: 700 15px 'Roboto', sans-serif;
+    border-radius: 26px; padding: 12px 26px; }
+  .btn-nav:hover { background: #a81d16; text-decoration: none; }
 
-  /* hero */
-  .hero { padding: 96px 0 72px; text-align: center; }
-  .hero h1 { font-size: 44px; font-weight: 700; line-height: 1.15; max-width: 780px; margin: 0 auto 20px; }
-  .hero h1 span { color: var(--acento); }
-  .hero p.sub { font-size: 19px; color: var(--tenue); max-width: 620px; margin: 0 auto 36px; }
-  .hero .acciones { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 14px; }
-  .hero .nota { font-size: 13px; color: var(--tenue); }
+  /* HERO */
+  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; padding: 88px 64px;
+    align-items: center; max-width: 1400px; margin: 0 auto; }
+  .hero-txt { display: flex; flex-direction: column; gap: 28px; }
+  .sello { background: #0f0f0f; color: #fff; font: 700 13px ui-monospace, Menlo, monospace;
+    letter-spacing: 1px; padding: 8px 14px; width: fit-content; }
+  h1 { margin: 0; font: 900 76px/.98 'Roboto', sans-serif; letter-spacing: -2.8px; }
+  h1 b { color: #c4231b; font-weight: 900; }
+  .hero-p { margin: 0; font: 400 22px/1.55 'Roboto', sans-serif; color: #404040; max-width: 520px; }
+  .hero-cta { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .btn-hero { background: #c4231b; color: #fff; font: 700 20px 'Roboto', sans-serif;
+    border-radius: 34px; padding: 18px 40px; }
+  .btn-hero:hover { background: #a81d16; text-decoration: none; }
+  .hero-nota { font: 500 15px 'Roboto', sans-serif; color: #606060; }
+  .hero-letra { font: 400 12px 'Roboto', sans-serif; color: #909090; }
+  .hero-foto { position: relative; }
+  .marco { position: relative; width: 100%; aspect-ratio: 4/5; background: #e8ddd3;
+    overflow: hidden; box-shadow: 0 24px 60px rgba(43,10,8,.18); }
+  .marco img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .etiqueta { position: absolute; left: 20px; top: 20px; background: #f4ece6; padding: 8px 14px;
+    font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: 1px; }
+  .placa { position: absolute; right: -18px; bottom: -18px; background: #0f0f0f; color: #fff;
+    padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; }
+  .placa b { font: 900 26px/1 'Roboto', sans-serif; letter-spacing: -.6px; color: #e5382c; }
+  .placa span { font: 500 12px 'Roboto', sans-serif; color: #c9c9c9; }
 
-  /* maqueta del editor (representación, sin captura externa) */
-  .maqueta {
-    margin: 64px auto 0; max-width: 920px; background: var(--panel); border: 1px solid var(--borde);
-    border-radius: 16px; padding: 20px; text-align: left; box-shadow: 0 40px 100px -30px rgba(139,92,246,.25);
-  }
-  .maqueta .barra { display: flex; gap: 8px; margin-bottom: 16px; }
-  .maqueta .barra span { width: 10px; height: 10px; border-radius: 50%; background: var(--borde); }
-  .maqueta .timeline { display: flex; gap: 3px; height: 64px; margin-bottom: 10px; }
-  .maqueta .timeline .bloque { flex: 1; border-radius: 8px; background: linear-gradient(160deg, var(--acento2), #23233a); opacity: .55; }
-  .maqueta .timeline .bloque:nth-child(3n) { opacity: .85; }
-  .maqueta .onda { height: 28px; border-radius: 8px; background: repeating-linear-gradient(90deg, rgba(139,92,246,.5) 0 2px, transparent 2px 5px); }
+  /* CASOS */
+  .casos { background: #141414; padding: 80px 64px; }
+  .casos-in { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 40px; }
+  .casos-top { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .casos h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; color: #fff; }
+  .casos-sub { font: 500 15px 'Roboto', sans-serif; color: #8a8a8a; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .caso { background: #f4ece6; display: flex; flex-direction: column; overflow: hidden; }
+  .caso-foto { position: relative; aspect-ratio: 4/3; }
+  .caso-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .caso-num { position: absolute; left: 14px; top: 14px; background: #f4ece6; padding: 6px 10px;
+    font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: 1px; }
+  .caso-txt { padding: 22px 24px; display: flex; flex-direction: column; gap: 6px; }
+  .caso-txt h3 { margin: 0; font: 900 28px/1 'Roboto', sans-serif; letter-spacing: -.8px; }
+  .caso-txt h3 b { color: #c4231b; font-weight: 900; }
+  .caso-txt p { margin: 0; font: 400 15px/1.4 'Roboto', sans-serif; color: #404040; }
 
-  /* características */
-  .caracteristicas { padding: 72px 0; border-top: 1px solid var(--borde); }
-  .caracteristicas h2 { text-align: center; font-size: 30px; margin-bottom: 12px; }
-  .caracteristicas p.intro { text-align: center; color: var(--tenue); max-width: 560px; margin: 0 auto 48px; }
-  .rejilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 20px; }
-  .tarjeta { background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; padding: 24px; }
-  .tarjeta .icono { font-size: 28px; margin-bottom: 14px; }
-  .tarjeta h3 { font-size: 17px; margin-bottom: 8px; }
-  .tarjeta p { color: var(--tenue); font-size: 14px; }
+  /* CÓMO */
+  .como { padding: 88px 64px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .como-in { display: flex; flex-direction: column; gap: 44px; }
+  .como h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
+  .paso { border-top: 4px solid #0f0f0f; padding-top: 22px; display: flex; flex-direction: column; gap: 10px; }
+  .paso b { font: 900 40px/1 'Roboto', sans-serif; color: #c4231b; }
+  .paso h3 { margin: 0; font: 700 22px 'Roboto', sans-serif; }
+  .paso p { margin: 0; font: 400 16px/1.55 'Roboto', sans-serif; color: #404040; }
 
-  /* por qué local */
-  .local { padding: 72px 0; border-top: 1px solid var(--borde); }
-  .local .rejilla2 { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
-  .local h2 { font-size: 30px; margin-bottom: 18px; }
-  .local ul { list-style: none; }
-  .local li { display: flex; gap: 12px; margin-bottom: 16px; color: var(--tenue); }
-  .local li b { color: var(--texto); }
-  .local li::before { content: "✓"; color: var(--ok); font-weight: 700; flex-shrink: 0; }
-  .local .caja { background: var(--panel); border: 1px solid var(--borde); border-radius: 14px; padding: 28px; }
-  .local .caja .fila { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--borde); font-size: 14px; }
-  .local .caja .fila:last-child { border: 0; }
-  .local .caja .fila span:first-child { color: var(--tenue); }
+  /* PRECIOS */
+  .precios { padding: 0 64px 88px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .precios-in { display: flex; flex-direction: column; gap: 34px; }
+  .precios h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
+  .plan { border: 2px solid #0f0f0f; padding: 26px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+  .plan.destacado { background: #0f0f0f; color: #fff; }
+  .plan h3 { margin: 0; font: 700 20px 'Roboto', sans-serif; }
+  .plan .precio { font: 900 44px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
+  .plan .precio small { font: 500 15px 'Roboto', sans-serif; color: inherit; opacity: .6; letter-spacing: 0; }
+  .plan.destacado .precio { color: #e5382c; }
+  .plan ul { margin: 0; padding-left: 18px; font: 400 15px/1.7 'Roboto', sans-serif; color: #404040; }
+  .plan.destacado ul { color: #c9c9c9; }
+  .plan .tag { background: #c4231b; color: #fff; font: 700 11px ui-monospace, Menlo, monospace;
+    letter-spacing: 1px; padding: 5px 10px; width: fit-content; }
+  .precios .nota { font: 400 13px 'Roboto', sans-serif; color: #909090; }
 
-  /* lista de espera */
-  .espera { padding: 88px 0; border-top: 1px solid var(--borde); text-align: center; }
-  .espera h2 { font-size: 30px; margin-bottom: 12px; }
-  .espera p { color: var(--tenue); max-width: 480px; margin: 0 auto 32px; }
-  form.correo { display: flex; gap: 10px; max-width: 420px; margin: 0 auto; flex-wrap: wrap; justify-content: center; }
-  form.correo input {
-    flex: 1; min-width: 220px; font: inherit; padding: 14px 16px; border-radius: 10px;
-    border: 1px solid var(--borde); background: var(--panel2); color: var(--texto);
-  }
-  form.correo input:focus { outline: none; border-color: var(--acento); }
-  #mensaje-espera { margin-top: 14px; font-size: 14px; min-height: 20px; }
-  #mensaje-espera.ok { color: var(--ok); }
-  #mensaje-espera.error { color: var(--ambar); }
+  /* DESCARGA / CTA */
+  .cta { background: #c4231b; padding: 88px 64px; }
+  .cta-in { max-width: 860px; margin: 0 auto; display: flex; flex-direction: column;
+    align-items: center; gap: 26px; text-align: center; }
+  .cta h2 { margin: 0; font: 900 56px/1 'Roboto', sans-serif; letter-spacing: -2px; color: #fff; }
+  .cta p { margin: 0; font: 400 20px/1.5 'Roboto', sans-serif; color: #f4d6d3; }
+  .descargas { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn-dl { background: #0f0f0f; color: #fff; font: 700 19px 'Roboto', sans-serif;
+    border-radius: 34px; padding: 16px 34px; text-align: left; }
+  .btn-dl:hover { background: #2b0a08; text-decoration: none; }
+  .btn-dl small { font: 400 12px 'Roboto', sans-serif; color: #c9c9c9; display: block; }
+  .cta-nota { font: 400 13px 'Roboto', sans-serif; color: #f0c5c1; }
+  .correo { display: flex; gap: 12px; width: 100%; max-width: 520px; }
+  .correo input { flex: 1; border: none; border-radius: 32px; padding: 16px 24px;
+    font: 400 16px 'Roboto', sans-serif; outline: none; background: #fff; color: #0f0f0f; }
+  .correo button { background: #0f0f0f; color: #fff; font: 700 16px 'Roboto', sans-serif;
+    border: none; border-radius: 32px; padding: 16px 28px; cursor: pointer; }
+  .correo button:hover { background: #2b0a08; }
 
-  /* aviso de instalación (Gatekeeper) */
-  .aviso-abrir { max-width: 560px; margin: 40px auto 0; background: var(--panel);
-    border: 1px solid var(--borde); border-left: 3px solid var(--ambar);
-    border-radius: 12px; padding: 20px 24px; text-align: left; }
-  .aviso-abrir h3 { font-size: 15px; margin-bottom: 10px; }
-  .aviso-abrir p { color: var(--tenue); font-size: 14px; margin-bottom: 10px; }
-  .aviso-abrir ol { color: var(--tenue); font-size: 14px; padding-left: 20px; }
-  .aviso-abrir li { margin-bottom: 6px; }
-  .aviso-abrir b { color: var(--texto); }
+  /* FOOTER */
+  footer { background: #141414; padding: 36px 64px; display: flex; align-items: center;
+    justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .f-logo { display: flex; align-items: center; gap: 10px; }
+  .f-logo img { width: 30px; height: 30px; border-radius: 7px; }
+  .f-logo span { font: 700 15px 'Roboto', sans-serif; color: #fff; }
+  footer .nota { font: 400 13px 'Roboto', sans-serif; color: #8a8a8a; }
 
-  footer { padding: 32px 0; border-top: 1px solid var(--borde); text-align: center; color: var(--tenue); font-size: 13px; }
-
-  @media (max-width: 720px) {
-    .hero h1 { font-size: 32px; }
-    .local .rejilla2 { grid-template-columns: 1fr; }
+  /* RESPONSIVE */
+  @media (max-width: 980px) {
+    header, .hero, .casos, .como, .precios, .cta, footer { padding-left: 24px; padding-right: 24px; }
+    .hero { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 48px; }
+    h1 { font-size: 46px; letter-spacing: -1.6px; }
+    .grid3 { grid-template-columns: 1fr; }
+    .casos h2, .como h2, .precios h2 { font-size: 32px; }
+    .cta h2 { font-size: 36px; letter-spacing: -1px; }
+    nav a:not(.btn-nav) { display: none; }
+    .placa { right: 0; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="envoltura">
-    <div class="marca"><small>AUTOFACELESS VIDEO</small><span data-i18n="brand_sub">Editor para canales faceless</span></div>
-    <div class="cabecera-der">
-      <button class="boton fantasma" id="btn-idioma-land" onclick="alternarIdioma()" title="Language / Idioma">🌐 EN</button>
-      <a href="#espera" class="boton fantasma" style="padding:10px 18px" data-i18n="nav_cta">Unirme a la beta</a>
-    </div>
+  <div class="logo">
+    <img src="img/icono-192.png" alt="AutoFaceless">
+    <span>AutoFaceless <b>Studio</b></span>
   </div>
+  <nav>
+    <a href="#casos">Casos reales</a>
+    <a href="#como">Cómo funciona</a>
+    <a href="#precios">Precios</a>
+    <a class="btn-nav" href="#descargar">Descargar gratis</a>
+  </nav>
 </header>
 
+<!-- HERO -->
 <section class="hero">
-  <div class="envoltura">
-    <h1 data-i18n-html="hero_h1">De la idea al video de YouTube, <span>sin editar a mano</span></h1>
-    <p class="sub" data-i18n="hero_sub">
-      Escribe un tema, la IA hace el guión y la voz, y el editor arma el video —
-      imágenes por escena, efectos, transiciones — con control total cuando quieras
-      ajustar algo. Corre en tu Mac: sin servidores, sin mensualidad de SaaS.
-    </p>
-    <div class="acciones">
-      <a href="#espera" class="boton primario" data-i18n="hero_cta1">✨ Unirme a la beta gratuita</a>
-      <a href="#como-funciona" class="boton fantasma" data-i18n="hero_cta2">Ver cómo funciona</a>
+  <div class="hero-txt">
+    <span class="sello">CAMPAÑA · CASOS 100% REALES*</span>
+    <h1>Una roca gana <b>$1.240/mes</b> en YouTube.</h1>
+    <p class="hero-p">No tiene manos. No sabe editar. No da la cara. Si ella puede monetizar,
+      tú también: guión, voz y video final con IA, en minutos.</p>
+    <div class="hero-cta">
+      <a class="btn-hero" href="#descargar">Descargar gratis →</a>
+      <span class="hero-nota">Mac y Windows · versión gratis para siempre</span>
     </div>
-    <p class="nota" data-i18n="hero_nota">Beta gratuita para macOS · sin tarjeta de crédito</p>
+    <span class="hero-letra">*Tan reales como cualquier promesa de hacerse rico en internet. La app sí es real.</span>
+  </div>
+  <div class="hero-foto">
+    <div class="marco">
+      <img src="img/roca.webp" alt="La roca con micrófono de solapa">
+      <div class="etiqueta">CASO REAL · Nº 001</div>
+    </div>
+    <div class="placa"><b>$1.240/mes</b><span>4 meses monetizando</span></div>
+  </div>
+</section>
 
-    <div class="maqueta" id="como-funciona" aria-hidden="true">
-      <div class="barra"><span></span><span></span><span></span></div>
-      <div class="timeline">
-        <div class="bloque"></div><div class="bloque"></div><div class="bloque"></div>
-        <div class="bloque"></div><div class="bloque"></div><div class="bloque"></div>
-        <div class="bloque"></div><div class="bloque"></div>
+<!-- CASOS -->
+<section class="casos" id="casos">
+  <div class="casos-in">
+    <div class="casos-top">
+      <h2>Hasta ellos ya lo están haciendo.</h2>
+      <span class="casos-sub">Ninguno sabe editar.</span>
+    </div>
+    <div class="grid3">
+      <div class="caso">
+        <div class="caso-foto"><img src="img/perro.webp" alt="Perro con auriculares"><div class="caso-num">Nº 002</div></div>
+        <div class="caso-txt"><h3>Un perro. <b>$860/mes.</b></h3><p>No sabe que es famoso.</p></div>
       </div>
-      <div class="onda"></div>
+      <div class="caso">
+        <div class="caso-foto"><img src="img/bebe.webp" alt="Bebé con tablet"><div class="caso-num">Nº 003</div></div>
+        <div class="caso-txt"><h3>Un bebé. <b>$2.100/mes.</b></h3><p>Todavía no sabe hablar.</p></div>
+      </div>
+      <div class="caso">
+        <div class="caso-foto"><img src="img/gallina.webp" alt="Gallina con anillo de luz"><div class="caso-num">Nº 004</div></div>
+        <div class="caso-txt"><h3>Una gallina. <b>$430/mes.</b></h3><p>Sube un short cada mañana.</p></div>
+      </div>
     </div>
   </div>
 </section>
 
-<section class="caracteristicas">
-  <div class="envoltura">
-    <h2 data-i18n="feat_h2">Todo el proceso, en un solo lugar</h2>
-    <p class="intro" data-i18n="feat_intro">Lo que hoy te toma horas entre varias apps, aquí es un flujo continuo.</p>
-    <div class="rejilla">
-      <div class="tarjeta"><div class="icono">📝</div><h3 data-i18n="feat1_h">Guión y voz con IA</h3>
-        <p data-i18n="feat1_p">Escribe el tema y el estilo; la IA redacta el guión y genera la narración con voces realistas.</p></div>
-      <div class="tarjeta"><div class="icono">🖼️</div><h3 data-i18n="feat2_h">Imágenes automáticas</h3>
-        <p data-i18n="feat2_p">Cada escena encuentra su imagen sola (bancos gratuitos o generadas con IA), sincronizada con la voz.</p></div>
-      <div class="tarjeta"><div class="icono">🎬</div><h3 data-i18n="feat3_h">Timeline con control real</h3>
-        <p data-i18n="feat3_p">Arrastra duraciones, cambia imágenes, ajusta efectos y transiciones — no es una caja negra.</p></div>
-      <div class="tarjeta"><div class="icono">⏪</div><h3 data-i18n="feat4_h">Deshacer, previsualizar, exportar</h3>
-        <p data-i18n="feat4_p">Ve el resultado antes de exportar, corrige lo que no te convenza, y saca tu video en 1080p.</p></div>
+<!-- CÓMO FUNCIONA -->
+<section class="como" id="como">
+  <div class="como-in">
+    <h2>Si ellos pudieron, el proceso<br>no puede ser tan difícil.</h2>
+    <div class="grid3">
+      <div class="paso"><b>01</b><h3>Elige tu nicho</h3>
+        <p>Misterio, true crime, música relajante… la IA escribe el guión por ti.</p></div>
+      <div class="paso"><b>02</b><h3>Elige una voz</h3>
+        <p>Voz en off natural en tu idioma. Tu cara nunca aparece.</p></div>
+      <div class="paso"><b>03</b><h3>Exporta y publica</h3>
+        <p>Video final listo para YouTube, Shorts y TikTok. Sin editar nada.</p></div>
     </div>
   </div>
 </section>
 
-<section class="local">
-  <div class="envoltura">
-    <div class="rejilla2">
-      <div>
-        <h2 data-i18n="local_h2">Por qué corre en tu Mac y no en la nube</h2>
+<!-- PRECIOS -->
+<section class="precios" id="precios">
+  <div class="precios-in">
+    <h2>Empieza gratis. Crece cuando quieras.</h2>
+    <div class="grid3">
+      <div class="plan">
+        <h3>Gratis</h3>
+        <div class="precio">$0</div>
         <ul>
-          <li data-i18n-html="local_li1"><b>Tus videos, tus datos.</b> Nunca suben a un servidor ajeno.</li>
-          <li data-i18n-html="local_li2"><b>Sin mensualidad fija.</b> Pagas software, no cómputo de otros.</li>
-          <li data-i18n-html="local_li3"><b>Usas tus propias claves de IA</b> (voz, guión) al costo real del proveedor, sin recargos.</li>
-          <li data-i18n-html="local_li4"><b>No depende de que una empresa siga viva</b> para que tu editor funcione.</li>
+          <li>Editor completo, para siempre</li>
+          <li>IA gratuita ilimitada (guión, imágenes, voz)</li>
+          <li>Exporta en 720p con marca de agua</li>
         </ul>
       </div>
-      <div class="caja">
-        <div class="fila"><span data-i18n="box_k1">Instalación</span><span data-i18n="box_v1">Descarga y abre — sin Python, sin terminal</span></div>
-        <div class="fila"><span data-i18n="box_k2">Requisito</span><span data-i18n="box_v2">macOS (Apple Silicon)</span></div>
-        <div class="fila"><span data-i18n="box_k3">Costo en esta beta</span><span style="color:var(--ok);font-weight:600" data-i18n="box_v3">Gratis</span></div>
-        <div class="fila"><span data-i18n="box_k4">Tus datos</span><span data-i18n="box_v4">En tu Mac, siempre</span></div>
+      <div class="plan">
+        <h3>Pro</h3>
+        <div class="precio">$14.99<small>/mes</small></div>
+        <ul>
+          <li>1080p y sin marca de agua</li>
+          <li>Exportación ilimitada</li>
+          <li>Conecta tus propias claves de IA (BYOK)</li>
+        </ul>
+      </div>
+      <div class="plan destacado">
+        <span class="tag">EL FAVORITO</span>
+        <h3>Premium</h3>
+        <div class="precio">$24.99<small>/mes</small></div>
+        <ul>
+          <li><b>90 min de voz profesional al mes</b> (≈ 9 videos)</li>
+          <li>80 imágenes IA premium + 8 min de música original</li>
+          <li>Sin crear cuentas ni claves: todo incluido</li>
+        </ul>
       </div>
     </div>
+    <span class="nota">Los planes de pago se activan dentro de la app con un código de licencia. La descarga siempre es gratis.</span>
   </div>
 </section>
 
-<section class="espera" id="espera">
-  <div class="envoltura">
-    <h2 data-i18n="wait_h2">Prueba la beta gratis</h2>
-    <p data-i18n="wait_p">Cupo limitado mientras afinamos la app. Te escribimos con el enlace de descarga y para pedirte feedback directo.</p>
-    <form class="correo" id="form-espera">
-      <input type="email" name="email" placeholder="tu@correo.com" data-i18n-ph="wait_ph" required>
-      <button type="submit" class="boton primario" data-i18n="wait_btn">Unirme a la beta</button>
-    </form>
-    <p id="mensaje-espera"></p>
-
-    <div class="aviso-abrir">
-      <h3 data-i18n="open_h3">📌 Cómo abrirla la primera vez</h3>
-      <p data-i18n="open_p1">La beta todavía no está firmada con Apple, así que macOS pedirá una
-        confirmación la primera vez (una sola vez). Es normal y seguro:</p>
-      <ol>
-        <li data-i18n-html="open_li1">Descomprime el archivo <b>.zip</b> (doble clic).</li>
-        <li data-i18n-html="open_li2"><b>Clic derecho</b> sobre <b>Abrir AutoFaceless Video.command</b> → <b>Abrir</b>.</li>
-        <li data-i18n-html="open_li3">En el aviso que aparece, pulsa <b>Abrir</b> de nuevo. La app se abrirá sola.</li>
-      </ol>
-      <p style="margin:10px 0 0" data-i18n="open_p2">A partir de ahí se abre con doble clic normal.
-        Requiere una Mac con chip Apple (M1 o posterior) y macOS 11 o más nuevo.</p>
+<!-- DESCARGA -->
+<section class="cta" id="descargar">
+  <div class="cta-in">
+    <h2>Hasta ellos pueden monetizar.<br>Tú también.</h2>
+    <p>Descarga la app gratis. Sin tarjeta, sin registro. (Las rocas ya van varias.)</p>
+    <div class="descargas">
+      <a class="btn-dl" href="https://github.com/DerekOg7/EditorAutomatizacion1/releases/latest/download/AutoFaceless-Studio-macOS.zip">
+         Descargar para Mac<small>Apple Silicon · macOS 11+</small></a>
+      <a class="btn-dl" href="https://github.com/DerekOg7/EditorAutomatizacion1/releases/latest/download/AutoFaceless-Studio-Windows.zip">
+         Descargar para Windows<small>Windows 10/11 · 64 bits</small></a>
     </div>
+    <span class="cta-nota">¿Quieres enterarte de las novedades?</span>
+    <form class="correo" action="https://formspree.io/f/TU_ID_DE_FORMSPREE" method="POST">
+      <input type="email" name="email" placeholder="tu@email.com" required>
+      <button type="submit">Apuntarme →</button>
+    </form>
+    <span class="cta-nota">Sin spam. Solo videos.</span>
   </div>
 </section>
 
 <footer>
-  <div class="envoltura" data-i18n="footer">AutoFaceless Video — Editor para canales faceless · Beta 2026</div>
+  <div class="f-logo">
+    <img src="img/icono-192.png" alt="">
+    <span>AutoFaceless Studio</span>
+  </div>
+  <span class="nota">© 2026 · Ninguna roca fue obligada a monetizar.</span>
 </footer>
-
-<script>
-  /* ---------- idiomas (es / en), mismo patrón que la app ---------- */
-  const EN = {
-    doc_title: "AutoFaceless Video — Editor for faceless channels",
-    brand_sub: "Editor for faceless channels",
-    nav_cta: "Join the beta",
-    hero_h1: 'From idea to YouTube video, <span>without editing by hand</span>',
-    hero_sub: "Type a topic, the AI writes the script and voice, and the editor builds the video — per-scene images, effects, transitions — with full control whenever you want to tweak something. It runs on your Mac: no servers, no SaaS subscription.",
-    hero_cta1: "✨ Join the free beta",
-    hero_cta2: "See how it works",
-    hero_nota: "Free beta for macOS · no credit card",
-    feat_h2: "The whole process, in one place",
-    feat_intro: "What takes you hours across several apps today is one continuous flow here.",
-    feat1_h: "AI script and voice",
-    feat1_p: "Type the topic and style; the AI writes the script and generates the narration with realistic voices.",
-    feat2_h: "Automatic images",
-    feat2_p: "Each scene finds its own image (free stock or AI-generated), synced with the voice.",
-    feat3_h: "Timeline with real control",
-    feat3_p: "Drag durations, swap images, adjust effects and transitions — it's not a black box.",
-    feat4_h: "Undo, preview, export",
-    feat4_p: "See the result before exporting, fix what you don't like, and render your video in 1080p.",
-    local_h2: "Why it runs on your Mac and not in the cloud",
-    local_li1: "<b>Your videos, your data.</b> They never upload to someone else's server.",
-    local_li2: "<b>No fixed monthly fee.</b> You pay for software, not other people's compute.",
-    local_li3: "<b>You use your own AI keys</b> (voice, script) at the provider's real cost, no markup.",
-    local_li4: "<b>It doesn't depend on a company staying alive</b> for your editor to keep working.",
-    box_k1: "Install", box_v1: "Download and open — no Python, no terminal",
-    box_k2: "Requirement", box_v2: "macOS (Apple Silicon)",
-    box_k3: "Cost in this beta", box_v3: "Free",
-    box_k4: "Your data", box_v4: "On your Mac, always",
-    wait_h2: "Try the beta for free",
-    wait_p: "Limited spots while we polish the app. We'll email you the download link and to ask for direct feedback.",
-    wait_ph: "you@email.com",
-    wait_btn: "Join the beta",
-    open_h3: "📌 How to open it the first time",
-    open_p1: "The beta isn't signed with Apple yet, so macOS will ask for confirmation the first time (just once). It's normal and safe:",
-    open_li1: "Unzip the <b>.zip</b> file (double-click).",
-    open_li2: "<b>Right-click</b> on <b>Abrir AutoFaceless Video.command</b> → <b>Open</b>.",
-    open_li3: "In the dialog that appears, press <b>Open</b> again. The app opens by itself.",
-    open_p2: "From then on it opens with a normal double-click. Requires a Mac with an Apple chip (M1 or later) and macOS 11 or newer.",
-    footer: "AutoFaceless Video — Editor for faceless channels · Beta 2026",
-    // mensajes dinámicos del formulario
-    msg_noform: "The form isn't configured yet (see instructions in landing/README.md).",
-    msg_sending: "Sending…",
-    msg_ok: "Done! We'll let you know as soon as you have beta access.",
-    msg_fail: "Couldn't send — try again in a moment.",
-  };
-
-  let idioma = localStorage.getItem('afv_landing_idioma');
-  if (!idioma) idioma = (navigator.language || 'es').toLowerCase().startsWith('en') ? 'en' : 'es';
-  const L = (es, en) => idioma === 'en' ? en : es;
-
-  function aplicarIdioma() {
-    const en = idioma === 'en';
-    document.documentElement.lang = idioma;
-    document.title = en ? EN.doc_title : "AutoFaceless Video — Editor para canales faceless";
-    const swap = (sel, prop, dsKey, getKey) => document.querySelectorAll(sel).forEach(el => {
-      if (el.dataset[dsKey] === undefined) el.dataset[dsKey] = el[prop];
-      const k = getKey(el);
-      el[prop] = en && EN[k] !== undefined ? EN[k] : el.dataset[dsKey];
-    });
-    swap('[data-i18n]', 'textContent', 'orig', el => el.dataset.i18n);
-    swap('[data-i18n-html]', 'innerHTML', 'origHtml', el => el.dataset.i18nHtml);
-    swap('[data-i18n-ph]', 'placeholder', 'origPh', el => el.dataset.i18nPh);
-    const b = document.getElementById('btn-idioma-land');
-    if (b) b.textContent = en ? '🌐 ES' : '🌐 EN';
-  }
-  function alternarIdioma() {
-    idioma = idioma === 'en' ? 'es' : 'en';
-    localStorage.setItem('afv_landing_idioma', idioma);
-    aplicarIdioma();
-  }
-  aplicarIdioma();
-
-  /* ---------- formulario de lista de espera ---------- */
-  // Reemplaza FORMSPREE_ID por el propio (gratis en https://formspree.io).
-  const FORMSPREE_ID = "TU_ID_DE_FORMSPREE";
-  const form = document.getElementById('form-espera');
-  const mensaje = document.getElementById('mensaje-espera');
-
-  form.addEventListener('submit', async (ev) => {
-    ev.preventDefault();
-    const boton = form.querySelector('button');
-    const botonOrig = boton.textContent;
-    mensaje.className = ''; mensaje.textContent = '';
-    if (FORMSPREE_ID === "TU_ID_DE_FORMSPREE") {
-      mensaje.className = 'error';
-      mensaje.textContent = L('Falta configurar el formulario (ver instrucciones en landing/README.md).', EN.msg_noform);
-      return;
-    }
-    boton.disabled = true;
-    boton.textContent = L('Enviando…', EN.msg_sending);
-    try {
-      const r = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
-        method: 'POST',
-        headers: { 'Accept': 'application/json' },
-        body: new FormData(form),
-      });
-      if (r.ok) {
-        mensaje.className = 'ok';
-        mensaje.textContent = L('¡Listo! Te avisamos en cuanto tengas acceso a la beta.', EN.msg_ok);
-        form.reset();
-      } else {
-        throw new Error('fallo');
-      }
-    } catch (e) {
-      mensaje.className = 'error';
-      mensaje.textContent = L('No se pudo enviar — intenta de nuevo en un momento.', EN.msg_fail);
-    }
-    boton.disabled = false;
-    boton.textContent = botonOrig;
-  });
-</script>
 
 </body>
 </html>

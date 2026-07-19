@@ -27,3 +27,6 @@ sonidos/
 # cachés del nicho Relax (descargas del usuario)
 visuales/
 musica/
+
+# estrategia de negocio (solo local)
+docs/estrategia_precios.md

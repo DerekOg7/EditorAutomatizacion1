@@ -720,17 +720,14 @@ también aplica. Música gratis por defecto; ElevenLabs es una casilla opcional.
 - UX: Duración+Formato fusionados en un bloque, numeración 1-5, ayuda de visuales
   explica el preview. `visuales/` y `musica/` gitignorados (cachés de usuario).
 
-## Precios y estrategia de negocio
+## Precios y planes
 
-`docs/estrategia_precios.md` tiene los costos por generación investigados
-(jul-2026: Nano Banana $0.039/img, Hailuo $0.19-0.56/clip, Eleven Music
-~$0.16/min, MiniMax voz $0.10/1k chars), el costo por video ($1.4-4.5 premium)
-y los paquetes DECIDIDOS por Derek: Gratis $0 / Pro BYOK $14.99 / Premium
-$24.99 voice-first (90k caracteres de voz HD ≈ 9 videos + 80 imágenes + 8 min
-música + 4 clips Hailuo; techo de costo ≈ $15 → ganancia mínima ~$10/usuario;
-add-on de video $4.99 = 12 clips).
-Premium requiere un puente de créditos en la nube (pendiente). OJO: migrar
-Nano Banana a Gemini 3.1 Flash Image antes del 2-oct-2026.
+Paquetes: **Gratis $0** / **Pro BYOK $14.99/mes** / **Premium $24.99/mes**
+(voice-first: cupo mensual de voz HD + imágenes + música con nuestras claves,
+vía el puente; add-on de video aparte). El detalle interno de costos y márgenes
+NO va en el repo (público) — vive solo en la Mac de Derek
+(`~/Documents/CLAUDE/estrategia_precios_PRIVADO.md`).
+OJO: migrar Nano Banana a Gemini 3.1 Flash Image antes del 2-oct-2026.
 
 ## Lanzamiento v1.0 (jul-2026)
 

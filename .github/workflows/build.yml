@@ -1,13 +1,21 @@
 name: build
 
-# Construye la app empaquetada. Se dispara a mano (Actions → build → Run) o al
-# empujar una etiqueta v* (git tag v0.16 && git push --tags). Sube el resultado
-# como "artifact" descargable desde la página del run.
+# Construye la app empaquetada para Windows y macOS.
+#   • Se dispara a mano (Actions → build → Run workflow) para PROBAR, o
+#   • al empujar una etiqueta v* (git tag v1.0 && push) → además CREA la Release
+#     de GitHub con los dos zips adjuntos, listos para descargar desde la landing.
+#
+# Los nombres de los zip son EXACTAMENTE los que espera la landing (sensibles a
+# mayúsculas en las URLs de GitHub):
+#   AutoFaceless-Studio-macOS.zip   ·   AutoFaceless-Studio-Windows.zip
 
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+
+permissions:
+  contents: write        # necesario para crear la Release
 
 jobs:
   # ---------------- Windows (.exe onedir) ----------------
@@ -40,13 +48,33 @@ jobs:
       - name: Empaquetar con PyInstaller
         run: pyinstaller empaquetar.spec --noconfirm --clean
 
-      - name: Comprimir
-        run: Compress-Archive -Path "dist/AutoFaceless Video/*" -DestinationPath "AutoFaceless-Studio-windows.zip"
+      - name: Armar el paquete de descarga (carpeta + LÉEME)
+        run: |
+          $stage = "AutoFaceless Studio"
+          New-Item -ItemType Directory -Force $stage | Out-Null
+          Move-Item "dist/AutoFaceless Video" "$stage/"
+          @"
+          AutoFaceless Studio (Windows)
+
+          COMO ABRIR:
+            1. Abre la carpeta "AutoFaceless Video".
+            2. Ejecuta "AutoFaceless Video.exe".
+            3. Si Windows muestra "Windows protegio tu PC":
+               haz clic en "Mas informacion" y luego en "Ejecutar de todas formas".
+               (Aparece solo porque la app todavia no esta firmada; es segura.)
+
+          Se abrira en tu navegador. La primera transcripcion descarga un modelo
+          de voz (unos minutos, solo la primera vez).
+
+          Gratis para siempre. Pro y Premium se activan dentro de la app con un
+          codigo de licencia. Soporte: derekog7@gmail.com
+          "@ | Out-File -Encoding utf8 "$stage/LEEME primero.txt"
+          Compress-Archive -Path "$stage" -DestinationPath "AutoFaceless-Studio-Windows.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AutoFaceless-Studio-windows
-          path: AutoFaceless-Studio-windows.zip
+          name: AutoFaceless-Studio-Windows
+          path: AutoFaceless-Studio-Windows.zip
 
   # ---------------- macOS (.app) ----------------
   macos:
@@ -73,10 +101,55 @@ jobs:
       - name: Empaquetar con PyInstaller
         run: pyinstaller empaquetar.spec --noconfirm --clean
 
-      - name: Comprimir el .app
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/AutoFaceless Video.app" "AutoFaceless-Studio-macos.zip"
+      - name: Armar el paquete de descarga (.app + abridor + LÉEME)
+        run: |
+          STAGE="AutoFaceless Studio"
+          mkdir -p "$STAGE"
+          mv "dist/AutoFaceless Video.app" "$STAGE/"
+          cp "empaquetado/Abrir AutoFaceless Video.command" "$STAGE/"
+          chmod +x "$STAGE/Abrir AutoFaceless Video.command"
+          cat > "$STAGE/LEEME primero.txt" <<'EOF'
+          AutoFaceless Studio (macOS)
+
+          PRIMERA VEZ: clic derecho en "Abrir AutoFaceless Video.command" -> Abrir.
+          (Es necesario porque la app aun no esta firmada por Apple; es segura.)
+
+          Gratis para siempre: editor completo + IA gratis, 720p con marca de agua.
+          Pro y Premium se activan dentro de la app con un codigo de licencia.
+
+          Requisitos: Mac Apple Silicon (M1 o mas nuevo), macOS 11+.
+          Soporte: derekog7@gmail.com
+          EOF
+          xattr -cr "$STAGE/AutoFaceless Video.app" || true
+          ditto -c -k --sequesterRsrc --keepParent "$STAGE" "AutoFaceless-Studio-macOS.zip"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: AutoFaceless-Studio-macos
-          path: AutoFaceless-Studio-macos.zip
+          name: AutoFaceless-Studio-macOS
+          path: AutoFaceless-Studio-macOS.zip
+
+  # ---------------- Release (solo al empujar un tag v*) ----------------
+  release:
+    needs: [windows, macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Descargar los dos paquetes
+        uses: actions/download-artifact@v4
+        with:
+          path: paquetes
+          merge-multiple: true
+
+      - name: Crear/actualizar la Release con los zips
+        uses: softprops/action-gh-release@v2
+        with:
+          files: paquetes/*.zip
+          generate_release_notes: true
+          name: AutoFaceless Studio ${{ github.ref_name }}
+          body: |
+            Descarga la app gratis:
+
+            - **macOS** (Apple Silicon, macOS 11+): `AutoFaceless-Studio-macOS.zip`
+            - **Windows** (10/11, 64 bits): `AutoFaceless-Studio-Windows.zip`
+
+            Gratis para siempre. Pro y Premium se activan dentro de la app.

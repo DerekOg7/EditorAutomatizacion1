@@ -263,13 +263,36 @@
          Descargar para Windows<small>Windows 10/11 · 64 bits</small></a>
     </div>
     <span class="cta-nota">¿Quieres enterarte de las novedades?</span>
-    <form class="correo" action="https://formspree.io/f/TU_ID_DE_FORMSPREE" method="POST">
+    <!-- Netlify Forms: Netlify captura los correos solo, sin otro servicio. -->
+    <form class="correo" id="form-beta" name="beta" method="POST"
+          data-netlify="true" netlify-honeypot="bot-field">
+      <input type="hidden" name="form-name" value="beta">
+      <p hidden><label>No llenar: <input name="bot-field"></label></p>
       <input type="email" name="email" placeholder="tu@email.com" required>
       <button type="submit">Apuntarme →</button>
     </form>
-    <span class="cta-nota">Sin spam. Solo videos.</span>
+    <span class="cta-nota" id="form-nota">Sin spam. Solo videos.</span>
   </div>
 </section>
+
+<script>
+  // Envío sin recargar: muestra "¡Dentro! ✓" en el mismo lugar.
+  var f = document.getElementById('form-beta');
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var datos = new URLSearchParams(new FormData(f)).toString();
+    fetch('/', { method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: datos })
+      .then(function () {
+        f.innerHTML = '<span style="background:#0f0f0f;color:#fff;font:700 17px Roboto,sans-serif;' +
+          'border-radius:32px;padding:16px 30px;display:inline-flex;align-items:center">¡Dentro! ✓</span>';
+        document.getElementById('form-nota').textContent = 'Te avisaremos de las novedades.';
+      })
+      .catch(function () {
+        document.getElementById('form-nota').textContent = 'No se pudo enviar, intenta de nuevo.';
+      });
+  });
+</script>
 
 <footer>
   <div class="f-logo">

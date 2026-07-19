@@ -50,6 +50,13 @@ puente; cualquier otro plan recibe 403 con mensaje claro.
 .venv/bin/python scripts/generar_licencia.py cliente@correo.com 2027-08-01 premium
 ```
 
+## Verificado
+
+El `worker.js` se probó ejecutándolo en Deno (mismo WebCrypto/fetch que
+Cloudflare Workers) con licencias reales: 9/9 casos OK — verificación Ed25519,
+rechazo de planes no-premium (403), reenvío a cada API con la clave correcta, y
+corte por cupo (429). El deploy debería funcionar a la primera.
+
 ## Probar
 
 ```bash

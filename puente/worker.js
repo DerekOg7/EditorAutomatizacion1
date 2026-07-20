@@ -173,21 +173,22 @@ function planDeVariante(env, attrs) {
 async function enviarEmail(env, para, codigo, plan) {
   const from = env.EMAIL_FROM || "AutoFaceless Studio <licencias@autofaceless.studio>";
   const nombrePlan = plan === "premium" ? "Premium" : "Pro";
+  // Solo ASCII para que NINGUN cliente de correo muestre caracteres raros.
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0f0f0f">
-      <h2 style="color:#c4231b">¡Gracias por unirte a AutoFaceless ${nombrePlan}! 🎬</h2>
-      <p>Aquí está tu código de licencia. Actívalo dentro de la app:</p>
+      <h2 style="color:#c4231b">Gracias por unirte a AutoFaceless ${nombrePlan}</h2>
+      <p>Este es tu codigo de licencia. Activalo dentro de la app:</p>
       <p style="background:#f4ece6;border:1px solid #e5e5e5;border-radius:8px;padding:14px;
          font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all">${codigo}</p>
-      <p><b>Cómo activarlo:</b></p>
+      <p><b>Como activarlo:</b></p>
       <ol style="line-height:1.7">
         <li>Abre AutoFaceless Studio.</li>
-        <li>Arriba a la derecha, entra a <b>🔑 Claves API / Licencia</b>.</li>
-        <li>Pega el código y dale <b>Activar</b>.</li>
+        <li>Arriba a la derecha, entra a "Claves API / Licencia".</li>
+        <li>Pega el codigo y dale "Activar".</li>
       </ol>
-      <p style="color:#606060;font-size:13px">Tu licencia se renueva con tu suscripción; en cada
-      renovación te llegará un código fresco a este correo.</p>
-      <p style="color:#909090;font-size:12px">¿Dudas? Responde a este correo. — AutoFaceless Studio</p>
+      <p style="color:#606060;font-size:13px">Tu licencia se renueva con tu suscripcion; en cada
+      renovacion te llegara un codigo nuevo a este correo.</p>
+      <p style="color:#909090;font-size:12px">Dudas? Responde a este correo. - AutoFaceless Studio</p>
     </div>`;
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",

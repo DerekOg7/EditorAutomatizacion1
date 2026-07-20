@@ -67,7 +67,7 @@ async function verificarLicencia(codigo) {
     if (!valida) return { ok: false, razon: "firma" };
     const datos = JSON.parse(new TextDecoder().decode(payload));
     const vence = new Date(datos.exp + "T23:59:59Z");
-    if (!(vence instanceof Date) || isNaN(vence)) return { ok: false, razon: "fecha" };
+    if (isNaN(vence.getTime())) return { ok: false, razon: "fecha" };
     if (vence < new Date()) return { ok: false, razon: "vencida" };
     if (!PLANES_PREMIUM.has(datos.plan)) return { ok: false, razon: "no_premium" };
     return { ok: true, id: datos.id, plan: datos.plan, exp: datos.exp };

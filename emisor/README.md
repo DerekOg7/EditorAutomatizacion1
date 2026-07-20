@@ -46,20 +46,21 @@ se emite nada y la licencia caduca sola.
    (SPF/DKIM). Agrégalos en **Netlify → Domains → autofaceless.studio → DNS**.
 3. Cuando el dominio quede "Verified", crea una **API key**.
 
-### 3. Desplegar el worker (panel de Cloudflare, como el puente)
-1. Workers & Pages → **Create application** → Worker → nómbralo **`emisor-autofaceless`**.
-2. **Edit code** → pega `emisor/worker.js` → **Deploy**.
-3. **Settings → Variables and Secrets** → agrega (tipo Secret):
-   - `LS_SIGNING_SECRET` — (lo obtienes en el paso 4)
+### 3. Está en el MISMO worker que el puente
+El emisor ya está fusionado en `puente/worker.js` (worker `puente-autofaceless`).
+No hay que crear otro worker: pega el `puente/worker.js` actualizado en ese worker
+y agrega en **Settings → Variables and Secrets** (tipo Secret):
+   - `LS_SIGNING_SECRET` — (lo obtienes al crear el webhook, paso 4)
    - `LICENSE_PRIVATE_KEY_HEX` — el contenido de `LLAVE_PRIVADA_NO_COMPARTIR.hex`
-   - `RESEND_API_KEY` — la clave de Resend
-   - `LS_VARIANT_PRO`, `LS_VARIANT_PREMIUM` — los IDs de variante
+   - `RESEND_API_KEY` — la clave de Resend (ya la pusiste)
    - `EMAIL_FROM` — `AutoFaceless Studio <licencias@autofaceless.studio>`
-4. **Deploy** de nuevo. URL: `https://emisor-autofaceless.derekog7.workers.dev`.
+   - (opcionales) `LS_VARIANT_PRO`, `LS_VARIANT_PREMIUM` — no hacen falta si los
+     productos se llaman "…Pro"/"…Premium" (el worker acierta por el nombre).
+El webhook apunta a `https://puente-autofaceless.derekog7.workers.dev/webhook/lemonsqueezy`.
 
 ### 4. LemonSqueezy — webhook
 1. LemonSqueezy → **Settings → Webhooks → Add endpoint**.
-2. URL: `https://emisor-autofaceless.derekog7.workers.dev/webhook/lemonsqueezy`.
+2. URL: `https://puente-autofaceless.derekog7.workers.dev/webhook/lemonsqueezy`.
 3. Marca los eventos: **subscription_created** y **subscription_payment_success**.
 4. Copia el **Signing secret** que te da → es el `LS_SIGNING_SECRET` del paso 3.
 
@@ -79,7 +80,7 @@ corona: si algún día se compromete, rota la llave (nueva pareja Ed25519, actua
 ## Probar
 
 ```bash
-curl https://emisor-autofaceless.derekog7.workers.dev/health   # {ok:true,...}
+curl https://puente-autofaceless.derekog7.workers.dev/health   # {ok:true,...}
 ```
 Y una compra real de prueba en modo test de LemonSqueezy debe llegarte al correo.
 

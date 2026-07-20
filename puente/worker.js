@@ -1,18 +1,23 @@
 /**
- * Puente de créditos Premium — AutoFaceless Studio
+ * Puente + Emisor — AutoFaceless Studio (un solo worker)
  *
- * Un proxy con cupos: la app manda su código de licencia como "clave", el
- * worker verifica la firma Ed25519 (misma llave pública que la app), descuenta
- * del cupo mensual y reenvía la petición a la API real con NUESTRAS claves.
+ * A) PUENTE de créditos Premium: la app manda su código de licencia, el worker
+ *    verifica la firma Ed25519, descuenta del cupo mensual (KV) y reenvía a la
+ *    API real con NUESTRAS claves.
+ *      /gg/*   → generativelanguage.googleapis.com   (Nano Banana; licencia en ?key=)
+ *      /mmx/*  → api.minimax.io                      (voz + video; licencia en Bearer)
+ *      /xi/*   → api.elevenlabs.io                   (música + voz; licencia en xi-api-key)
+ *      /v1/saldo → cupo restante del mes (JSON)
  *
- * Rutas (espejo de cada proveedor, así la app no cambia su lógica):
- *   /gg/*   → generativelanguage.googleapis.com   (Nano Banana; licencia va en ?key=)
- *   /mmx/*  → api.minimax.io                      (voz + video; licencia en Bearer)
- *   /xi/*   → api.elevenlabs.io                   (música + voz; licencia en xi-api-key)
- *   /v1/saldo → cupo restante del mes (JSON)
+ * B) EMISOR de licencias: webhook de LemonSqueezy. Al comprar/renovar, verifica
+ *    la firma HMAC, genera la licencia Ed25519 firmada y la envía por email
+ *    (Resend). Se maneja ANTES del chequeo de licencia (se autentica por HMAC).
+ *      /webhook/lemonsqueezy   ·   /health
  *
- * Secretos (wrangler secret put …): GEMINI_API_KEY, MINIMAX_API_KEY,
- * MINIMAX_GROUP_ID, ELEVENLABS_API_KEY.  KV binding: CUPOS.
+ * Secretos: GEMINI_API_KEY, MINIMAX_API_KEY, MINIMAX_GROUP_ID, ELEVENLABS_API_KEY,
+ *   LS_SIGNING_SECRET, LICENSE_PRIVATE_KEY_HEX, RESEND_API_KEY,
+ *   EMAIL_FROM (opcional), LS_VARIANT_PRO / LS_VARIANT_PREMIUM (opcionales).
+ * KV binding: CUPOS.
  */
 
 const LLAVE_PUBLICA_HEX =
@@ -20,14 +25,19 @@ const LLAVE_PUBLICA_HEX =
 
 const PLANES_PREMIUM = new Set(["premium", "todo", "vip", "owner", "lifetime"]);
 
-// Cupo mensual por licencia (decidido en docs/estrategia_precios.md)
+// Cupo mensual por licencia
 const CUPO_MES = { voz: 90000, imagen: 80, musica: 480, video: 4 };
 // Tope diario anti-abuso: un tercio del mes
 const CUPO_DIA = { voz: 30000, imagen: 27, musica: 160, video: 2 };
 const NOMBRE = { voz: "caracteres de voz", imagen: "imágenes",
                  musica: "segundos de música", video: "clips de video" };
 
+// Emisor
+const DIAS_GRACIA = 3;
+const EVENTOS_EMITIR = new Set(["subscription_created", "subscription_payment_success"]);
+
 // ---------------------------------------------------------------- utilidades
+const enc = new TextEncoder();
 
 function b64uDec(s) {
   s = s.replace(/-/g, "+").replace(/_/g, "/");
@@ -37,22 +47,22 @@ function b64uDec(s) {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
-
+function b64u(b) {
+  return btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
 function hexABytes(hex) {
-  const out = new Uint8Array(hex.length / 2);
+  const out = new Uint8Array(hex.trim().length / 2);
   for (let i = 0; i < out.length; i++)
-    out[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+    out[i] = parseInt(hex.trim().slice(i * 2, i * 2 + 2), 16);
   return out;
 }
-
 function json(objeto, status = 200) {
   return new Response(JSON.stringify(objeto), {
     status, headers: { "Content-Type": "application/json" },
   });
 }
 
-// -------------------------------------------------------------- licencia
-
+// -------------------------------------------------------------- licencia (verificar)
 async function verificarLicencia(codigo) {
   try {
     codigo = (codigo || "").trim().replace(/\s+/g, "");
@@ -85,9 +95,8 @@ function extraerLicencia(request, url) {
 }
 
 // -------------------------------------------------------------- cupos (KV)
-
-function mesActual() { return new Date().toISOString().slice(0, 7); }    // YYYY-MM
-function diaActual() { return new Date().toISOString().slice(0, 10); }   // YYYY-MM-DD
+function mesActual() { return new Date().toISOString().slice(0, 7); }
+function diaActual() { return new Date().toISOString().slice(0, 10); }
 
 async function leerUso(env, id) {
   const [mes, dia] = await Promise.all([
@@ -110,16 +119,13 @@ async function cobrar(env, id, categoria, cantidad) {
   uso.mes[categoria] = usadoMes + cantidad;
   uso.dia[categoria] = usadoDia + cantidad;
   await Promise.all([
-    env.CUPOS.put(`m:${id}:${mesActual()}`, JSON.stringify(uso.mes),
-                  { expirationTtl: 40 * 86400 }),
-    env.CUPOS.put(`d:${id}:${diaActual()}`, JSON.stringify(uso.dia),
-                  { expirationTtl: 2 * 86400 }),
+    env.CUPOS.put(`m:${id}:${mesActual()}`, JSON.stringify(uso.mes), { expirationTtl: 40 * 86400 }),
+    env.CUPOS.put(`d:${id}:${diaActual()}`, JSON.stringify(uso.dia), { expirationTtl: 2 * 86400 }),
   ]);
   return { ok: true };
 }
 
 // -------------------------------------------------------------- proxy
-
 async function reenviar(request, destino, headersExtra, bodyTexto) {
   const init = {
     method: request.method,
@@ -132,19 +138,112 @@ async function reenviar(request, destino, headersExtra, bodyTexto) {
   return new Response(r.body, { status: r.status, headers: r.headers });
 }
 
+// ============================================================ EMISOR
+function canon(datos) {
+  return "{" + Object.keys(datos).sort()
+    .map((k) => JSON.stringify(k) + ":" + JSON.stringify(datos[k])).join(",") + "}";
+}
+
+async function generarLicencia(id, plan, exp, seedHex) {
+  const seed = hexABytes(seedHex);
+  const jwk = { kty: "OKP", crv: "Ed25519", d: b64u(seed), x: b64u(hexABytes(LLAVE_PUBLICA_HEX)), key_ops: ["sign"], ext: true };
+  const key = await crypto.subtle.importKey("jwk", jwk, { name: "Ed25519" }, false, ["sign"]);
+  const pb = enc.encode(canon({ id: String(id), exp: String(exp), plan: String(plan) }));
+  const sig = new Uint8Array(await crypto.subtle.sign("Ed25519", key, pb));
+  return "AFS1." + b64u(pb) + "." + b64u(sig);
+}
+
+async function firmaWebhookValida(secret, cuerpo, firmaHex) {
+  if (!firmaHex || !secret) return false;
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+  let sig;
+  try { sig = hexABytes(firmaHex); } catch (_) { return false; }
+  return crypto.subtle.verify("HMAC", key, sig, enc.encode(cuerpo));
+}
+
+function planDeVariante(env, attrs) {
+  const vid = String(attrs.variant_id ?? "");
+  if (env.LS_VARIANT_PREMIUM && vid === String(env.LS_VARIANT_PREMIUM)) return "premium";
+  if (env.LS_VARIANT_PRO && vid === String(env.LS_VARIANT_PRO)) return "pro";
+  const nombre = ((attrs.variant_name || "") + " " + (attrs.product_name || "")).toLowerCase();
+  return nombre.includes("premium") ? "premium" : "pro";
+}
+
+async function enviarEmail(env, para, codigo, plan) {
+  const from = env.EMAIL_FROM || "AutoFaceless Studio <licencias@autofaceless.studio>";
+  const nombrePlan = plan === "premium" ? "Premium" : "Pro";
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0f0f0f">
+      <h2 style="color:#c4231b">¡Gracias por unirte a AutoFaceless ${nombrePlan}! 🎬</h2>
+      <p>Aquí está tu código de licencia. Actívalo dentro de la app:</p>
+      <p style="background:#f4ece6;border:1px solid #e5e5e5;border-radius:8px;padding:14px;
+         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all">${codigo}</p>
+      <p><b>Cómo activarlo:</b></p>
+      <ol style="line-height:1.7">
+        <li>Abre AutoFaceless Studio.</li>
+        <li>Arriba a la derecha, entra a <b>🔑 Claves API / Licencia</b>.</li>
+        <li>Pega el código y dale <b>Activar</b>.</li>
+      </ol>
+      <p style="color:#606060;font-size:13px">Tu licencia se renueva con tu suscripción; en cada
+      renovación te llegará un código fresco a este correo.</p>
+      <p style="color:#909090;font-size:12px">¿Dudas? Responde a este correo. — AutoFaceless Studio</p>
+    </div>`;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [para], subject: `Tu licencia de AutoFaceless ${nombrePlan}`, html }),
+  });
+  return r.ok;
+}
+
+async function emisorWebhook(request, env) {
+  const cuerpo = await request.text();
+  const firma = request.headers.get("X-Signature");
+  if (!await firmaWebhookValida(env.LS_SIGNING_SECRET, cuerpo, firma))
+    return json({ error: "Firma inválida." }, 401);
+
+  let evento;
+  try { evento = JSON.parse(cuerpo); } catch (_) { return json({ error: "JSON inválido." }, 400); }
+
+  const nombreEvento = evento?.meta?.event_name || request.headers.get("X-Event-Name") || "";
+  if (!EVENTOS_EMITIR.has(nombreEvento)) return json({ ok: true, ignorado: nombreEvento });
+
+  const attrs = evento?.data?.attributes || {};
+  const email = attrs.user_email;
+  if (!email) return json({ error: "Sin email en el evento." }, 400);
+
+  const plan = planDeVariante(env, attrs);
+  const base = attrs.renews_at ? new Date(attrs.renews_at) : new Date(Date.now() + 35 * 86400e3);
+  base.setDate(base.getDate() + DIAS_GRACIA);
+  const exp = base.toISOString().slice(0, 10);
+
+  const codigo = await generarLicencia(email, plan, exp, env.LICENSE_PRIVATE_KEY_HEX);
+  const enviado = await enviarEmail(env, email, codigo, plan);
+  if (!enviado) return json({ error: "Licencia generada pero el email falló." }, 502);
+  return json({ ok: true, plan, exp, email });
+}
+
+// ============================================================ worker
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const ruta = url.pathname;
 
-    // CORS básico (la app es local, pero por si acaso)
+    // --- Emisor (no usa licencia; se autentica por HMAC) ---
+    if (request.method === "GET" && ruta === "/health")
+      return json({ ok: true, servicio: "puente+emisor AutoFaceless" });
+    if (ruta === "/webhook/lemonsqueezy")
+      return emisorWebhook(request, env);
+
+    // --- CORS ---
     if (request.method === "OPTIONS")
       return new Response(null, { headers: {
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Headers": "*",
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS" } });
 
-    // 1) licencia
+    // --- Puente: requiere licencia ---
     const lic = await verificarLicencia(extraerLicencia(request, url));
     if (!lic.ok) {
       const msg = {
@@ -156,26 +255,22 @@ export default {
       return json({ error: msg }, lic.razon === "no_premium" ? 403 : 401);
     }
 
-    // 2) saldo
     if (ruta === "/v1/saldo") {
       const uso = await leerUso(env, lic.id);
       const saldo = {};
       for (const c of Object.keys(CUPO_MES))
         saldo[c] = { cupo: CUPO_MES[c], usado: uso.mes[c] || 0,
                      restante: Math.max(0, CUPO_MES[c] - (uso.mes[c] || 0)) };
-      return json({ id: lic.id, plan: lic.plan, exp: lic.exp, mes: mesActual(),
-                    saldo });
+      return json({ id: lic.id, plan: lic.plan, exp: lic.exp, mes: mesActual(), saldo });
     }
 
-    // 3) rutas proxy con su cobro
     // --- Gemini (Nano Banana) ---
     if (ruta.startsWith("/gg/")) {
       if (request.method === "POST" && ruta.includes(":generateContent")) {
         const cobro = await cobrar(env, lic.id, "imagen", 1);
         if (!cobro.ok) return json({ error: cobro.error }, 429);
       }
-      const destino = new URL("https://generativelanguage.googleapis.com" +
-                              ruta.slice(3));
+      const destino = new URL("https://generativelanguage.googleapis.com" + ruta.slice(3));
       destino.searchParams.set("key", env.GEMINI_API_KEY);
       return reenviar(request, destino.toString(), {});
     }
@@ -184,7 +279,6 @@ export default {
     if (ruta.startsWith("/mmx/")) {
       const camino = ruta.slice(4);
       const destino = new URL("https://api.minimax.io" + camino);
-      // GroupId lo pone el worker (la app lo manda vacío en modo puente)
       if (env.MINIMAX_GROUP_ID) destino.searchParams.set("GroupId", env.MINIMAX_GROUP_ID);
       for (const [k, v] of url.searchParams) if (k !== "GroupId") destino.searchParams.set(k, v);
       let bodyTexto;
@@ -212,14 +306,12 @@ export default {
         bodyTexto = await request.text();
         if (camino.startsWith("/v1/music")) {
           let seg = 60;
-          try { seg = Math.ceil((JSON.parse(bodyTexto).music_length_ms || 60000) / 1000); }
-          catch (e) {}
+          try { seg = Math.ceil((JSON.parse(bodyTexto).music_length_ms || 60000) / 1000); } catch (e) {}
           const cobro = await cobrar(env, lic.id, "musica", seg);
           if (!cobro.ok) return json({ error: cobro.error }, 429);
         } else if (camino.startsWith("/v1/text-to-speech")) {
           let chars = 500;
           try { chars = (JSON.parse(bodyTexto).text || "").length || 500; } catch (e) {}
-          // Eleven cuesta ~1.8× MiniMax → consume más cupo (documentado en la UI)
           const cobro = await cobrar(env, lic.id, "voz", Math.ceil(chars * 1.8));
           if (!cobro.ok) return json({ error: cobro.error }, 429);
         }

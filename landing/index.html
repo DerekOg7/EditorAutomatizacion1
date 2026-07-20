@@ -96,6 +96,14 @@
   .plan .tag { background: #c4231b; color: #fff; font: 700 11px ui-monospace, Menlo, monospace;
     letter-spacing: 1px; padding: 5px 10px; width: fit-content; }
   .precios .nota { font: 400 13px 'Roboto', sans-serif; color: #909090; }
+  .plan ul { flex: 1; }
+  .plan-cta { margin-top: 4px; text-align: center; background: #c4231b; color: #fff;
+    font: 700 15px 'Roboto', sans-serif; border-radius: 26px; padding: 12px 20px; }
+  .plan-cta:hover { background: #a81d16; text-decoration: none; }
+  .plan-cta.sec { background: #fff; color: #0f0f0f; border: 1px solid #d9d9d9; }
+  .plan-cta.sec:hover { background: #f2f2f2; }
+  .plan.destacado .plan-cta { background: #e5382c; }
+  .plan.destacado .plan-cta.sec { background: transparent; color: #fff; border-color: #555; }
 
   /* DESCARGA / CTA */
   .cta { background: #c4231b; padding: 88px 64px; }
@@ -226,6 +234,7 @@
           <li>IA gratuita ilimitada (guión, imágenes, voz)</li>
           <li>Exporta en 720p con marca de agua</li>
         </ul>
+        <a class="plan-cta sec" href="#descargar">Descargar gratis</a>
       </div>
       <div class="plan">
         <h3>Pro</h3>
@@ -235,6 +244,8 @@
           <li>Exportación ilimitada</li>
           <li>Conecta tus propias claves de IA (BYOK)</li>
         </ul>
+        <!-- Derek: reemplaza el href por tu link de checkout de LemonSqueezy (Pro) -->
+        <a class="plan-cta" href="REEMPLAZAR_LINK_LEMONSQUEEZY_PRO" target="_blank" rel="noopener">Suscribirme</a>
       </div>
       <div class="plan destacado">
         <span class="tag">EL FAVORITO</span>
@@ -245,6 +256,8 @@
           <li>80 imágenes IA premium + 8 min de música original</li>
           <li>Sin crear cuentas ni claves: todo incluido</li>
         </ul>
+        <!-- Derek: reemplaza el href por tu link de checkout de LemonSqueezy (Premium) -->
+        <a class="plan-cta" href="REEMPLAZAR_LINK_LEMONSQUEEZY_PREMIUM" target="_blank" rel="noopener">Suscribirme</a>
       </div>
     </div>
     <span class="nota">Los planes de pago se activan dentro de la app con un código de licencia. La descarga siempre es gratis.</span>

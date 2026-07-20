@@ -84,8 +84,12 @@ curl https://puente-autofaceless.derekog7.workers.dev/health   # {ok:true,...}
 ```
 Y una compra real de prueba en modo test de LemonSqueezy debe llegarte al correo.
 
-## Limitación conocida (mejora futura)
+## Auto-renovación (ya implementada)
 
-Los suscriptores **mensuales** reciben un código nuevo cada mes y deben re-pegarlo.
-Para evitarlo: (a) empujar planes anuales, o (b) añadir a la app un "auto-refresh"
-que, al estar online, pida un código fresco a un endpoint por su id de suscripción.
+El cliente pega el código **una sola vez**. El worker guarda el estado de la
+suscripción en KV (`sub:<email>`) con cada evento de LemonSqueezy, y expone
+`POST /licencia/refrescar` (verifica la firma → si la suscripción sigue activa,
+devuelve un código fresco). La app llama a ese endpoint al arrancar y cada 12 h
+(`editor.refrescar_licencia_online`), así se renueva sola mientras el cliente
+pague. Si cancela, deja de refrescar y la licencia caduca sola. Por eso el correo
+con el código solo se manda en la PRIMERA compra (las renovaciones son silenciosas).

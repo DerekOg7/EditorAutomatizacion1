@@ -198,6 +198,41 @@ async function enviarEmail(env, para, codigo, plan) {
   return r.ok;
 }
 
+// fecha de vencimiento a partir de la suscripción (renovación/fin + gracia)
+function expDeSub(hastaISO) {
+  const base = hastaISO ? new Date(hastaISO) : new Date(Date.now() + 35 * 86400e3);
+  base.setDate(base.getDate() + DIAS_GRACIA);
+  return base.toISOString().slice(0, 10);
+}
+
+// Guarda el estado actual de la suscripción en KV (para la auto-renovación).
+async function snapshotSub(env, attrs) {
+  const email = attrs.user_email;
+  if (!email) return;
+  const status = attrs.status || "active";
+  const activa = ["active", "on_trial", "past_due", "cancelled"].includes(status);
+  const hasta = attrs.ends_at || attrs.renews_at || null;   // ends_at si está cancelada
+  await env.CUPOS.put(`sub:${email}`,
+    JSON.stringify({ plan: planDeVariante(env, attrs), activa, hasta }),
+    { expirationTtl: 400 * 86400 });
+}
+
+// Verifica SOLO la firma (sin exigir vigencia ni plan) — para refrescar.
+async function verificarFirma(codigo) {
+  try {
+    codigo = (codigo || "").trim().replace(/\s+/g, "");
+    const p = codigo.split(".");
+    if (p.length !== 3 || p[0] !== "AFS1") return { ok: false };
+    const payload = b64uDec(p[1]);
+    const llave = await crypto.subtle.importKey(
+      "raw", hexABytes(LLAVE_PUBLICA_HEX), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", llave, b64uDec(p[2]), payload))
+      return { ok: false };
+    const d = JSON.parse(new TextDecoder().decode(payload));
+    return { ok: true, id: d.id, plan: d.plan };
+  } catch (e) { return { ok: false }; }
+}
+
 async function emisorWebhook(request, env) {
   const cuerpo = await request.text();
   const firma = request.headers.get("X-Signature");
@@ -208,21 +243,32 @@ async function emisorWebhook(request, env) {
   try { evento = JSON.parse(cuerpo); } catch (_) { return json({ error: "JSON inválido." }, 400); }
 
   const nombreEvento = evento?.meta?.event_name || request.headers.get("X-Event-Name") || "";
-  if (!EVENTOS_EMITIR.has(nombreEvento)) return json({ ok: true, ignorado: nombreEvento });
-
   const attrs = evento?.data?.attributes || {};
-  const email = attrs.user_email;
-  if (!email) return json({ error: "Sin email en el evento." }, 400);
 
-  const plan = planDeVariante(env, attrs);
-  const base = attrs.renews_at ? new Date(attrs.renews_at) : new Date(Date.now() + 35 * 86400e3);
-  base.setDate(base.getDate() + DIAS_GRACIA);
-  const exp = base.toISOString().slice(0, 10);
+  // Cualquier evento de suscripción → actualiza el estado en KV (auto-renovación).
+  if (nombreEvento.startsWith("subscription")) await snapshotSub(env, attrs);
 
-  const codigo = await generarLicencia(email, plan, exp, env.LICENSE_PRIVATE_KEY_HEX);
-  const enviado = await enviarEmail(env, email, codigo, plan);
-  if (!enviado) return json({ error: "Licencia generada pero el email falló." }, 502);
-  return json({ ok: true, plan, exp, email });
+  // Solo la PRIMERA compra manda el código por correo (las renovaciones se
+  // refrescan solas dentro de la app; ya no hay correo cada mes).
+  if (nombreEvento === "subscription_created" && attrs.user_email) {
+    const plan = planDeVariante(env, attrs);
+    const codigo = await generarLicencia(attrs.user_email, plan,
+      expDeSub(attrs.ends_at || attrs.renews_at), env.LICENSE_PRIVATE_KEY_HEX);
+    await enviarEmail(env, attrs.user_email, codigo, plan);
+  }
+  return json({ ok: true, evento: nombreEvento });
+}
+
+// La app pide un código fresco si la suscripción sigue activa (auto-renovación).
+async function refrescarLicencia(request, env) {
+  const body = await request.json().catch(() => ({}));
+  const v = await verificarFirma(body.codigo || "");
+  if (!v.ok) return json({ error: "Licencia inválida." }, 401);
+  const sub = await env.CUPOS.get(`sub:${v.id}`, "json");
+  if (!sub || !sub.activa) return json({ activa: false });
+  const codigo = await generarLicencia(v.id, sub.plan, expDeSub(sub.hasta),
+                                       env.LICENSE_PRIVATE_KEY_HEX);
+  return json({ activa: true, codigo, plan: sub.plan });
 }
 
 // ============================================================ worker
@@ -236,6 +282,8 @@ export default {
       return json({ ok: true, servicio: "puente+emisor AutoFaceless" });
     if (ruta === "/webhook/lemonsqueezy")
       return emisorWebhook(request, env);
+    if (ruta === "/licencia/refrescar")     // auto-renovación (la app pide código fresco)
+      return refrescarLicencia(request, env);
 
     // --- CORS ---
     if (request.method === "OPTIONS")

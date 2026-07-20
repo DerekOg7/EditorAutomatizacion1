@@ -1491,6 +1491,12 @@ def exportar_union_estado():
     return jsonify(get_estado("__union__"))
 
 
+# Auto-renovación de licencia: al arrancar (y cada 12 h) la app pide al puente un
+# código fresco si la suscripción sigue activa. Así el cliente paga y no vuelve a
+# tocar nada. Best-effort; corre tanto en dev como empaquetada (app.py se importa).
+threading.Thread(target=editor._bucle_refresco_licencia, daemon=True).start()
+
+
 if __name__ == "__main__":
     PROYECTOS.mkdir(exist_ok=True)
     app.run(host="127.0.0.1", port=5178, threaded=True)

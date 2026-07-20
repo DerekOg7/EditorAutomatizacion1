@@ -1218,6 +1218,39 @@ def _licencia_premium():
     return False, ""
 
 
+def refrescar_licencia_online():
+    """Auto-renovación: si hay licencia instalada, pide al puente un código fresco
+    (si la suscripción sigue activa) y lo guarda. Así el cliente pega el código
+    UNA vez y, mientras pague, la app se renueva sola. Best-effort y silencioso:
+    si no hay internet o la suscripción no está activa, no cambia nada."""
+    try:
+        import licencia
+        import requests
+        codigo = (licencia.leer_licencia_guardada() or "").strip()
+        if not codigo:
+            return
+        r = requests.post(PUENTE_URL + "/licencia/refrescar",
+                          json={"codigo": codigo}, timeout=15)
+        if not r.ok:
+            return
+        d = r.json()
+        nuevo = (d.get("codigo") or "").strip()
+        if d.get("activa") and nuevo and nuevo != codigo \
+                and licencia.verificar_codigo(nuevo).get("valido"):
+            licencia.guardar_licencia(nuevo)
+    except Exception:
+        pass
+
+
+def _bucle_refresco_licencia():
+    """Refresca la licencia al arrancar y luego cada 12 h (por si la app se queda
+    abierta días). Hilo daemon, iniciado desde la app."""
+    import time
+    while True:
+        refrescar_licencia_online()
+        time.sleep(12 * 3600)
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")

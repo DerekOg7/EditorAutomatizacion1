@@ -655,6 +655,7 @@ def listar_proyectos():
             "imagenes": sum(1 for e in escenas
                             if editor.medio_de_escena(d, e["n"])[0]),
             "video": (d / "video.mp4").exists(),
+            "tipo": editor.leer_ajustes(d).get("tipo", ""),
             "grupo": asign.get(d.name),
             "estado": get_estado(d.name),
         })

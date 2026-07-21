@@ -2315,12 +2315,20 @@ let tutPasos = [], tutIdx = 0;
 const tutDelay = ms => new Promise(r => setTimeout(r, ms));
 
 function construirPasosTutorial() {
-  const hay = proyectos && proyectos.length;
-  const abrirDemo = async () => { if (!actual && hay) { try { await abrirHistoriaEnEditor(proyectos[0].nombre); } catch (e) {} } };
+  // El demo del editor necesita un proyecto de VIDEO (los relax abren su propio
+  // formulario, no el editor de escenas). Si no hay ninguno, se usa la versión
+  // reducida (tarjetas explicativas, sin resaltar controles del editor).
+  const demo = (proyectos || []).find(p => p.tipo !== 'relax');
+  const hay = !!demo;
+  const abrirDemo = async () => {
+    if (demo && (!actual || actual.nombre !== demo.nombre || pagina !== 'editor')) {
+      try { await abrirHistoriaEnEditor(demo.nombre); } catch (e) {}
+    }
+  };
   const pasos = [
     { titulo: L('¡Hola! Te enseño la app 👋', 'Hi! Let me show you around 👋'),
-      texto: L('En 5 pasos vas a entender cómo se crea un video completo. Solo lee y pulsa «Siguiente»; puedes salir cuando quieras.',
-               'In 5 steps you\'ll learn how a full video gets made. Just read and hit "Next"; you can exit anytime.') },
+      texto: L('Te muestro cómo se crea un video de principio a fin: nicho → guión → voz → edición → exportación. Solo lee y pulsa «Siguiente»; puedes salir cuando quieras.',
+               'I\'ll show you how a video gets made from start to finish: niche → script → voice → editing → export. Just read and hit "Next"; you can exit anytime.') },
     { page: 'home', sel: '.nicho:not(.bloq)',
       titulo: L('1 · Elige tu nicho', '1 · Pick your niche'),
       texto: L('Cada nicho es un estilo de video listo para producir. Aquí darás clic en «Empezar» para arrancar tu historia.',
@@ -2410,37 +2418,69 @@ async function mostrarPasoTut() {
   if (p.antes) { try { await p.antes(); } catch (e) {} await tutDelay(360); }
   // 3) colocar el spotlight — solo si seguimos en este mismo paso (anti-carrera)
   await tutDelay(40);
-  if (idxEste === tutIdx) tutColocar(p.sel);
+  if (idxEste === tutIdx) tutColocar(p.sel, idxEste);
 }
 
-function tutColocar(sel) {
-  const hueco = $('tut-hueco'), globo = $('tut-globo');
-  let t = sel ? document.querySelector(sel) : null;
-  if (t && t.offsetWidth === 0 && t.offsetHeight === 0) t = null;   // oculto → tarjeta centrada
-  hueco.classList.add('on');
-  if (t) {
-    try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
-    const r = t.getBoundingClientRect(), pad = 8;
+function tutColocar(sel, token) {
+  if (token == null) token = tutIdx;
+  const t = sel ? document.querySelector(sel) : null;
+  if (!sel || !t) { tutCentrar(); return; }                        // sin objetivo → tarjeta centrada
+  const visible = () => t.isConnected && (t.offsetWidth > 0 || t.offsetHeight > 0);
+  if (!visible()) tutCentrar();                                    // aún cargando → tarjeta central mientras tanto
+  const pintar = () => {
+    if (token !== tutIdx || !visible()) return;
+    let r = t.getBoundingClientRect();
+    if (r.bottom < 60 || r.top > innerHeight - 60) {               // casi fuera de vista → traerlo al centro
+      try { t.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) {}
+      r = t.getBoundingClientRect();
+    }
+    const hueco = $('tut-hueco'), pad = 8;
+    hueco.classList.add('on');
     hueco.style.left = (r.left - pad) + 'px';
     hueco.style.top = (r.top - pad) + 'px';
     hueco.style.width = (r.width + pad * 2) + 'px';
     hueco.style.height = (r.height + pad * 2) + 'px';
-    const gw = globo.offsetWidth || 340, gh = globo.offsetHeight || 200;
-    let top = r.bottom + 14;
-    if (top + gh > innerHeight - 12) top = Math.max(12, r.top - gh - 14);
-    const left = Math.min(Math.max(12, r.left), innerWidth - gw - 12);
-    globo.style.transform = '';
-    globo.style.left = left + 'px';
-    globo.style.top = top + 'px';
-  } else {
-    hueco.style.left = (innerWidth / 2) + 'px';
-    hueco.style.top = (innerHeight / 2) + 'px';
-    hueco.style.width = '0px';
-    hueco.style.height = '0px';
-    globo.style.left = '50%';
-    globo.style.top = '50%';
-    globo.style.transform = 'translate(-50%,-50%)';
-  }
+    tutColocarGlobo(r);
+  };
+  if (visible()) { try { t.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (e) {} }
+  requestAnimationFrame(() => requestAnimationFrame(pintar));
+  // Reencaja durante ~2.5s: el layout cambia DESPUÉS del primer pintado cuando
+  // cargan cosas async (lista de voces, apertura del proyecto en el editor,
+  // imágenes). Cada tick lee la posición fresca y el spotlight sigue al elemento.
+  let ticks = 0;
+  const iv = setInterval(() => {
+    if (token !== tutIdx || ++ticks > 14) { clearInterval(iv); return; }
+    pintar();
+  }, 180);
+}
+
+// Coloca el globo pegado al elemento resaltado, sin taparlo y sin salirse de la
+// pantalla (se adapta a móvil/pantallas chicas).
+function tutColocarGlobo(r) {
+  const globo = $('tut-globo');
+  globo.style.transform = '';
+  const gw = globo.offsetWidth || 340, gh = globo.offsetHeight || 200, m = 12;
+  let top;                                        // debajo si cabe; si no, arriba; si no, encajado
+  if (innerHeight - r.bottom >= gh + 14 + m) top = r.bottom + 14;
+  else if (r.top >= gh + 14 + m) top = r.top - gh - 14;
+  else top = Math.max(m, Math.min(innerHeight - gh - m, r.top));
+  let left;                                       // alineado al target; pantalla angosta → centrado
+  if (innerWidth - 2 * m <= gw) left = (innerWidth - gw) / 2;
+  else left = Math.min(Math.max(m, r.left), innerWidth - gw - m);
+  globo.style.left = Math.round(left) + 'px';
+  globo.style.top = Math.round(top) + 'px';
+}
+
+function tutCentrar() {
+  const hueco = $('tut-hueco'), globo = $('tut-globo');
+  hueco.classList.add('on');
+  hueco.style.left = (innerWidth / 2) + 'px';
+  hueco.style.top = (innerHeight / 2) + 'px';
+  hueco.style.width = '0px';
+  hueco.style.height = '0px';
+  globo.style.transform = 'translate(-50%,-50%)';
+  globo.style.left = '50%';
+  globo.style.top = '50%';
 }
 
 function tutSiguiente() { if (tutIdx >= tutPasos.length - 1) return cerrarTutorial(); tutIdx++; mostrarPasoTut(); }
@@ -2449,7 +2489,7 @@ function cerrarTutorial() {
   localStorage.setItem('afv_tutorial_visto', '1');
   ['tut-hueco', 'tut-cazador', 'tut-globo'].forEach(id => $(id).classList.remove('on'));
 }
-window.addEventListener('resize', () => { if ($('tut-globo').classList.contains('on')) tutColocar(tutPasos[tutIdx] && tutPasos[tutIdx].sel); });
+window.addEventListener('resize', () => { if ($('tut-globo').classList.contains('on')) tutColocar(tutPasos[tutIdx] && tutPasos[tutIdx].sel, tutIdx); });
 window.addEventListener('keydown', e => {
   if (!$('tut-globo').classList.contains('on')) return;
   if (e.key === 'Escape') cerrarTutorial();

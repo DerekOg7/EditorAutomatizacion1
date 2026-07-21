@@ -747,6 +747,32 @@ MVP lanzado al mercado. Piezas del lanzamiento:
   PENDIENTES de Derek: ID de Formspree, publicar en Netlify/Vercel, y que las
   Releases sean públicas.
 
+## Correcciones post-lanzamiento (bugs de testers, v1.1 en curso)
+
+Bugs reportados por testers antes de "lanzar bien". NO se ha reempaquetado aún
+(se acumulan en un solo build v1.1). Cambios ya commiteados:
+
+- **Asistente de guión ya no falla en la cara** (`/api/guion/chat`): si el
+  proveedor elegido no tiene cuota (OpenAI 429) o falla, y el gratis (Pollinations)
+  está caído, antes se veía el error crudo. Ahora hay una **cadena de respaldo**:
+  intenta el proveedor elegido → cualquier otra clave de pago que el usuario tenga
+  (Claude/Gemini/OpenAI) → el gratis. Devuelve un `aviso` suave si tuvo que cambiar.
+  Además el modelo de Gemini por defecto pasó a `gemini-flash-latest` (alias a
+  prueba de deprecaciones).
+- **Deep search del tema (estilo NotebookLM)**: botón "🔍 Investigar el tema" en el
+  Estudio de guión. `editor.investigar_tema()` usa **Gemini + búsqueda de Google en
+  vivo** (grounding, `tools:[{google_search:{}}]` en `gemini-2.5-flash` — el alias
+  -latest a veces no trae la herramienta) → dossier de 3 secciones: DATOS CLAVE
+  (cifras/fechas/nombres), ÁNGULOS Y GANCHOS, y ELEMENTOS VISUALES (cada uno con su
+  búsqueda en inglés entre paréntesis, para mejorar las imágenes) + fuentes reales
+  clicables (`groundingChunks`). Degrada con elegancia: sin clave de Gemini o con
+  429 arma el dossier con el conocimiento del modelo (marcado "sin web"). El dossier
+  se guarda en el chat del guión con `rol:"investigacion"` (persiste, se pinta como
+  tarjeta, NO se manda como "mensaje" para no romper el turnado de Claude) y viaja
+  en el campo `dossier` de `/api/guion/chat`, que lo funde en el prompt de sistema.
+  Verificado e2e con Gemini real: faro de Eilean Mor → 8 fuentes, guión citando la
+  fecha exacta y los nombres de los fareros.
+
 ## Estado actual: v1.0 (LANZAMIENTO — MVP en el mercado)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.

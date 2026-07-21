@@ -39,6 +39,10 @@ datas += [
     (_ff_dir, "ffmpeg"),
 ]
 
+# Icono de la app (marca AF): .ico en Windows, .icns en macOS.
+_icono = ("empaquetado/icono/AutoFaceless.ico" if ES_WIN
+          else "empaquetado/icono/AutoFaceless.icns")
+
 a = Analysis(
     ["scripts/lanzador.py"],
     pathex=["."],
@@ -69,6 +73,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=False,
+    icon=_icono,
 )
 
 coll = COLLECT(
@@ -87,7 +92,7 @@ if ES_MAC:
     app = BUNDLE(
         coll,
         name=f"{nombre_app}.app",
-        icon=None,
+        icon=_icono,
         bundle_identifier="com.autofacelessvideo.editor",
         info_plist={
             "CFBundleName": nombre_app,

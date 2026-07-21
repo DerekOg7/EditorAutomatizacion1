@@ -629,6 +629,30 @@
     resize: vertical; text-align: center; }
   #lic-msg { min-height: 20px; font-size: 13px; margin-top: 8px; }
   #lic-estado { font-size: 13px; color: var(--tenue); margin: -6px 0 14px; }
+  /* pantalla de planes (unirse a Premium) */
+  .lic-caja { max-width: 760px; }
+  .planes-grid { display: flex; gap: 16px; margin: 6px 0 14px; text-align: left; }
+  .plan-card { flex: 1; border: 1px solid var(--borde); border-radius: 16px; padding: 20px 18px 18px;
+    position: relative; background: var(--panel); display: flex; flex-direction: column; }
+  .plan-card.destacado { border: 2px solid var(--acento); box-shadow: 0 12px 34px rgba(196,35,27,.14); }
+  .plan-badge { position: absolute; top: -11px; left: 18px; background: var(--acento); color: #fff;
+    font: 800 10px 'Roboto', sans-serif; letter-spacing: .6px; padding: 3px 10px; border-radius: 10px; }
+  .plan-nom { font: 800 16px 'Roboto', sans-serif; color: var(--texto); }
+  .plan-precio { font: 900 30px/1 'Roboto', sans-serif; color: var(--texto); margin: 6px 0 14px; }
+  .plan-precio span { font: 600 13px 'Roboto', sans-serif; color: var(--tenue); }
+  .plan-lista { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+  .plan-lista li { font: 400 13px/1.45 'Roboto', sans-serif; color: var(--texto); padding-left: 22px; position: relative; }
+  .plan-lista li::before { content: "✓"; position: absolute; left: 0; top: 0; color: var(--ok); font-weight: 800; }
+  .plan-btn { margin-top: auto; text-align: center; text-decoration: none; display: block; padding: 12px;
+    border-radius: 12px; font: 700 14px 'Roboto', sans-serif; background: var(--acento); color: #fff; border: 1px solid var(--acento); }
+  .plan-btn:hover { background: var(--acento2); border-color: var(--acento2); }
+  .lic-nota { font-size: 12px; color: var(--tenue); margin: 0 0 16px; line-height: 1.5; }
+  #lic-ya-tengo { width: 100%; padding: 13px; font-size: 15px; margin-bottom: 8px; }
+  #lic-cerrar { width: 100%; padding: 11px; background: none; border: 1px solid var(--borde); color: var(--tenue); }
+  #lic-cerrar:hover { color: var(--texto); border-color: var(--borde2); }
+  .lic-link { background: none; border: 0; color: var(--tenue); cursor: pointer; font: 600 13px 'Roboto', sans-serif; margin-top: 12px; }
+  .lic-link:hover { color: var(--texto); }
+  @media (max-width: 640px) { .planes-grid { flex-direction: column; } .lic-caja { max-width: 440px; } }
   #tb-lic { display: none; align-items: center; gap: 6px; background: var(--acento-suave);
     color: var(--acento); border-radius: 14px; padding: 5px 12px; font: 600 12px 'Roboto', sans-serif; }
   #tb-lic.on { display: inline-flex; }
@@ -784,16 +808,50 @@
 <body>
 
 <div id="licencia">
-  <div class="bienv-caja">
-    <div class="iso iso-96" style="margin:0 auto 20px"><div class="cabeza"></div><div class="hombros"></div></div>
+  <div class="bienv-caja lic-caja">
+    <div class="iso iso-96" style="margin:0 auto 18px"><div class="cabeza"></div><div class="hombros"></div></div>
     <div class="bienv-marca">AutoFaceless <span>Studio</span></div>
-    <p class="bienv-tagline" data-i18n="lic_intro">Pega tu código de licencia para activar la app.</p>
-    <div id="lic-estado"></div>
-    <textarea id="lic-codigo" rows="3" data-i18n-ph="lic_ph" placeholder="AFS1..."></textarea>
-    <button class="primario bienv-start" onclick="activarLicencia()" data-i18n="lic_activate">Activar licencia</button>
-    <button id="lic-cerrar" onclick="cerrarLicencia()" style="display:none;width:100%;margin-top:8px" data-i18n="lic_keep_free">Seguir en la versión gratis</button>
-    <div id="lic-msg"></div>
-    <div style="font-size:11px;color:var(--tenue);margin-top:16px" data-i18n="lic_help">¿No tienes un código? Escríbenos para unirte a la beta.</div>
+
+    <!-- VISTA 1 · planes / paquetes -->
+    <div id="lic-planes">
+      <p class="bienv-tagline" data-i18n="lic_planes_intro">Elige tu plan y desbloquea todo el potencial.</p>
+      <div class="planes-grid">
+        <div class="plan-card">
+          <div class="plan-nom">Pro</div>
+          <div class="plan-precio">$14.99<span>/mes</span></div>
+          <ul class="plan-lista">
+            <li data-i18n="lic_pro_1">1080p y sin marca de agua</li>
+            <li data-i18n="lic_pro_2">Exportación ilimitada</li>
+            <li data-i18n="lic_pro_3">Conecta tus propias claves de IA (BYOK)</li>
+          </ul>
+          <a class="primario plan-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/12511448-e384-46b2-a10b-1c20eccab944" target="_blank" rel="noopener" data-i18n="lic_suscribirme">Suscribirme</a>
+        </div>
+        <div class="plan-card destacado">
+          <div class="plan-badge" data-i18n="lic_popular">EL FAVORITO</div>
+          <div class="plan-nom">Premium</div>
+          <div class="plan-precio">$24.99<span>/mes</span></div>
+          <ul class="plan-lista">
+            <li data-i18n-html="lic_prem_1"><b>90 min de voz profesional al mes</b> (≈ 9 videos)</li>
+            <li data-i18n="lic_prem_2">80 imágenes IA premium + 8 min de música original</li>
+            <li data-i18n="lic_prem_3">Sin crear cuentas ni claves: todo incluido</li>
+          </ul>
+          <a class="primario plan-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/0bf42b90-647a-4025-bcdc-b94126a9ed19" target="_blank" rel="noopener" data-i18n="lic_suscribirme">Suscribirme</a>
+        </div>
+      </div>
+      <p class="lic-nota" data-i18n="lic_nota">Tras suscribirte te llega tu código de licencia por correo. Pégalo aquí con «Ya tengo mi licencia».</p>
+      <button id="lic-ya-tengo" class="primario" onclick="licVista('activar')" data-i18n="lic_ya_tengo">🔑 Ya tengo mi licencia</button>
+      <button id="lic-cerrar" onclick="cerrarLicencia()" data-i18n="lic_keep_free">Seguir en la versión gratis</button>
+    </div>
+
+    <!-- VISTA 2 · pegar el código -->
+    <div id="lic-activar" style="display:none">
+      <p class="bienv-tagline" data-i18n="lic_intro">Pega tu código de licencia para activar la app.</p>
+      <div id="lic-estado"></div>
+      <textarea id="lic-codigo" rows="3" data-i18n-ph="lic_ph" placeholder="AFS1..."></textarea>
+      <button class="primario bienv-start" onclick="activarLicencia()" data-i18n="lic_activate">Activar licencia</button>
+      <div id="lic-msg"></div>
+      <button class="lic-link" onclick="licVista('planes')" data-i18n="lic_ver_planes">← Ver los planes</button>
+    </div>
   </div>
 </div>
 
@@ -1934,6 +1992,15 @@ const EN = {
   lic_activate: "Activate license",
   lic_help: "Don't have a code? Contact us to join the beta.",
   lic_keep_free: "Continue with the free version",
+  lic_planes_intro: "Pick your plan and unlock the full potential.",
+  lic_suscribirme: "Subscribe", lic_popular: "MOST POPULAR",
+  lic_pro_1: "1080p and no watermark", lic_pro_2: "Unlimited exports",
+  lic_pro_3: "Connect your own AI keys (BYOK)",
+  lic_prem_1: "<b>90 min of pro voice-over per month</b> (≈ 9 videos)",
+  lic_prem_2: "80 premium AI images + 8 min of original music",
+  lic_prem_3: "No accounts or keys needed: all included",
+  lic_nota: "After subscribing you'll get your license code by email. Paste it here with \"I already have my license\".",
+  lic_ya_tengo: "🔑 I already have my license", lic_ver_planes: "← See the plans",
   exp_free_t: "Free version",
   exp_free_d: "The video will export with a small watermark and up to 720p. Pro exports 1080p with no watermark.",
   exp_free_btn: "✨ Upgrade to Pro",
@@ -5444,16 +5511,25 @@ function renderSidebarStories() { if (typeof pintarSidebarStories === 'function'
 
 /* ---------------- licencia ---------------- */
 
+// alterna entre la vista de PLANES (paquetes + comprar) y la de ACTIVAR (pegar código)
+function licVista(v) {
+  $('lic-planes').style.display = (v === 'planes') ? '' : 'none';
+  $('lic-activar').style.display = (v === 'activar') ? '' : 'none';
+  if (v === 'activar') { $('lic-msg').textContent = ''; setTimeout(() => $('lic-codigo').focus(), 60); }
+}
+
 function mostrarLicencia(lic) {
   $('licencia').style.display = 'flex';
   $('bienvenida').style.display = 'none';
   $('lic-cerrar').style.display = 'none';   // es el gate: no se puede cerrar sin activar
+  const vencida = lic && lic.razon === 'vencida';
   const est = $('lic-estado');
-  if (lic && lic.razon === 'vencida') {
+  if (vencida) {
     est.style.color = 'var(--alerta)';
-    est.textContent = L('Tu licencia venció' + (lic.exp ? ' el ' + lic.exp : '') + '. Pega una nueva para seguir.',
-                        'Your license expired' + (lic.exp ? ' on ' + lic.exp : '') + '. Paste a new one to continue.');
+    est.textContent = L('Tu licencia venció' + (lic.exp ? ' el ' + lic.exp : '') + '. Renueva o pega una nueva.',
+                        'Your license expired' + (lic.exp ? ' on ' + lic.exp : '') + '. Renew or paste a new one.');
   } else { est.textContent = ''; }
+  licVista(vencida ? 'activar' : 'planes');
 }
 
 async function activarLicencia() {
@@ -5492,12 +5568,13 @@ function pintarPlan(lic) {
   b.textContent = L('🆓 Gratis · Mejora a Pro', '🆓 Free · Upgrade to Pro');
 }
 
-// mostrar la pantalla de licencia para ACTIVAR/actualizar sin estar bloqueado
+// abrir la pantalla de planes (unirse a Premium) — no bloquea, se puede seguir gratis
 function abrirLicencia() {
   $('lic-codigo').value = '';
   $('lic-msg').textContent = '';
   $('lic-estado').textContent = '';
   $('lic-cerrar').style.display = '';   // se puede cerrar (no es el gate inicial)
+  licVista('planes');
   $('licencia').style.display = 'flex';
 }
 function cerrarLicencia() { $('licencia').style.display = 'none'; }

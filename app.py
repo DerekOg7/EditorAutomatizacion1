@@ -526,13 +526,36 @@ def guion_chat():
     mensajes = d.get("mensajes") or []
     if not mensajes:
         return jsonify({"error": "mensaje vacío"}), 400
-    try:
-        texto = editor.chat_guion(mensajes,
-                                  proveedor=d.get("proveedor", "gratis"),
-                                  modelo=d.get("modelo", ""))
-        return jsonify({"texto": texto})
-    except ErrorPipeline as e:
-        return jsonify({"error": str(e)}), 400
+    prov = d.get("proveedor", "gratis")
+    modelo = d.get("modelo", "")
+    env = editor.leer_env()
+    CLAVE = {"claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY",
+             "openai": "OPENAI_API_KEY"}
+    # Cadena robusta: el proveedor elegido primero, luego CUALQUIER otra clave de
+    # pago que el usuario tenga puesta (por si la elegida no tiene cuota/falla), y
+    # al final la IA gratis. Así SIEMPRE sale un guión aunque un proveedor esté
+    # sin cuota o el gratis (Pollinations) esté caído.
+    cadena = [prov]
+    for p in ("claude", "gemini", "openai"):
+        if p not in cadena and env.get(CLAVE[p]):
+            cadena.append(p)
+    if "gratis" not in cadena:
+        cadena.append("gratis")
+    NOM = {"claude": "Claude", "gemini": "Gemini", "openai": "ChatGPT",
+           "gratis": "la IA gratis"}
+    err_final = None
+    for i, p in enumerate(cadena):
+        try:
+            texto = editor.chat_guion(mensajes, proveedor=p,
+                                      modelo=(modelo if p == prov else ""))
+            resp = {"texto": texto}
+            if i > 0:      # no fue el elegido → avisar con cuál se generó
+                resp["aviso"] = (f"Tu proveedor no estaba disponible, así que usé "
+                                 f"{NOM.get(p, p)} para no dejarte esperando.")
+            return jsonify(resp)
+        except ErrorPipeline as e:
+            err_final = str(e)
+    return jsonify({"error": err_final or "No pude generar el guión."}), 400
 
 
 @app.get("/api/guiones")

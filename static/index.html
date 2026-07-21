@@ -2765,6 +2765,7 @@ async function estEnviar() {
                 || L('Aquí tienes el guión.','Here is your script.');
       huboGuion = true;
     }
+    if (r.aviso) visible = 'ℹ ' + r.aviso + '\n\n' + visible;   // cayó al gratis
     estChat.push({ rol: 'asistente', texto: r.texto });
     estBurbuja('asistente', visible, huboGuion);
     estAutoGuardar();

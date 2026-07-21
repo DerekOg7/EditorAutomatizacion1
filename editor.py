@@ -990,7 +990,9 @@ def chat_guion(mensajes, proveedor="gratis", modelo="", sistema=None):
         key = env.get("GEMINI_API_KEY")
         if not key:
             err("Falta la clave de Gemini (GEMINI_API_KEY) — pégala en 🔑 Claves API.")
-        mod = modelo or env.get("GEMINI_MODEL", "gemini-2.5-flash")
+        # "gemini-flash-latest" = alias que siempre apunta al Flash vigente
+        # (a prueba de futuro: no se rompe cuando deprecan una versión concreta).
+        mod = modelo or env.get("GEMINI_MODEL", "gemini-flash-latest")
         contents = [{"role": "user" if m.get("rol") == "usuario" else "model",
                      "parts": [{"text": m.get("texto", "")}]} for m in mensajes]
         r = requests.post(

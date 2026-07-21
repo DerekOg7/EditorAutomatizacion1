@@ -528,6 +528,16 @@ def guion_chat():
         return jsonify({"error": "mensaje vacío"}), 400
     prov = d.get("proveedor", "gratis")
     modelo = d.get("modelo", "")
+    dossier = (d.get("dossier") or "").strip()
+    # Si el usuario investigó el tema (deep search), su dossier se inyecta en el
+    # prompt de sistema para que el guión salga con datos concretos y precisos.
+    sistema = editor.SISTEMA_GUIONISTA
+    if dossier:
+        sistema += ("\n\n=== INVESTIGACIÓN DEL TEMA (datos verificados que el "
+                    "usuario ya reunió) ===\n" + dossier[:6000] + "\n\nUsa estos "
+                    "datos, nombres, cifras y elementos concretos cuando escribas "
+                    "el guión, para que sea preciso y con contexto real. No "
+                    "contradigas estos hechos ni inventes otros que los sustituyan.")
     env = editor.leer_env()
     CLAVE = {"claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY",
              "openai": "OPENAI_API_KEY"}
@@ -547,7 +557,8 @@ def guion_chat():
     for i, p in enumerate(cadena):
         try:
             texto = editor.chat_guion(mensajes, proveedor=p,
-                                      modelo=(modelo if p == prov else ""))
+                                      modelo=(modelo if p == prov else ""),
+                                      sistema=sistema)
             resp = {"texto": texto}
             if i > 0:      # no fue el elegido → avisar con cuál se generó
                 resp["aviso"] = (f"Tu proveedor no estaba disponible, así que usé "
@@ -556,6 +567,21 @@ def guion_chat():
         except ErrorPipeline as e:
             err_final = str(e)
     return jsonify({"error": err_final or "No pude generar el guión."}), 400
+
+
+@app.post("/api/guion/investigar")
+def guion_investigar():
+    """Deep search del tema (estilo NotebookLM): investiga en la web y devuelve
+    un dossier con datos, ángulos y elementos visuales + fuentes."""
+    d = request.get_json(force=True) or {}
+    tema = (d.get("tema") or "").strip()
+    if not tema:
+        return jsonify({"error": "Escribe el tema que quieres investigar."}), 400
+    try:
+        res = editor.investigar_tema(tema)
+        return jsonify(res)
+    except ErrorPipeline as e:
+        return jsonify({"error": str(e)}), 400
 
 
 @app.get("/api/guiones")

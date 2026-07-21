@@ -1062,6 +1062,105 @@ def chat_guion(mensajes, proveedor="gratis", modelo="", sistema=None):
         "un proveedor con clave (🔑 Claves API) para mayor confiabilidad.")
 
 
+# --------------------------------------------------- deep search del tema
+
+SISTEMA_INVESTIGADOR = """Eres un investigador de contenido para videos "faceless" \
+de YouTube. Te dan un TEMA y devuelves un DOSSIER breve y útil que servirá para (a) \
+escribir un guión bien fundamentado y con datos concretos y (b) elegir buenas \
+imágenes. Responde SIEMPRE en el idioma del TEMA.
+
+Estructura tu respuesta EXACTAMENTE con estos tres encabezados, en este orden:
+
+DATOS CLAVE
+- 5 a 8 hechos concretos y verificables, con cifras, fechas, nombres propios y \
+lugares exactos. Prioriza lo poco conocido y sorprendente. Sin relleno ni obviedades.
+
+ÁNGULOS Y GANCHOS
+- 3 ángulos narrativos o ganchos de apertura potentes, apoyados en esos datos.
+
+ELEMENTOS VISUALES
+- 6 a 10 cosas concretas y filmables que representan el tema (lugares, objetos, \
+personas, momentos específicos). Escribe cada una y añade entre paréntesis su \
+búsqueda en inglés para imágenes. Ej: cabina de un avión antiguo (vintage airplane \
+cockpit interior).
+
+Sé conciso y factual. No inventes: si no estás seguro de una cifra, omítela o dilo."""
+
+
+def _gemini_investigar(tema):
+    """Investiga el tema con Gemini + búsqueda de Google EN VIVO (grounding).
+    Devuelve (texto_dossier, fuentes) con fuentes = [{titulo,url}]. Lanza si falla."""
+    import requests
+    env = leer_env()
+    key = env["GEMINI_API_KEY"]
+    # gemini-2.5-flash: verificado que soporta google_search (grounding) con la
+    # clave del usuario; el alias -latest a veces no trae la herramienta.
+    mod = env.get("GEMINI_RESEARCH_MODEL", "gemini-2.5-flash")
+    prompt = f"Investiga a fondo este tema y arma el dossier:\n\nTEMA: {tema}"
+    r = requests.post(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent",
+        params={"key": key},
+        json={"contents": [{"parts": [{"text": prompt}]}],
+              "systemInstruction": {"parts": [{"text": SISTEMA_INVESTIGADOR}]},
+              "tools": [{"google_search": {}}]},
+        timeout=180)
+    if not r.ok:
+        raise RuntimeError(f"gemini HTTP {r.status_code}")
+    cand = (r.json().get("candidates") or [{}])[0]
+    texto = "".join(pt.get("text", "")
+                    for pt in cand.get("content", {}).get("parts", [])).strip()
+    if not texto:
+        raise RuntimeError("gemini sin texto")
+    fuentes, vistas = [], set()
+    for ch in ((cand.get("groundingMetadata") or {}).get("groundingChunks") or []):
+        w = ch.get("web") or {}
+        u = w.get("uri")
+        if u and u not in vistas:
+            vistas.add(u)
+            fuentes.append({"titulo": w.get("title") or u, "url": u})
+        if len(fuentes) >= 8:
+            break
+    return texto, fuentes
+
+
+def investigar_tema(tema, on_progreso=None):
+    """Deep search del tema (estilo NotebookLM). Intenta Gemini con búsqueda de
+    Google en vivo (fuentes reales); si no hay clave de Gemini o falla, cae a un
+    dossier con el conocimiento del modelo (cualquier proveedor con clave, o el
+    gratis) SIN web. Devuelve {texto, fuentes, con_web, proveedor}."""
+    tema = (tema or "").strip()
+    if not tema:
+        err("Escribe primero el tema que quieres investigar.")
+    avisar = on_progreso or (lambda *_: None)
+    env = leer_env()
+    # 1) Gemini + Google Search — web real con fuentes (lo mejor)
+    if env.get("GEMINI_API_KEY"):
+        try:
+            avisar("Buscando en la web en vivo…", 30)
+            texto, fuentes = _gemini_investigar(tema)
+            return {"texto": texto, "fuentes": fuentes,
+                    "con_web": True, "proveedor": "gemini"}
+        except Exception:
+            pass   # sin cuota / sin herramienta / error → respaldo
+    # 2) Respaldo sin web: cualquier proveedor con clave, o el gratis
+    avisar("Organizando lo que se sabe del tema…", 60)
+    CLAVE = {"claude": "ANTHROPIC_API_KEY", "gemini": "GEMINI_API_KEY",
+             "openai": "OPENAI_API_KEY"}
+    cadena = [p for p in ("claude", "gemini", "openai") if env.get(CLAVE[p])]
+    cadena.append("gratis")
+    msg = [{"rol": "usuario",
+            "texto": f"Investiga a fondo este tema y arma el dossier:\n\nTEMA: {tema}"}]
+    for p in cadena:
+        try:
+            texto = chat_guion(msg, proveedor=p, sistema=SISTEMA_INVESTIGADOR)
+            if texto:
+                return {"texto": texto, "fuentes": [],
+                        "con_web": False, "proveedor": p}
+        except ErrorPipeline:
+            continue
+    err("No pude investigar el tema ahora. Reintenta en un momento.")
+
+
 def modelos_ollama():
     """Modelos instalados en Ollama local, con su tamaño en GB. [] si no corre."""
     import requests

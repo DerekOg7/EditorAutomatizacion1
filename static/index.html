@@ -711,6 +711,27 @@
   .est-msg.pensando { color: var(--tenue); animation: afPulse 1.2s infinite; }
   .est-chip-guion { display: inline-block; margin-top: 8px; font-size: 12px; color: var(--ok);
     border: 1px solid var(--ok); border-radius: 8px; padding: 2px 10px; }
+  /* Deep search (investigación del tema) */
+  .est-inv-bar { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border-bottom: 1px solid #eee; background: #fafafa; flex-wrap: wrap; }
+  .est-inv-bar .b-inv { padding: 6px 12px; font-size: 12.5px; font-weight: 500; }
+  .est-inv-hint { font: 400 12px 'Roboto', sans-serif; color: var(--tenue); }
+  .est-inv-chip { display: none; align-items: center; gap: 6px; font: 500 12px 'Roboto', sans-serif;
+    color: #1552a8; background: #e8f0fb; border: 1px solid #bcd4f5; border-radius: 20px; padding: 3px 6px 3px 11px; }
+  .est-inv-chip.on { display: inline-flex; }
+  .est-inv-chip button { border: 0; background: none; color: #1552a8; cursor: pointer;
+    font-size: 15px; line-height: 1; padding: 0 4px; }
+  .est-msg.investigacion { align-self: stretch; max-width: 100%; background: #f4f8ff;
+    border: 1px solid #d3e3fb; color: var(--texto); border-radius: 14px; padding: 14px 16px; }
+  .est-msg.investigacion .inv-tit { font-weight: 600; font-size: 13.5px; color: #1552a8;
+    display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .est-msg.investigacion .inv-cuerpo { font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+  .est-fuentes { margin-top: 11px; padding-top: 10px; border-top: 1px dashed #cddcf3; font-size: 12px; }
+  .est-fuentes b { color: var(--tenue); font-weight: 500; }
+  .est-fuentes a { display: inline-block; margin: 3px 6px 0 0; padding: 2px 9px; background: #fff;
+    border: 1px solid #cddcf3; border-radius: 12px; color: #1552a8; text-decoration: none; max-width: 220px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+  .est-fuentes a:hover { background: #eef4fe; }
   #est-entrada { display: flex; gap: 10px; padding: 14px; border-top: 1px solid #eee; }
   #est-texto { flex: 1; resize: none; height: 44px; border-radius: 22px; padding: 11px 18px; line-height: 1.4; }
   #est-guion { flex: 1; resize: none; border: 0; border-radius: 0; padding: 20px;
@@ -1051,6 +1072,14 @@
             <div class="ia-avatar">IA</div>
             <span class="tt" data-i18n="gu_assistant">Asistente de guión</span>
             <span class="en-linea" data-i18n="gu_online">● en línea</span>
+          </div>
+          <div class="est-inv-bar">
+            <button class="b-inv" id="est-inv-btn" onclick="estInvestigar()" data-i18n="inv_btn">🔍 Investigar el tema</button>
+            <span class="est-inv-hint" data-i18n="inv_hint">Busca datos y fuentes reales para un guión más preciso</span>
+            <span class="est-inv-chip" id="est-inv-chip">
+              <span data-i18n="inv_active">🔍 Investigación activa</span>
+              <button onclick="estQuitarInvestigacion()" title="Quitar la investigación">✕</button>
+            </span>
           </div>
           <div id="est-mensajes"></div>
           <div id="est-entrada">
@@ -1951,6 +1980,8 @@ const EN = {
   gu_desc: "Tell the AI what your video is about. It'll ask a couple of questions and write the script for you. When you like it, move to the next step.",
   gu_saved: "Saved script:", gu_assistant: "Script assistant", gu_online: "● online",
   gu_send: "Send", gu_your: "Your script",
+  inv_btn: "🔍 Research the topic", inv_active: "🔍 Research active",
+  inv_hint: "Pulls real facts and sources for a more accurate script",
   gu_editnote: "✓ You can edit the text directly before continuing",
   gu_hint: "The button activates once you have a script.",
   gu_next: "Next: Voice-over →",
@@ -2682,6 +2713,7 @@ function estMensajeBienvenida() {
   estBurbuja('asistente', L(
     '¡Hola! Soy tu asistente de guiones. Cuéntame tu idea (tema, duración y tono) y te ayudo a convertirla en un guión listo para narrar. Si no sabes por dónde empezar, dime solo el tema y yo te guío.',
     "Hi! I'm your script assistant. Tell me your idea (topic, length and tone) and I'll help you turn it into a narration-ready script. Not sure where to start? Just give me the topic and I'll guide you."));
+  estActualizarChipInv();
 }
 
 async function estProveedores() {
@@ -2731,6 +2763,118 @@ function estBurbuja(rol, texto, conGuion = false) {
   return div;
 }
 
+// ---- Deep search: investigar el tema (estilo NotebookLM) ----
+function estBurbujaInvestigacion(entry) {
+  const div = document.createElement('div');
+  div.className = 'est-msg investigacion';
+  const tit = document.createElement('div');
+  tit.className = 'inv-tit';
+  tit.textContent = entry.con_web
+    ? L('🔍 Investigación del tema · fuentes reales de la web',
+        '🔍 Topic research · real web sources')
+    : L('🔍 Investigación del tema · organizada por la IA (sin búsqueda web)',
+        '🔍 Topic research · organized by AI (no web search)');
+  const cuerpo = document.createElement('div');
+  cuerpo.className = 'inv-cuerpo';
+  cuerpo.textContent = (entry.texto || '').trim();
+  div.appendChild(tit); div.appendChild(cuerpo);
+  if (entry.fuentes && entry.fuentes.length) {
+    const fu = document.createElement('div');
+    fu.className = 'est-fuentes';
+    const b = document.createElement('b');
+    b.textContent = L('Fuentes: ', 'Sources: ');
+    fu.appendChild(b);
+    for (const f of entry.fuentes) {
+      const a = document.createElement('a');
+      a.href = f.url; a.target = '_blank'; a.rel = 'noopener';
+      a.textContent = f.titulo || f.url;
+      a.title = f.url;
+      fu.appendChild(a);
+    }
+    div.appendChild(fu);
+  }
+  $('est-mensajes').appendChild(div);
+  $('est-mensajes').scrollTop = $('est-mensajes').scrollHeight;
+  return div;
+}
+
+function estDossierActual() {
+  // el dossier más reciente que se manda como contexto al escribir el guión
+  for (let i = estChat.length - 1; i >= 0; i--) {
+    if (estChat[i].rol === 'investigacion') return estChat[i].texto || '';
+  }
+  return '';
+}
+
+function estActualizarChipInv() {
+  const hay = !!estDossierActual();
+  $('est-inv-chip').classList.toggle('on', hay);
+}
+
+async function estInvestigar() {
+  if (estOcupado) return;
+  let tema = $('est-texto').value.trim();
+  if (!tema) {
+    tema = (prompt(L('¿Sobre qué tema quieres que investigue?',
+                     'What topic should I research?')) || '').trim();
+  }
+  if (!tema) { $('est-texto').focus(); return; }
+  estOcupado = true;
+  $('est-inv-btn').disabled = true;
+  $('est-enviar').disabled = true;
+  const pensando = estBurbuja('asistente',
+    L('🔍 Investigando el tema en la web… (esto tarda unos segundos)',
+      '🔍 Researching the topic on the web… (takes a few seconds)'));
+  pensando.classList.add('pensando');
+  try {
+    const r = await api('/api/guion/investigar', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ tema })
+    });
+    pensando.remove();
+    const entry = { rol: 'investigacion', texto: r.texto || '',
+                    fuentes: r.fuentes || [], con_web: !!r.con_web };
+    estChat.push(entry);
+    estBurbujaInvestigacion(entry);
+    estBurbuja('asistente', L(
+      'Listo. Ya tengo el contexto del tema. Ahora escribe "hazme el guión" (o pídeme el enfoque que quieras) y lo redactaré usando estos datos.',
+      'Done. I have the topic context. Now type "write the script" (or tell me the angle you want) and I\'ll write it using these facts.'));
+    estActualizarChipInv();
+    estAutoGuardar();
+  } catch (e) {
+    pensando.remove();
+    estBurbuja('asistente', '✗ ' + e.message);
+  }
+  estOcupado = false;
+  $('est-inv-btn').disabled = false;
+  $('est-enviar').disabled = false;
+  $('est-texto').focus();
+}
+
+function estQuitarInvestigacion() {
+  estChat = estChat.filter(m => m.rol !== 'investigacion');
+  // re-pinta el chat sin las tarjetas de investigación
+  $('est-mensajes').innerHTML = '';
+  if (!estChat.length) estMensajeBienvenida();
+  else estRepintar();
+  estActualizarChipInv();
+  estAutoGuardar();
+}
+
+function estRepintar() {
+  for (const m of estChat) {
+    if (m.rol === 'investigacion') { estBurbujaInvestigacion(m); continue; }
+    if (m.rol === 'usuario') {
+      estBurbuja('usuario', m.texto.replace(/^\(Guión actual[\s\S]*?\)\n\n/, ''));
+    } else {
+      const g2 = m.texto.match(/<guion>[\s\S]*?<\/guion>/);
+      estBurbuja('asistente',
+        m.texto.replace(/<guion>[\s\S]*?<\/guion>/, '').replace(/\n{3,}/g, '\n\n').trim()
+        || L('Aquí tienes el guión.', 'Here is your script.'), !!g2);
+    }
+  }
+}
+
 async function estEnviar() {
   const texto = $('est-texto').value.trim();
   if (!texto || estOcupado) return;
@@ -2742,8 +2886,10 @@ async function estEnviar() {
   const pensando = estBurbuja('asistente', L('Escribiendo…','Writing…'));
   pensando.classList.add('pensando');
   try {
-    // se manda también el guión actual como contexto si existe
-    const mensajes = [...estChat];
+    // se manda el guión actual + la investigación (dossier) como contexto si existen.
+    // Las tarjetas de investigación no van como "mensajes" (romperían el turnado
+    // de Claude); su contenido viaja aparte en `dossier` y se funde en el sistema.
+    const mensajes = estChat.filter(m => m.rol !== 'investigacion');
     const doc = $('est-guion').value.trim();
     if (doc) {
       mensajes[mensajes.length - 1] = { rol: 'usuario',
@@ -2751,7 +2897,8 @@ async function estEnviar() {
     }
     const r = await api('/api/guion/chat', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ mensajes, proveedor: $('est-prov').value,
+      body: JSON.stringify({ mensajes, dossier: estDossierActual(),
+                             proveedor: $('est-prov').value,
                              modelo: $('est-prov').value === 'local' ? $('est-modelo').value : '' })
     });
     pensando.remove();
@@ -2841,16 +2988,8 @@ async function estCargar(nombre) {
     $('est-guion').value = g.texto || '';
     $('est-mensajes').innerHTML = '';
     if (!estChat.length) estMensajeBienvenida();
-    for (const m of estChat) {
-      if (m.rol === 'usuario') {
-        estBurbuja('usuario', m.texto.replace(/^\(Guión actual[\s\S]*?\)\n\n/, ''));
-      } else {
-        const g2 = m.texto.match(/<guion>[\s\S]*?<\/guion>/);
-        estBurbuja('asistente',
-          m.texto.replace(/<guion>[\s\S]*?<\/guion>/, '').replace(/\n{3,}/g, '\n\n').trim()
-          || L('Aquí tienes el guión.','Here is your script.'), !!g2);
-      }
-    }
+    else estRepintar();
+    estActualizarChipInv();
     estDocCambio();
     localStorage.setItem('afv_guion_actual', estNombre);
     $('est-sel').value = estNombre;

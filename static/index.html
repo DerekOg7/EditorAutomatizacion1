@@ -1007,7 +1007,10 @@
             <input id="rx-nombre" type="text" placeholder="Lluvia relajante para dormir" style="width:100%;max-width:420px">
           </div>
 
-          <button id="rx-crear" class="primario" onclick="crearRelax()" data-i18n="rx_crear">🎬 Crear video relax</button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button id="rx-crear" class="primario" onclick="crearRelax()" data-i18n="rx_crear">🎬 Crear video relax</button>
+            <button id="rx-volver-video" onclick="rxVolverAlVideo()" style="display:none" data-i18n="rx_volver">← Volver a mi video (sin cambios)</button>
+          </div>
           <div id="rx-crear-msg" class="rx-aviso" style="color:var(--acento)"></div>
         </div>
 
@@ -1964,6 +1967,7 @@ const EN = {
   rx_l_dur: "4 · Length & format", rx_l_nombre: "5 · Video name",
   rx_crear: "🎬 Create relax video", rx_generando: "Creating your relaxing video…",
   rx_listo: "✅ Your video is ready!", rx_exportar: "⬇ Export / Download", rx_editar: "✏️ Adjust & regenerate", rx_otro: "＋ Create another",
+  rx_volver: "← Back to my video (no changes)",
   rx_l_mezcla: "Listen & adjust your mix", rx_h_mezcla: "Adjust each track's volume (and mute), add warmth/reverb and hear an 8s sample before generating.", rx_prev_mezcla: "▶ Play mix (8s)",
   rx_l_presets: "⭐ Ready-made mixes", rx_opcional: "optional shortcut", rx_h_presets: "Tap a card and EVERYTHING loads (sounds, music, settings) and plays right away. Tweak it after — or skip this and build yours step by step below.",
   rx_calidez: "🎛️ Warmth / tone", rx_reverb: "🌫️ Reverb / space", rx_guardar_preset: "⭐ Save mix",
@@ -4863,6 +4867,7 @@ const SUBS = {
 };
 function irA(p) {
   pagina = p;
+  if (p !== 'relax' && typeof rxPararVideo === 'function') rxPararVideo();  // no dejar audio sonando al salir
   document.querySelectorAll('.pagina').forEach(s => s.classList.remove('activa'));
   const el = $('pg-' + p);
   if (el) el.classList.add('activa');
@@ -4907,6 +4912,9 @@ function rxLimpiarPlaying() {
   rxChipSonando = null;
 }
 function rxDetener() { const a = $('rx-prev-audio'); a.pause(); rxLimpiarPlaying(); }
+// Detiene el video del resultado. Sin esto, ocultar el panel (editar / crear otro /
+// salir de la página) NO pausa el <video> y su audio sigue sonando "en el fondo".
+function rxPararVideo() { const v = $('rx-video'); if (v) { try { v.pause(); } catch (_) {} } }
 async function rxTocar(body, el) {
   const audio = $('rx-prev-audio');
   const key = JSON.stringify(body);
@@ -5117,9 +5125,11 @@ function empezarRelax() {
   rxCargarCatalogo().then(() => {
     rxInitBotones();
     rxDetener();
+    rxPararVideo();
     $('rx-form').style.display = '';
     $('rx-progreso').classList.remove('on');
     $('rx-resultado').classList.remove('on');
+    $('rx-volver-video').style.display = 'none';
     $('rx-crear-msg').textContent = '';
     rxEditando = null;
     rxPresetActivo = null;
@@ -5140,6 +5150,13 @@ function empezarRelax() {
   });
 }
 
+// Volver al video ya generado sin regenerar (salida segura del formulario de edición).
+function rxVolverAlVideo() {
+  if (!rxEditando) return;
+  rxDetener();
+  rxMostrarResultado(rxEditando);
+}
+
 // Editar/regenerar un proyecto relax existente: abre el formulario pre-rellenado.
 async function rxEditarProyecto(nombre) {
   let d;
@@ -5150,6 +5167,7 @@ async function rxEditarProyecto(nombre) {
   await rxCargarCatalogo();
   rxInitBotones();
   rxDetener();
+  rxPararVideo();
   rxPresetActivo = null;
   $('rx-form').style.display = '';
   $('rx-progreso').classList.remove('on');
@@ -5173,6 +5191,8 @@ async function rxEditarProyecto(nombre) {
   $('rx-nombre').value = nombre; $('rx-nombre').disabled = true;
   rxEditando = nombre;
   $('rx-crear').textContent = L('🔄 Regenerar video', '🔄 Regenerate video');
+  // salida segura: si el proyecto ya tiene un video hecho, ofrece volver a él sin regenerar
+  $('rx-volver-video').style.display = d.video ? '' : 'none';
   rxSincronizarControles();
   rxRenderPresets(); rxRenderSonTabs(); rxRenderSonChips();
   rxRenderMusica(); rxRenderVisuales(); rxRenderVisPrev(); rxRenderMezcla(); rxAvisoDur();

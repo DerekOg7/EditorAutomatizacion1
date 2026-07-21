@@ -773,6 +773,33 @@ Bugs reportados por testers antes de "lanzar bien". NO se ha reempaquetado aún
   Verificado e2e con Gemini real: faro de Eilean Mor → 8 fuentes, guión citando la
   fecha exacta y los nombres de los fareros.
 
+## v1.1 (icono de marca + pantalla de planes)
+
+- **Icono de la app (marca AF)**: recreado a 1024px fiel al wordmark "Af" (crema
+  `#F4ECE6` + rojo `#C4231B`, Arial Bold). Fuente en `empaquetado/icono/`:
+  `icono-1024.png` (maestro), `AutoFaceless.icns` (Mac), `AutoFaceless.ico`
+  (Windows). `empaquetar.spec`: `_icono` por SO, `EXE(icon=...)` (Windows) y
+  `BUNDLE(icon=...)` (Mac). Antes salía el icono genérico de PyInstaller. Para
+  regenerar: el bloque de Pillow + `iconutil -c icns` (ver historial del commit).
+- **Pantalla de "Unirse a Premium"** (`#licencia`): el badge `#tb-plan` y el
+  upsell del export ya NO abren solo el cuadro de pegar código. `abrirLicencia()`
+  muestra la **vista de planes** (`#lic-planes`): tarjetas Pro $14.99 / Premium
+  $24.99 (destacada "EL FAVORITO") con botón "Suscribirme" → checkout de
+  LemonSqueezy (mismas URLs que la landing). Botón **"🔑 Ya tengo mi licencia"** →
+  `licVista('activar')` (vista `#lic-activar` con el textarea del código) y
+  "← Ver los planes" para volver. "Seguir en la versión gratis" se conserva
+  (oculto solo en el gate `mostrarLicencia`, hoy dormido). i18n ES/EN (claves
+  `lic_*`; el bullet con `<b>` usa `data-i18n-html`).
+- **Dar Pro gratis** (promo de lanzamiento): las licencias son offline y NO están
+  atadas a la máquina, así que **un mismo código Pro sirve para todos**. Se emite
+  con `scripts/generar_licencia.py --id promo-... --dias N --plan pro` (usa la
+  llave privada gitignored). Ojo: un código compartido públicamente no se puede
+  revocar; caduca solo al llegar su fecha.
+- Empaquetado v1.1 verificado: `.app` con `AutoFaceless.icns`, versión 1.1, piso
+  macOS 11 (0 binarios minos≥13), `/api/salud` ok. Zip local
+  `~/Documents/CLAUDE/AutoFaceless-Studio-macOS.zip`. La Release oficial (Mac +
+  Windows) la produce el CI al empujar el tag `v1.1`.
+
 ## Estado actual: v1.0 (LANZAMIENTO — MVP en el mercado)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.

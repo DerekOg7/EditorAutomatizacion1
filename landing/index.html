@@ -109,27 +109,48 @@
   .precios { padding: 0 64px 88px; max-width: 1400px; margin: 0 auto; width: 100%; }
   .precios-in { display: flex; flex-direction: column; gap: 34px; }
   .precios h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
-  .plan { border: 2px solid #0f0f0f; padding: 26px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
-  .plan.destacado { background: #0f0f0f; color: #fff; }
-  .plan h3 { margin: 0; font: 700 20px 'Roboto', sans-serif; }
-  .plan .precio { font: 900 44px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
-  .plan .precio small { font: 500 15px 'Roboto', sans-serif; color: inherit; opacity: .6; letter-spacing: 0; }
-  .plan.destacado .precio { color: #e5382c; }
-  .plan .plan-gen { font: 800 16px 'Roboto', sans-serif; color: #c4231b; margin: 2px 0 4px; }
-  .plan.destacado .plan-gen { color: #e5382c; }
-  .plan ul { margin: 0; padding-left: 18px; font: 400 15px/1.7 'Roboto', sans-serif; color: #404040; }
-  .plan.destacado ul { color: #c9c9c9; }
-  .plan .tag { background: #c4231b; color: #fff; font: 700 11px ui-monospace, Menlo, monospace;
-    letter-spacing: 1px; padding: 5px 10px; width: fit-content; }
   .precios .nota { font: 400 13px 'Roboto', sans-serif; color: #909090; }
-  .plan ul { flex: 1; }
-  .plan-cta { margin-top: 4px; text-align: center; background: #c4231b; color: #fff;
-    font: 700 15px 'Roboto', sans-serif; border-radius: 26px; padding: 12px 20px; }
-  .plan-cta:hover { background: #a81d16; text-decoration: none; }
-  .plan-cta.sec { background: #fff; color: #0f0f0f; border: 1px solid #d9d9d9; }
-  .plan-cta.sec:hover { background: #f2f2f2; }
-  .plan.destacado .plan-cta { background: #e5382c; }
-  .plan.destacado .plan-cta.sec { background: transparent; color: #fff; border-color: #555; }
+  /* tarjetas de precios (diseño unificado con la app) */
+  .pk-grid { display: flex; gap: 18px; align-items: stretch; }
+  .pk-card { flex: 1; background: #fff; border: 1px solid #e6dacd; border-radius: 18px;
+    padding: 26px 22px 26px; display: flex; flex-direction: column; gap: 14px; position: relative;
+    box-shadow: 0 14px 34px rgba(60,20,12,.08); }
+  .pk-card.top { background: #141414; border-color: #141414; }
+  .pk-badge { position: absolute; top: -12px; left: 22px; background: #c4231b; color: #fff;
+    font: 800 10.5px/1 ui-monospace, Menlo, monospace; letter-spacing: 1px; padding: 5px 11px; border-radius: 20px; }
+  .pk-nom { font: 800 22px 'Roboto', sans-serif; color: #1a1512; letter-spacing: -.4px; }
+  .pk-card.top .pk-nom { color: #f4ece2; }
+  .pk-tag-p { font: 400 13.5px/1.45 'Roboto', sans-serif; color: #736658; margin-top: -8px; }
+  .pk-card.top .pk-tag-p { color: #b7ab9c; }
+  .pk-gen { border-radius: 14px; padding: 14px 16px; background: #fbeceb; display: flex; flex-direction: column; gap: 2px; }
+  .pk-card.top .pk-gen { background: rgba(229,56,44,.16); }
+  .pk-gen .lbl { font: 800 10.5px/1 ui-monospace, Menlo, monospace; letter-spacing: 1.2px; color: #c4231b; }
+  .pk-card.top .pk-gen .lbl { color: #ff5a4d; }
+  .pk-gen .val { font: 800 31px/1.05 'Roboto', sans-serif; color: #1a1512; letter-spacing: -1px; }
+  .pk-card.top .pk-gen .val { color: #f4ece2; }
+  .pk-gen .val small { font: 600 14px 'Roboto', sans-serif; color: #736658; letter-spacing: 0; }
+  .pk-card.top .pk-gen .val small { color: #c3b7a8; }
+  .pk-precio { font: 900 33px/1 'Roboto', sans-serif; color: #1a1512; letter-spacing: -1.2px; }
+  .pk-card.top .pk-precio { color: #f4ece2; }
+  .pk-precio small { font: 600 15px 'Roboto', sans-serif; color: #736658; letter-spacing: 0; }
+  .pk-card.top .pk-precio small { color: #c3b7a8; }
+  .pk-precio .free { color: #1a8f3c; }
+  .pk-sep { border: 0; border-top: 1px solid #eee2d6; margin: 2px 0; width: 100%; }
+  .pk-card.top .pk-sep { border-top-color: #37302a; }
+  .pk-incluye { font: 800 11px/1 ui-monospace, Menlo, monospace; letter-spacing: 1px; color: #8a7d6f; }
+  .pk-feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 11px; flex: 1; }
+  .pk-feat { position: relative; padding-left: 24px; font: 400 13.5px/1.42 'Roboto', sans-serif; color: #2a2018; }
+  .pk-card.top .pk-feat { color: #d8cdbf; }
+  .pk-feat::before { content: "✓"; position: absolute; left: 0; top: 0; color: #1a8f3c; font-weight: 800; }
+  .pk-feat b { font-weight: 700; }
+  .pk-feat.hd b { color: #c4231b; }
+  .pk-card.top .pk-feat.hd b { color: #ff5a4d; }
+  .pk-btn { margin-top: auto; display: block; text-align: center; text-decoration: none;
+    background: #c4231b; color: #fff; font: 700 14px 'Roboto', sans-serif; border-radius: 12px; padding: 13px; border: 1px solid #c4231b; }
+  .pk-btn:hover { background: #a81d16; text-decoration: none; }
+  .pk-btn.sec { background: #fff; color: #1a1512; border: 1px solid #d9c9bd; }
+  .pk-btn.sec:hover { background: #f6efe8; }
+  .pk-card.top .pk-btn { background: #e5382c; border-color: #e5382c; }
 
   /* DESCARGA / CTA */
   .cta { background: #c4231b; padding: 88px 64px; }
@@ -164,6 +185,7 @@
     .hero { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 48px; }
     h1 { font-size: 46px; letter-spacing: -1.6px; }
     .grid3 { grid-template-columns: 1fr; }
+    .pk-grid { flex-direction: column; }
     .casos h2, .como h2, .precios h2, .videos h2 { font-size: 32px; }
     .videos-grid { grid-template-columns: 1fr; }
     .cta h2 { font-size: 36px; letter-spacing: -1px; }
@@ -295,40 +317,62 @@
 <section class="precios" id="precios">
   <div class="precios-in">
     <h2>Empieza gratis. Crece cuando quieras.</h2>
-    <div class="grid3">
-      <div class="plan">
-        <h3>Gratis</h3>
-        <div class="plan-gen">⏱ 30 min de video al mes</div>
-        <div class="precio">$0</div>
-        <ul>
-          <li>Editor completo y los 2 nichos, para siempre</li>
-          <li>IA gratuita (guión, imágenes, voz)</li>
-          <li>Exporta en 720p con marca de agua</li>
+    <div class="pk-grid">
+      <div class="pk-card">
+        <div class="pk-nom">Gratis</div>
+        <div class="pk-tag-p">Pruébalo de verdad y haz tus primeros videos, sin tarjeta.</div>
+        <div class="pk-gen"><span class="lbl">VIDEO EXPORTADO</span><span class="val">30 min <small>al mes</small></span></div>
+        <div class="pk-precio"><span class="free">$0</span> <small>para siempre</small></div>
+        <hr class="pk-sep">
+        <div class="pk-incluye">INCLUYE</div>
+        <ul class="pk-feats">
+          <li class="pk-feat">Los <b>2 nichos</b>: historias narradas y música relajante</li>
+          <li class="pk-feat">Guionista con IA + <b>investigación del tema</b> (deep search)</li>
+          <li class="pk-feat"><b>Voces con IA gratis</b> (neurales, varios idiomas)</li>
+          <li class="pk-feat">Imágenes y clips automáticos por escena + arte IA gratis</li>
+          <li class="pk-feat">Editor completo: línea de tiempo, efectos, transiciones, textos</li>
+          <li class="pk-feat">Subtítulos automáticos y música de fondo</li>
+          <li class="pk-feat">Formatos YouTube, Shorts y cuadrado</li>
+          <li class="pk-feat">Exporta en <b>720p</b> (con marca de agua)</li>
         </ul>
-        <a class="plan-cta sec" href="#descargar">Descargar gratis</a>
+        <a class="pk-btn sec" href="#descargar">Descargar gratis</a>
       </div>
-      <div class="plan">
-        <h3>Creador en Ascenso</h3>
-        <div class="plan-gen">⏱ 4 h de video al mes</div>
-        <div class="precio">$14.99<small>/mes</small></div>
-        <ul>
-          <li>1080p Full HD, sin marca de agua</li>
-          <li>8× más tiempo de video que Gratis</li>
-          <li>Conecta tus claves de IA de estudio (voz e imágenes)</li>
+      <div class="pk-card">
+        <div class="pk-badge">EL MÁS ELEGIDO</div>
+        <div class="pk-nom">Creador en Ascenso</div>
+        <div class="pk-tag-p">Para quien ya publica en serio, todos los días.</div>
+        <div class="pk-gen"><span class="lbl">VIDEO EXPORTADO</span><span class="val">4 horas <small>al mes</small></span></div>
+        <div class="pk-precio">$14.99 <small>/mes</small></div>
+        <hr class="pk-sep">
+        <div class="pk-incluye">TODO LO DE GRATIS, Y ADEMÁS</div>
+        <ul class="pk-feats">
+          <li class="pk-feat hd"><b>8× más tiempo</b> que Gratis (4 h de video al mes)</li>
+          <li class="pk-feat">Exporta en <b>1080p Full HD, sin marca de agua</b></li>
+          <li class="pk-feat">Conecta <b>tus claves de IA de estudio</b>: voz (ElevenLabs / MiniMax) e imágenes (Nano Banana)</li>
+          <li class="pk-feat">Clips de <b>video con IA</b> (con tu clave)</li>
+          <li class="pk-feat">Guarda y reutiliza tus mezclas y estilos</li>
+          <li class="pk-feat">Soporte prioritario</li>
         </ul>
-        <a class="plan-cta" href="https://autofaceless.lemonsqueezy.com/checkout/buy/12511448-e384-46b2-a10b-1c20eccab944" target="_blank" rel="noopener">Suscribirme</a>
+        <a class="pk-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/12511448-e384-46b2-a10b-1c20eccab944" target="_blank" rel="noopener">Suscribirme</a>
       </div>
-      <div class="plan destacado">
-        <span class="tag">TODO INCLUIDO</span>
-        <h3>Creador Pro</h3>
-        <div class="plan-gen">⏱ Video ilimitado</div>
-        <div class="precio">$24.99<small>/mes</small></div>
-        <ul>
-          <li><b>Exporta todo el video que quieras</b>, sin límite</li>
-          <li>IA premium incluida: voz HD, imágenes, música y video</li>
-          <li>Sin crear cuentas ni claves: todo listo</li>
+      <div class="pk-card top">
+        <div class="pk-badge">TODO INCLUIDO</div>
+        <div class="pk-nom">Creador Pro</div>
+        <div class="pk-tag-p">Produce sin límites. Sin configurar nada.</div>
+        <div class="pk-gen"><span class="lbl">GENERACIÓN DE VIDEO</span><span class="val">Ilimitada</span></div>
+        <div class="pk-precio">$24.99 <small>/mes</small></div>
+        <hr class="pk-sep">
+        <div class="pk-incluye">TODO LO DE CREADOR EN ASCENSO, Y ADEMÁS</div>
+        <ul class="pk-feats">
+          <li class="pk-feat hd"><b>Generación ilimitada</b>: haz todos los videos que quieras, del largo que quieras</li>
+          <li class="pk-feat hd"><b>IA premium INCLUIDA</b> (nuestras claves, cero configuración):</li>
+          <li class="pk-feat">Voz HD profesional</li>
+          <li class="pk-feat">Imágenes IA premium</li>
+          <li class="pk-feat">Música original con IA</li>
+          <li class="pk-feat">Clips de video con IA</li>
+          <li class="pk-feat">Máxima prioridad y acceso anticipado a lo nuevo</li>
         </ul>
-        <a class="plan-cta" href="https://autofaceless.lemonsqueezy.com/checkout/buy/0bf42b90-647a-4025-bcdc-b94126a9ed19" target="_blank" rel="noopener">Suscribirme</a>
+        <a class="pk-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/0bf42b90-647a-4025-bcdc-b94126a9ed19" target="_blank" rel="noopener">Suscribirme</a>
       </div>
     </div>
     <span class="nota">Crear y editar es siempre gratis; el tiempo solo se cuenta al exportar y se renueva cada mes. Los planes de pago se activan dentro de la app con un código de licencia.</span>

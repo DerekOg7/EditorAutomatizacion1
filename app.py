@@ -525,6 +525,14 @@ def guion_proveedores():
     })
 
 
+@app.get("/api/nichos")
+def nichos_lista():
+    """Catálogo de nichos narrados (para las tarjetas del home y el estudio de guión)."""
+    return jsonify([{"id": k, "nombre": v["nombre"], "emoji": v["emoji"],
+                     "color": v["color"], "desc": v["desc"], "bienvenida": v["bienvenida"]}
+                    for k, v in editor.NICHOS.items()])
+
+
 @app.post("/api/guion/chat")
 def guion_chat():
     d = request.get_json(force=True) or {}
@@ -534,9 +542,15 @@ def guion_chat():
     prov = d.get("proveedor", "gratis")
     modelo = d.get("modelo", "")
     dossier = (d.get("dossier") or "").strip()
+    # Estilo del nicho elegido (Top, Sabías qué, Finanzas, etc.): el guionista escribe
+    # en ese tono/formato.
+    sistema = editor.SISTEMA_GUIONISTA
+    est_nicho = editor.estilo_nicho(d.get("nicho", ""))
+    if est_nicho:
+        sistema += ("\n\n=== NICHO / ESTILO DEL CANAL ===\nEscribe el guión en este "
+                    "estilo: " + est_nicho)
     # Si el usuario investigó el tema (deep search), su dossier se inyecta en el
     # prompt de sistema para que el guión salga con datos concretos y precisos.
-    sistema = editor.SISTEMA_GUIONISTA
     if dossier:
         sistema += ("\n\n=== INVESTIGACIÓN DEL TEMA (datos verificados que el "
                     "usuario ya reunió) ===\n" + dossier[:6000] + "\n\nUsa estos "
@@ -1526,6 +1540,15 @@ def export_saldo_ep(nombre):
     """Cuánto tiempo de exportación le queda este mes (para mostrarlo antes de exportar)."""
     try:
         return jsonify(editor.export_saldo(PROYECTOS / nombre))
+    except Exception:
+        return jsonify({"plan": "free", "sin_internet": True})
+
+
+@app.get("/api/export_saldo")
+def export_saldo_general():
+    """Saldo sin proyecto (para exportar-unión): plan + minutos restantes del mes."""
+    try:
+        return jsonify(editor.export_saldo(None))
     except Exception:
         return jsonify({"plan": "free", "sin_internet": True})
 

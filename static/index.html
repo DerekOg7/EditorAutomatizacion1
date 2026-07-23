@@ -999,37 +999,7 @@
             📁 <span data-i18n="side_stories">Mis historias</span> <span class="conteo-pill" id="home-conteo">0</span> →
           </button>
         </div>
-        <div class="home-nichos">
-          <div class="nicho" onclick="empezarNicho()">
-            <div class="foto misterio"><span class="badge" data-i18n="home_available">DISPONIBLE</span></div>
-            <div class="cuerpo">
-              <h3 data-i18n="home_niche_title">Misterio · True Crime · Conspiración</h3>
-              <p data-i18n="home_niche_desc">Historias con narración en off, atmósfera oscura e imágenes cinematográficas generadas por IA.</p>
-              <div class="pie">
-                <span class="tiempo" data-i18n="home_niche_time">≈ 15 min de tu tiempo</span>
-                <span class="cta" data-i18n="home_start">Empezar →</span>
-              </div>
-            </div>
-          </div>
-          <div class="nicho" onclick="empezarRelax()">
-            <div class="foto relax"><span class="badge" data-i18n="home_available">DISPONIBLE</span></div>
-            <div class="cuerpo">
-              <h3 data-i18n="home_niche2">Música & Sonidos Relajantes</h3>
-              <p data-i18n="home_niche2_desc">Videos largos de lluvia, naturaleza, estrellas o chimenea con paisaje sonoro y música relajante. Sin narración.</p>
-              <div class="pie">
-                <span class="tiempo" data-i18n="home_niche2_time">≈ 3 min de tu tiempo</span>
-                <span class="cta" data-i18n="home_start">Empezar →</span>
-              </div>
-            </div>
-          </div>
-          <div class="nicho bloq">
-            <div class="foto"><span class="badge" data-i18n="home_soon">PRÓXIMAMENTE</span></div>
-            <div class="cuerpo">
-              <h3 data-i18n="home_niche3">Historia · Documental</h3>
-              <p data-i18n="home_niche3_desc">Eventos históricos contados en formato documental.</p>
-            </div>
-          </div>
-        </div>
+        <div class="home-nichos" id="home-nichos"></div>
         <div class="home-ayuda">
           <div class="q">?</div>
           <div class="txt">
@@ -2430,7 +2400,7 @@ function aplicarIdioma() {
   if (actual) render();
 }
 
-function fijarIdioma(x) { idioma = x; localStorage.setItem('afv_idioma', x); aplicarIdioma(); }
+function fijarIdioma(x) { idioma = x; localStorage.setItem('afv_idioma', x); aplicarIdioma(); if (typeof renderNichos === 'function') renderNichos(); }
 function alternarIdioma() { fijarIdioma(idioma === 'en' ? 'es' : 'en'); }
 function elegirIdioma(x) {
   fijarIdioma(x);
@@ -2887,9 +2857,12 @@ function cerrarEstudio() { irA('home'); }
 
 function estMensajeBienvenida() {
   $('est-mensajes').innerHTML = '';
-  estBurbuja('asistente', L(
-    '¡Hola! Soy tu asistente de guiones. Cuéntame tu idea (tema, duración y tono) y te ayudo a convertirla en un guión listo para narrar. Si no sabes por dónde empezar, dime solo el tema y yo te guío.',
-    "Hi! I'm your script assistant. Tell me your idea (topic, length and tone) and I'll help you turn it into a narration-ready script. Not sure where to start? Just give me the topic and I'll guide you."));
+  const ni = nichoInfo(nichoActual);
+  const saludo = ni
+    ? `${ni.emoji} ${L('Nicho','Niche')}: ${ni.nombre}.\n\n${ni.bienvenida}`
+    : L('¡Hola! Soy tu asistente de guiones. Cuéntame tu idea (tema, duración y tono) y te ayudo a convertirla en un guión listo para narrar.',
+        "Hi! I'm your script assistant. Tell me your idea (topic, length and tone) and I'll help you turn it into a narration-ready script.");
+  estBurbuja('asistente', saludo);
   estActualizarChipInv();
 }
 
@@ -3074,7 +3047,7 @@ async function estEnviar() {
     }
     const r = await api('/api/guion/chat', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ mensajes, dossier: estDossierActual(),
+      body: JSON.stringify({ mensajes, dossier: estDossierActual(), nicho: nichoActual,
                              proveedor: $('est-prov').value,
                              modelo: $('est-prov').value === 'local' ? $('est-modelo').value : '' })
     });
@@ -5101,11 +5074,57 @@ function irAtras() {
   const i = orden.indexOf(pagina);
   irA(orden[Math.max(0, i - 1)]);
 }
-// El nicho activo arranca el flujo guiado en el Estudio de guión.
-// Antes de avanzar exige la clave GRATIS de Pexels: sin ella las imágenes
-// automáticas del video no funcionan y el usuario se frustra a mitad del flujo.
-function empezarNicho() {
+// ---- Nichos narrados (catálogo dinámico) ----
+let nichosCat = [];              // [{id,nombre,emoji,color,desc,bienvenida}]
+let nichoActual = 'misterio';    // nicho elegido (define el estilo del guión)
+
+function nichoInfo(id) { return nichosCat.find(n => n.id === id) || null; }
+
+async function cargarNichos() {
+  try { nichosCat = await api('/api/nichos'); } catch (e) { nichosCat = []; }
+  renderNichos();
+}
+
+function renderNichos() {
+  const cont = $('home-nichos');
+  if (!cont) return;
+  let html = '';
+  for (const n of nichosCat) {
+    html += `<div class="nicho" onclick="empezarNicho('${n.id}')">
+      <div class="foto" style="background:linear-gradient(150deg, ${n.color} 0%, #0b0d16 100%)">
+        <span style="font-size:54px;filter:drop-shadow(0 4px 10px rgba(0,0,0,.4))">${n.emoji}</span>
+        <span class="badge">${L('DISPONIBLE','AVAILABLE')}</span>
+      </div>
+      <div class="cuerpo">
+        <h3>${esc(n.nombre)}</h3>
+        <p>${esc(n.desc)}</p>
+        <div class="pie">
+          <span class="tiempo">${L('≈ 15 min de tu tiempo','≈ 15 min of your time')}</span>
+          <span class="cta">${L('Empezar →','Start →')}</span>
+        </div>
+      </div>
+    </div>`;
+  }
+  // el nicho Relax es un flujo aparte (sin narración)
+  html += `<div class="nicho" onclick="empezarRelax()">
+    <div class="foto relax"><span class="badge">${L('DISPONIBLE','AVAILABLE')}</span></div>
+    <div class="cuerpo">
+      <h3>${L('Música & Sonidos Relajantes','Relaxing Music & Sounds')}</h3>
+      <p>${L('Videos largos de lluvia, naturaleza, estrellas o chimenea con paisaje sonoro y música relajante. Sin narración.','Long videos of rain, nature, stars or fireplace with soundscape and relaxing music. No narration.')}</p>
+      <div class="pie">
+        <span class="tiempo">${L('≈ 3 min de tu tiempo','≈ 3 min of your time')}</span>
+        <span class="cta">${L('Empezar →','Start →')}</span>
+      </div>
+    </div>
+  </div>`;
+  cont.innerHTML = html;
+}
+
+// Elige un nicho narrado y arranca el flujo guiado en el Estudio de guión.
+function empezarNicho(id) {
+  if (id) nichoActual = id;
   irA('guion');
+  estMensajeBienvenida();   // saludo del nicho elegido
   if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio();
 }
 
@@ -5686,6 +5705,7 @@ function cerrarLicencia() { $('licencia').style.display = 'none'; }
   if (lic && lic.exigir && !lic.activa) { mostrarLicencia(lic); return; }
   pintarChipLicencia(lic);
   pintarPlan(lic);
+  cargarNichos();     // tarjetas de nichos del home (dinámicas)
 
   if (localStorage.getItem('afv_sidebar_col') === '1') {
     $('lateral').classList.add('colapsado'); $('lat-colapsar').textContent = '▶';

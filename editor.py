@@ -959,6 +959,74 @@ con tus comentarios fuera de las marcas. Si solo estás conversando o haciendo \
 preguntas, no uses las marcas."""
 
 
+# Catálogo de nichos NARRADOS (todos usan guión→voz→editor; cambia el estilo del
+# guión y el tono). El nicho relax es aparte (otro flujo). `estilo` se añade al
+# prompt del guionista; `bienvenida` es el saludo del estudio de guión.
+NICHOS = {
+    "misterio": {
+        "nombre": "Misterio · True Crime", "emoji": "🕵️", "color": "#3a2c4a",
+        "desc": "Casos sin resolver, conspiraciones y true crime, con narración en off y atmósfera oscura.",
+        "estilo": "misterio e intriga con tensión creciente; atmósfera oscura, true "
+                  "crime o conspiración; gancho inquietante en las primeras frases y un "
+                  "final que deje una pregunta perturbadora.",
+        "bienvenida": "¿Qué misterio quieres contar? Dime el caso o el tema y te armo un "
+                      "guión con gancho, giros y un final que deje pensando.",
+    },
+    "top": {
+        "nombre": "Top 10 · Rankings", "emoji": "🏆", "color": "#8a5a12",
+        "desc": "Videos de lista y cuenta atrás: «Los 10…», «Top 5…» con datos que enganchan.",
+        "estilo": "video de lista/ranking tipo «Top N» con cuenta atrás numerada (por "
+                  "ejemplo 10, 9, 8…); cada elemento con su mini-gancho, un dato "
+                  "sorprendente y una transición; tono enérgico y curioso; promete que lo "
+                  "mejor viene al final para retener al espectador.",
+        "bienvenida": "¿De qué quieres tu Top? Dame el tema (ej. «Top 10 lugares más "
+                      "misteriosos») y armo la lista con cuenta atrás y datos que enganchen.",
+    },
+    "sabias_que": {
+        "nombre": "Sabías qué · Curiosidades", "emoji": "💡", "color": "#0f6b6b",
+        "desc": "Datos curiosos y sorprendentes encadenados, con ritmo ágil para retener.",
+        "estilo": "datos curiosos y sorprendentes encadenados, estilo «¿Sabías que…?»; "
+                  "ritmo ágil, cada dato con un mini-gancho; tono divulgativo y fascinante; "
+                  "hechos concretos y verificables, nada de relleno.",
+        "bienvenida": "¿Sobre qué tema quieres curiosidades? Te armo un guión con datos "
+                      "sorprendentes encadenados que enganchan desde el primer segundo.",
+    },
+    "finanzas": {
+        "nombre": "Finanzas & Negocios", "emoji": "📈", "color": "#14532d",
+        "desc": "Finanzas personales, negocios e inversión: consejos claros y casos reales.",
+        "estilo": "finanzas personales, negocios o inversión; consejos accionables y casos "
+                  "reales de éxito o fracaso; tono claro, motivador pero riguroso; explica "
+                  "los conceptos de forma simple. NO prometas rentabilidades garantizadas "
+                  "ni des consejos de inversión personalizados; habla en términos generales.",
+        "bienvenida": "¿Qué tema de finanzas o negocios? (ahorro, inversión, un caso de "
+                      "empresa…) Te armo un guión claro, con datos y consejos accionables.",
+    },
+    "animales": {
+        "nombre": "Documentales de Animales", "emoji": "🦁", "color": "#5a3a12",
+        "desc": "Naturaleza y vida animal en formato documental, con datos asombrosos.",
+        "estilo": "documental de naturaleza y vida animal, tono narrativo estilo documental "
+                  "clásico; datos asombrosos sobre la especie, su comportamiento y su "
+                  "hábitat; transmite sentido de maravilla, con rigor.",
+        "bienvenida": "¿Qué animal o tema de naturaleza quieres? Te armo un guión documental "
+                      "con datos asombrosos y un tono que engancha.",
+    },
+    "documental": {
+        "nombre": "Historia & Documental", "emoji": "📜", "color": "#4a3620",
+        "desc": "Eventos históricos contados en formato documental, con datos y fechas.",
+        "estilo": "documental histórico serio, con datos, fechas y contexto concreto; "
+                  "narrativa que conecta causas y consecuencias; tono riguroso pero "
+                  "envolvente.",
+        "bienvenida": "¿Qué evento o época de la historia quieres contar? Te armo un guión "
+                      "documental con datos, fechas y una narrativa que atrape.",
+    },
+}
+
+
+def estilo_nicho(nicho):
+    """Texto de estilo del nicho para añadir al prompt del guionista ('' si no existe)."""
+    return (NICHOS.get(nicho) or {}).get("estilo", "")
+
+
 def _mensajes_openai(mensajes, sistema):
     ms = [{"role": "system", "content": sistema}]
     for m in mensajes:

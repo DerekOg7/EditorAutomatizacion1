@@ -822,8 +822,41 @@ Bugs reportados por testers antes de "lanzar bien". NO se ha reempaquetado aún
   + por versión) y `GET /stats` (lee conteos; opcional `STATS_TOKEN` via `?k=`).
   Verificado: Deno 10/10 + Python. **Empieza a contar cuando (a) se repega el
   `worker.js` en Cloudflare y (b) sale la v1.2.** Leer conteo: `curl .../stats`.
-- **PENDIENTE de Derek**: reconfigurar los paquetes Gratis/Pro/Premium (dirá cómo);
-  agrupar con el ping en un solo build **v1.2**.
+## v1.2: tiempo de exportación por plan + renombre de paquetes
+
+Modelo nuevo de monetización: el asset es el **tiempo de video que exportas al mes**.
+Crear/editar/previsualizar es libre; al **exportar** se descuentan los minutos del
+video de la bolsa mensual del plan. Topes: **Gratis 30 min/mes · Creador en Ascenso
+4 h/mes · Creador Pro ilimitado** (mensual, se renueva). Nombres: "Pro"→**Creador en
+Ascenso** ($14.99), "Premium"→**Creador Pro** ($24.99) — SOLO display; los códigos
+internos de licencia siguen `pro`/`premium`.
+
+- **Blindaje (sin modo de gracia)**: Gratis y Ascenso EXIGEN que el puente apruebe
+  antes de exportar → sin internet no se exporta (imposible burlar apagando el wifi).
+  Creador Pro (y planes ilimitados: premium/owner/lifetime/todo/vip/beta) se verifican
+  con la firma de la licencia en el equipo → exportan offline (nada que burlar).
+- **Re-export justo**: `_firma_export(p)` (hash de escenas/capas/subtítulos/ajustes/
+  narración, sin calidad ni máster). Re-exportar el MISMO video no vuelve a cobrar
+  (`.export_cobrado.json` por proyecto); editar cambia la huella y cobra.
+- **Worker** (`puente/worker.js`): `/export/cobrar` (verifica firma+vigencia, tope por
+  plan en KV `exp:<id>:<mes>`, la licencia manda sobre el `inst`), `/export/saldo`,
+  `/export/reembolsar`. La bolsa del Gratis va por el id anónimo de instalación.
+  Verificado 11/11 en Deno con licencias reales.
+- **editor.py**: `export_gate(minutos, proyecto)`, `export_refund`, `export_saldo`,
+  `duracion_proyecto_min`, `_firma_export`, `export_marcar_cobrado`. **app.py**:
+  candado en `/exportar_final` y `/exportar_union` (402 `sin_internet`/`cupo_agotado`),
+  reembolso si el render falla, `GET /export_saldo`.
+- **UI** (`static/index.html`): medidor visible en el modal de exportar
+  (`renderExpTiempo`: X/Y min + barra + costo del video + "se cuenta al exportar" +
+  estados con/sin cupo/re-export/ilimitado/offline); el bloqueo por cupo abre la
+  pantalla de planes (`api()` adjunta `e.data`). Pantalla de planes + precios de la
+  landing con los nombres nuevos y el tiempo como protagonista. Hero de la landing
+  sin "crea la miniatura" (la app no lo hace).
+- **Pendiente para activar**: repegar `worker.js` en Cloudflare **antes** de sacar la
+  v1.2 (si no, los planes con límite verían el puente sin `/export` → bloqueados).
+  Empieza a medir con la v1.2. Leer conteos: `curl .../stats`.
+
+## Estado post-v1.1 (landing + conteo de instalaciones)
 
 ## Estado actual: v1.0 (LANZAMIENTO — MVP en el mercado)
 

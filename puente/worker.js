@@ -396,6 +396,27 @@ async function exportarReembolsar(request, env, url) {
   return json({ ok: true });
 }
 
+// --- Pexels compartido: proxy a api.pexels.com con NUESTRA clave, para que nadie
+// tenga que configurar la suya. Atado al id de instalación + throttle por hora para
+// que no abusen de la clave. ---
+async function pexelsProxy(request, env, url) {
+  if (!env.PEXELS_API_KEY) return json({ error: "pexels no configurado" }, 503);
+  const inst = (request.headers.get("X-Inst") || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 64);
+  if (!inst) return json({ error: "falta id" }, 400);
+  const k = `px:${inst}:${new Date().toISOString().slice(0, 13)}`;   // por hora
+  const usado = parseInt(await env.CUPOS.get(k) || "0", 10) || 0;
+  if (usado >= 400) return json({ error: "límite temporal, intenta más tarde" }, 429);
+  await env.CUPOS.put(k, String(usado + 1), { expirationTtl: 3600 });
+  const destino = "https://api.pexels.com" + url.pathname.slice(3) + url.search;
+  try {
+    const r = await fetch(destino, { headers: { Authorization: env.PEXELS_API_KEY } });
+    return new Response(r.body, { status: r.status, headers: {
+      "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+  } catch (e) {
+    return json({ error: "pexels no respondió" }, 502);
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -422,6 +443,10 @@ export default {
       return exportarSaldo(request, env, url);
     if (request.method === "POST" && ruta === "/export/reembolsar")
       return exportarReembolsar(request, env, url);
+
+    // --- Pexels compartido: imágenes/videos de stock sin que el usuario ponga clave ---
+    if (ruta.startsWith("/px/"))
+      return pexelsProxy(request, env, url);
 
     // --- CORS ---
     if (request.method === "OPTIONS")

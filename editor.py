@@ -683,36 +683,45 @@ def clave_pexels():
 ORIENTACION = {"16:9": "landscape", "9:16": "portrait", "1:1": "square"}
 
 
-def pexels_buscar(consulta, cantidad=8, orientacion="landscape"):
-    """Busca fotos en Pexels. Devuelve [{id, miniatura, grande, autor}, …]."""
+def _pexels_get(path, params, orientacion):
+    """GET a Pexels con la clave PROPIA si existe; si no, por el PUENTE (nuestra
+    clave, para que el usuario no configure nada). Por el puente, si falla devuelve
+    {} para caer a otras fuentes (web/arte IA) en vez de romper."""
     import requests
-    r = requests.get("https://api.pexels.com/v1/search",
-                     headers={"Authorization": clave_pexels()},
-                     params={"query": consulta, "orientation": orientacion,
-                             "per_page": cantidad, "locale": "es-ES"},
-                     timeout=30)
-    if not r.ok:
-        err(f"Pexels respondió {r.status_code}: {r.text[:200]}")
+    env = leer_env()
+    p = {"orientation": orientacion, "locale": "es-ES", **params}
+    own = env.get("PEXELS_API_KEY")
+    if own:
+        r = requests.get("https://api.pexels.com" + path,
+                         headers={"Authorization": own}, params=p, timeout=30)
+        if not r.ok:
+            err(f"Pexels respondió {r.status_code}: {r.text[:200]}")
+        return r.json()
+    try:
+        _, d = _instalacion_datos()
+        r = requests.get(PUENTE_URL + "/px" + path,
+                         headers={"X-Inst": d.get("id", "")}, params=p, timeout=30)
+        return r.json() if r.ok else {}
+    except Exception:
+        return {}
+
+
+def pexels_buscar(consulta, cantidad=8, orientacion="landscape"):
+    """Busca fotos en Pexels (clave propia o por el puente). [{id,miniatura,grande,autor,texto}]."""
+    j = _pexels_get("/v1/search", {"query": consulta, "per_page": cantidad}, orientacion)
     return [{"id": f["id"],
              "miniatura": f["src"]["medium"],
              "grande": f["src"]["large2x"],
              "autor": f.get("photographer", ""),
              "texto": f.get("alt", "")}
-            for f in r.json().get("photos", [])]
+            for f in j.get("photos", [])]
 
 
 def pexels_buscar_videos(consulta, cantidad=8, orientacion="landscape"):
-    """Busca videos en Pexels. Devuelve [{id, miniatura, url, duracion}, …]."""
-    import requests
-    r = requests.get("https://api.pexels.com/videos/search",
-                     headers={"Authorization": clave_pexels()},
-                     params={"query": consulta, "orientation": orientacion,
-                             "per_page": cantidad, "locale": "es-ES"},
-                     timeout=30)
-    if not r.ok:
-        err(f"Pexels respondió {r.status_code}: {r.text[:200]}")
+    """Busca videos en Pexels (clave propia o por el puente). [{id,miniatura,url,duracion}]."""
+    j = _pexels_get("/videos/search", {"query": consulta, "per_page": cantidad}, orientacion)
     res = []
-    for v in r.json().get("videos", []):
+    for v in j.get("videos", []):
         archivos = [f for f in v.get("video_files", [])
                     if f.get("file_type") == "video/mp4" and f.get("width")]
         if not archivos:
@@ -2896,7 +2905,6 @@ def descargar_imagenes(p, on_progreso=None, reemplazar_auto=False):
     escenas = leer_escenas(p)
     (p / "imagenes").mkdir(exist_ok=True)
     avisar = on_progreso or (lambda *_: None)
-    clave_pexels()  # valida antes de empezar
     orient = ORIENTACION.get(formato_proyecto(p), "landscape")
 
     usadas = set()

@@ -3183,13 +3183,9 @@ function pvSubs(t) {
 }
 
 function actualizarAvisoPexels() {
-  const aviso = $('aviso-pexels');
-  if (configApp.pexels) { aviso.style.display = 'none'; return; }
-  aviso.style.display = 'block';
-  aviso.style.cursor = 'pointer';
-  aviso.onclick = abrirClaves;
-  aviso.textContent = L('⚠ Falta tu clave de Pexels (gratis) para buscar imágenes automáticamente — haz clic aquí para pegarla.',
-                        '⚠ Your (free) Pexels key is missing for automatic image search — click here to paste it.');
+  // Las imágenes automáticas ya funcionan sin clave (van por el puente); el aviso
+  // de "falta tu clave de Pexels" quedó obsoleto.
+  $('aviso-pexels').style.display = 'none';
 }
 const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 
@@ -5043,15 +5039,6 @@ function irAtras() {
 // Antes de avanzar exige la clave GRATIS de Pexels: sin ella las imágenes
 // automáticas del video no funcionan y el usuario se frustra a mitad del flujo.
 function empezarNicho() {
-  if (!configApp.pexels) {
-    abrirClaves();
-    const msg = $('cl-msg');
-    msg.style.color = 'var(--acento)';
-    msg.textContent = L(
-      '⚠ Para empezar necesitas tu clave GRATIS de Pexels (2 minutos): entra a pexels.com/api, copia tu clave y pégala arriba.',
-      '⚠ To start you need your FREE Pexels key (2 minutes): go to pexels.com/api, copy your key and paste it above.');
-    return;
-  }
   irA('guion');
   if (typeof abrirGuionPagina === 'function') abrirGuionPagina(); else abrirEstudio();
 }
@@ -5269,15 +5256,6 @@ function rxMaestro() {
 }
 
 function empezarRelax() {
-  if (!configApp.pexels) {
-    abrirClaves();
-    const msg = $('cl-msg');
-    msg.style.color = 'var(--acento)';
-    msg.textContent = L(
-      '⚠ Para empezar necesitas tu clave GRATIS de Pexels (2 minutos): entra a pexels.com/api, copia tu clave y pégala arriba.',
-      '⚠ To start you need your FREE Pexels key (2 minutes): go to pexels.com/api, copy your key and paste it above.');
-    return;
-  }
   irA('relax');
   rxCargarCatalogo().then(() => {
     rxInitBotones();

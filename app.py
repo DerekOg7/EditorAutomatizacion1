@@ -278,6 +278,7 @@ def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad, marca_agua=Fal
             p, carpeta, nombre_archivo, calidad, master_ok=master_ok,
             marca_agua=marca_agua,
             on_progreso=lambda t, pc: set_estado(nombre, detalle=t, progreso=pc))
+        editor.export_marcar_cobrado(gate)  # éxito → recuerda la huella (re-export libre)
         set_estado(nombre, fase="listo", progreso=100,
                    detalle=f"Guardado en {destino}", destino=str(destino))
     except ErrorPipeline as e:
@@ -1507,7 +1508,9 @@ def exportar_final(nombre):
         return jsonify({"error": "Este proyecto ya está trabajando."}), 409
     d = request.json or {}
     # Candado de tiempo: exportar descuenta minutos de la bolsa mensual del plan.
-    gate = editor.export_gate(editor.duracion_proyecto_min(PROYECTOS / nombre))
+    # (re-exportar el MISMO video sin cambios no vuelve a cobrar).
+    p = PROYECTOS / nombre
+    gate = editor.export_gate(editor.duracion_proyecto_min(p), p)
     if not gate.get("ok"):
         return _resp_cupo(gate)
     threading.Thread(
@@ -1516,6 +1519,15 @@ def exportar_final(nombre):
               _calidad_permitida(d.get("calidad", "alta")), not es_pro(), gate),
         daemon=True).start()
     return jsonify({"ok": True})
+
+
+@app.get("/api/proyectos/<nombre>/export_saldo")
+def export_saldo_ep(nombre):
+    """Cuánto tiempo de exportación le queda este mes (para mostrarlo antes de exportar)."""
+    try:
+        return jsonify(editor.export_saldo(PROYECTOS / nombre))
+    except Exception:
+        return jsonify({"plan": "free", "sin_internet": True})
 
 
 @app.post("/api/revelar")

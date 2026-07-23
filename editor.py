@@ -1456,13 +1456,68 @@ def _cuerpo_export(minutos):
     return cuerpo
 
 
-def export_gate(minutos):
+def _firma_export(p):
+    """Huella del CONTENIDO que define el video (escenas, capas, subtítulos, ajustes,
+    narración). No incluye la calidad ni el máster: re-exportar lo MISMO da la misma
+    huella; cualquier edición la cambia."""
+    import hashlib
+    p = Path(p)
+    h = hashlib.sha256()
+    for nombre in ("escenas.json", "overlays.json", "subtitulos.json", "ajustes.json"):
+        f = p / nombre
+        if f.exists():
+            try:
+                h.update(f.read_bytes())
+            except Exception:
+                pass
+        h.update(b"|")
+    a = p / "audio.mp3"
+    if a.exists():
+        try:
+            st = a.stat()
+            h.update(f"{st.st_size}:{int(st.st_mtime)}".encode())
+        except Exception:
+            pass
+    return h.hexdigest()
+
+
+def _ruta_export_cobrado(p):
+    return Path(p) / ".export_cobrado.json"
+
+
+def _leer_export_cobrado(p):
+    try:
+        import json
+        return json.loads(_ruta_export_cobrado(p).read_text())
+    except Exception:
+        return {}
+
+
+def export_marcar_cobrado(gate):
+    """Tras exportar CON ÉXITO y haber cobrado, recuerda la huella para que
+    re-exportar el mismo video (sin cambios) no vuelva a cobrar."""
+    try:
+        if not gate or not gate.get("medido") or not gate.get("proyecto") or not gate.get("firma"):
+            return
+        import json
+        _ruta_export_cobrado(gate["proyecto"]).write_text(json.dumps(
+            {"firma": gate["firma"], "minutos": gate.get("minutos")}))
+    except Exception:
+        pass
+
+
+def export_gate(minutos, proyecto=None):
     """Pide permiso al puente para exportar `minutos`. Planes ilimitados no miden y
     funcionan sin internet. Con límite: EXIGE aprobación del servidor (sin gracia).
-    Devuelve {ok:True, medido, cuerpo, restante} o {ok:False, razon:'offline'|'cupo', ...}."""
+    Re-exportar el MISMO video (misma huella) no vuelve a cobrar. Devuelve
+    {ok:True, medido, ...} o {ok:False, razon:'offline'|'cupo', ...}."""
     plan = _plan_actual()
     if plan in PLANES_EXPORT_ILIMITADO:
         return {"ok": True, "medido": False, "plan": plan}
+    # ¿es el mismo video ya cobrado antes? → re-exportar sin cambios es gratis
+    firma = _firma_export(proyecto) if proyecto is not None else None
+    if firma and _leer_export_cobrado(proyecto).get("firma") == firma:
+        return {"ok": True, "medido": False, "ya_cobrado": True, "plan": plan}
     import requests
     cuerpo = _cuerpo_export(minutos)
     try:
@@ -1477,7 +1532,9 @@ def export_gate(minutos):
         return {"ok": False, "razon": "offline"}
     if d.get("ok"):
         return {"ok": True, "medido": True, "cuerpo": cuerpo,
-                "restante": d.get("restante"), "plan": plan}
+                "restante": d.get("restante"), "plan": plan,
+                "proyecto": str(proyecto) if proyecto is not None else None,
+                "firma": firma, "minutos": cuerpo.get("minutos")}
     return {"ok": False, "razon": "cupo", "restante": d.get("restante", 0),
             "cap": d.get("cap"), "plan": plan}
 
@@ -1491,6 +1548,38 @@ def export_refund(gate):
         requests.post(PUENTE_URL + "/export/reembolsar", json=gate["cuerpo"], timeout=10)
     except Exception:
         pass
+
+
+def export_saldo(proyecto=None):
+    """Cuánto tiempo de exportación le queda al usuario este mes (para mostrárselo
+    ANTES de exportar). Devuelve {plan, ilimitado|restante/cap/usado, reexport_libre,
+    minutos_video, sin_internet}."""
+    plan = _plan_actual()
+    res = {"plan": plan}
+    if proyecto is not None:
+        try:
+            res["minutos_video"] = duracion_proyecto_min(proyecto)
+            firma = _firma_export(proyecto)
+            res["reexport_libre"] = bool(firma and _leer_export_cobrado(proyecto).get("firma") == firma)
+        except Exception:
+            pass
+    if plan in PLANES_EXPORT_ILIMITADO:
+        res["ilimitado"] = True
+        return res
+    import requests
+    try:
+        r = requests.post(PUENTE_URL + "/export/saldo", json=_cuerpo_export(0), timeout=12)
+        d = r.json() if r.ok else {}
+    except Exception:
+        d = {}
+    if not d:
+        res["sin_internet"] = True
+    elif d.get("ilimitado"):
+        res["ilimitado"] = True
+    else:
+        res.update({"cap": d.get("cap"), "usado": d.get("usado"),
+                    "restante": d.get("restante")})
+    return res
 
 
 def _minimax_conf():

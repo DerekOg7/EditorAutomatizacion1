@@ -502,7 +502,10 @@
   #ed-derecha #pv-panel { width: auto; background: transparent; border: 0; padding: 0; }
   #ed-derecha .pnl-cab { margin-bottom: 10px; }
   #ed-derecha .pnl-cab h4 { font: 700 15px 'Roboto', sans-serif; color: var(--texto); text-transform: none; letter-spacing: 0; }
-  #ed-derecha #det-img { margin-bottom: 8px; }
+  #ed-derecha #det-img { margin-bottom: 4px; }
+  .det-credito { font: 400 10.5px 'Roboto', sans-serif; color: var(--tenue2); margin: 0 0 8px; }
+  .det-credito a { color: var(--tenue); text-decoration: none; }
+  .det-credito a:hover { text-decoration: underline; }
   #ed-derecha .acciones { margin-bottom: 6px; }
   #ed-derecha #ef-titulo { font: 700 13px 'Roboto', sans-serif; text-transform: none; letter-spacing: 0; }
 
@@ -1410,6 +1413,7 @@
             <h4 id="det-titulo">Escena</h4>
           </div>
           <div id="det-img"></div>
+          <div id="det-credito" class="det-credito"></div>
           <div class="acciones">
             <button style="width:100%" onclick="document.getElementById('archivo-imagen').click()" data-i18n="det_upload">⬆ Subir mi imagen o video</button>
             <input type="file" id="archivo-imagen" accept="image/*,video/*,.mp4,.mov,.webp" style="display:none" onchange="subirImagen(this)">
@@ -3669,6 +3673,12 @@ function renderDetalle() {
   } else {
     img.style.backgroundImage = ''; img.innerHTML = L('Sin imagen todavía — busca en Pexels o sube la tuya','No image yet — search Pexels or upload your own');
   }
+  // Atribución a Pexels (requisito de su API): crédito al autor cuando el medio es
+  // de Pexels; si no, el crédito general del buscador. NO va en el video exportado.
+  const px = '<a href="https://www.pexels.com" target="_blank" rel="noopener">Pexels</a>';
+  $('det-credito').innerHTML = (e.fuente_medio === 'pexels' && e.credito)
+    ? L(`Foto de ${esc(e.credito)} en `, `Photo by ${esc(e.credito)} on `) + px
+    : L('Búsqueda de imágenes por ', 'Image search by ') + px;
 }
 
 function previsualizarTramo() {

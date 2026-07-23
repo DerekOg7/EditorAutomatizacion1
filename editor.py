@@ -2112,10 +2112,30 @@ def gemini_imagen(p, n, prompt):
     (p / "imagenes" / f"{n:03d}.png").write_bytes(imagen)
 
 
-def descargar_a_escena(p, n, url, tipo="imagen", auto=False):
+def _guardar_credito_escena(p, n, autor, fuente, auto):
+    """Guarda el crédito del medio (autor + fuente, p.ej. 'pexels') en la escena para
+    la atribución en la interfaz. Si fue elección manual, protege la escena."""
+    f = p / "escenas.json"
+    if not f.exists():
+        return
+    try:
+        datos = json.loads(f.read_text())
+        e = next((e for e in datos["escenas"] if e["n"] == n), None)
+        if e is None:
+            return
+        e["credito"] = (autor or "").strip()
+        e["fuente_medio"] = (fuente or "").strip()
+        if not auto:
+            e["medio_auto"] = False
+        f.write_text(json.dumps(datos, ensure_ascii=False, indent=2))
+    except Exception:
+        pass
+
+
+def descargar_a_escena(p, n, url, tipo="imagen", auto=False, autor="", fuente=""):
     """Descarga una imagen o video (url) como el medio de la escena n. Si auto
     es False (elección manual), marca la escena para que no la pise el
-    reemplazo automático de coherencia."""
+    reemplazo automático de coherencia. `autor`/`fuente` = crédito para atribución."""
     import requests
     (p / "imagenes").mkdir(exist_ok=True)
     r = requests.get(url, timeout=300)
@@ -2124,14 +2144,7 @@ def descargar_a_escena(p, n, url, tipo="imagen", auto=False):
     borrar_medio(p, n)
     ext = ".mp4" if tipo == "video" else ".jpg"
     (p / "imagenes" / f"{n:03d}{ext}").write_bytes(r.content)
-    if not auto:                       # el usuario la eligió: protégela
-        f = p / "escenas.json"
-        if f.exists():
-            datos = json.loads(f.read_text())
-            e = next((e for e in datos["escenas"] if e["n"] == n), None)
-            if e is not None:
-                e["medio_auto"] = False
-                f.write_text(json.dumps(datos, ensure_ascii=False, indent=2))
+    _guardar_credito_escena(p, n, autor, fuente, auto)
 
 
 def ajustar_limite(p, n, nuevo_fin):
@@ -3071,12 +3084,15 @@ def _orden_fuentes(pref, permitidas, mezclar, ult_tipos):
 def _bajar_candidato(p, n, cand):
     """Descarga un candidato como medio de la escena. True si lo logró."""
     try:
+        autor = cand.get("autor", "")
         if cand["tipo"] == "web":
             descargar_web_a_escena(p, n, cand["url"])
         elif cand["tipo"] == "video":
-            descargar_a_escena(p, n, cand["url"], tipo="video", auto=True)
+            descargar_a_escena(p, n, cand["url"], tipo="video", auto=True,
+                               autor=autor, fuente="pexels")
         else:
-            descargar_a_escena(p, n, cand["url"], tipo="imagen", auto=True)
+            descargar_a_escena(p, n, cand["url"], tipo="imagen", auto=True,
+                               autor=autor, fuente="pexels")
         return True
     except Exception:
         return False

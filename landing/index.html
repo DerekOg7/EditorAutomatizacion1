@@ -80,6 +80,22 @@
   .caso-txt h3 b { color: #c4231b; font-weight: 900; }
   .caso-txt p { margin: 0; font: 400 15px/1.4 'Roboto', sans-serif; color: #404040; }
 
+  /* VÍDEOS REALES */
+  .videos { padding: 88px 64px; max-width: 1400px; margin: 0 auto; width: 100%; }
+  .videos-in { display: flex; flex-direction: column; gap: 38px; }
+  .videos-top { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .videos h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
+  .videos h2 b { color: #c4231b; }
+  .videos-sub { font: 500 15px 'Roboto', sans-serif; color: #606060; max-width: 340px; }
+  .videos-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .vid-card { background: #fff; border: 1px solid #e0d3c8; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 12px 32px rgba(43,10,8,.08); }
+  .vid-card video { display: block; width: 100%; aspect-ratio: 16/9; background: #000; object-fit: cover; }
+  .vid-cap { padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .vid-cap h3 { margin: 0; font: 700 18px 'Roboto', sans-serif; letter-spacing: -.3px; }
+  .vid-cap span { font: 700 10px ui-monospace, Menlo, monospace; color: #c4231b;
+    letter-spacing: 1px; border: 1px solid #f0c9c5; border-radius: 20px; padding: 4px 10px; white-space: nowrap; }
+
   /* CÓMO */
   .como { padding: 88px 64px; max-width: 1400px; margin: 0 auto; width: 100%; }
   .como-in { display: flex; flex-direction: column; gap: 44px; }
@@ -146,7 +162,8 @@
     .hero { grid-template-columns: 1fr; padding-top: 48px; padding-bottom: 48px; }
     h1 { font-size: 46px; letter-spacing: -1.6px; }
     .grid3 { grid-template-columns: 1fr; }
-    .casos h2, .como h2, .precios h2 { font-size: 32px; }
+    .casos h2, .como h2, .precios h2, .videos h2 { font-size: 32px; }
+    .videos-grid { grid-template-columns: 1fr; }
     .cta h2 { font-size: 36px; letter-spacing: -1px; }
     nav a:not(.btn-nav) { display: none; }
     .hero-props { flex-direction: column; gap: 18px; }
@@ -164,6 +181,7 @@
   </div>
   <nav>
     <a href="#casos">Casos reales</a>
+    <a href="#videos">Vídeos</a>
     <a href="#como">Cómo funciona</a>
     <a href="#precios">Precios</a>
     <a class="btn-nav" href="#descargar">Descargar gratis</a>
@@ -223,6 +241,34 @@
       <div class="caso">
         <div class="caso-foto"><img src="img/gallina.webp" alt="Gallina con anillo de luz"><div class="caso-num">Nº 004</div></div>
         <div class="caso-txt"><h3>Una gallina. <b>$430/mes.</b></h3><p>Sube un short cada mañana.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- VÍDEOS REALES -->
+<section class="videos" id="videos">
+  <div class="videos-in">
+    <div class="videos-top">
+      <h2>Vídeos <b>de verdad</b>, hechos con la app.</h2>
+      <span class="videos-sub">Guión, voz e imágenes: todo generado con IA. Cero edición manual. Dale al play.</span>
+    </div>
+    <div class="videos-grid">
+      <div class="vid-card">
+        <video src="videos/amelia.mp4" poster="videos/amelia.jpg" controls muted loop playsinline preload="none"></video>
+        <div class="vid-cap"><h3>El misterio de Amelia Earhart</h3><span>HECHO CON LA APP</span></div>
+      </div>
+      <div class="vid-card">
+        <video src="videos/mh370.mp4" poster="videos/mh370.jpg" controls muted loop playsinline preload="none"></video>
+        <div class="vid-cap"><h3>El vuelo MH370</h3><span>HECHO CON LA APP</span></div>
+      </div>
+      <div class="vid-card">
+        <video src="videos/elisa.mp4" poster="videos/elisa.jpg" controls muted loop playsinline preload="none"></video>
+        <div class="vid-cap"><h3>El caso de Elisa Lam</h3><span>HECHO CON LA APP</span></div>
+      </div>
+      <div class="vid-card">
+        <video src="videos/sodder.mp4" poster="videos/sodder.jpg" controls muted loop playsinline preload="none"></video>
+        <div class="vid-cap"><h3>La desaparición de los Sodder</h3><span>HECHO CON LA APP</span></div>
       </div>
     </div>
   </div>

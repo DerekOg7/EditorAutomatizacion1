@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AutoFaceless Studio — Una roca gana $1.240/mes en YouTube</title>
-<meta name="description" content="Guión, voz en off y video final con IA, en minutos. Sin dar la cara, sin saber editar. Descarga gratis para Mac y Windows.">
+<title>AutoFaceless Studio — Crea vídeos faceless para YouTube con un clic</title>
+<meta name="description" content="Tú eliges el tema. La IA escribe el guión, pone la voz, monta el vídeo y crea la miniatura. Exportas listo para subir. Sin cámara, sin micro, sin editar. Gratis para Mac y Windows.">
 <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
 <link rel="apple-touch-icon" href="img/icono-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -30,30 +30,38 @@
   .btn-nav:hover { background: #a81d16; text-decoration: none; }
 
   /* HERO */
-  .hero { display: grid; grid-template-columns: 1.1fr 1fr; gap: 48px; padding: 88px 64px;
+  .hero { display: grid; grid-template-columns: 1fr 1.12fr; gap: 52px; padding: 80px 64px;
     align-items: center; max-width: 1400px; margin: 0 auto; }
-  .hero-txt { display: flex; flex-direction: column; gap: 28px; }
+  .hero-txt { display: flex; flex-direction: column; gap: 26px; }
   .sello { background: #0f0f0f; color: #fff; font: 700 13px ui-monospace, Menlo, monospace;
     letter-spacing: 1px; padding: 8px 14px; width: fit-content; }
-  h1 { margin: 0; font: 900 76px/.98 'Roboto', sans-serif; letter-spacing: -2.8px; }
+  h1 { margin: 0; font: 900 68px/.98 'Roboto', sans-serif; letter-spacing: -2.4px; }
   h1 b { color: #c4231b; font-weight: 900; }
-  .hero-p { margin: 0; font: 400 22px/1.55 'Roboto', sans-serif; color: #404040; max-width: 520px; }
+  .hero-p { margin: 0; font: 400 20px/1.55 'Roboto', sans-serif; color: #404040; max-width: 540px; }
+  .hero-props { display: flex; gap: 30px; }
+  .hero-props .prop { display: flex; flex-direction: column; gap: 5px; max-width: 250px; }
+  .hero-props .prop + .prop { border-left: 1px solid #d8c8bc; padding-left: 30px; }
+  .hero-props .prop b { font: 700 16px/1.25 'Roboto', sans-serif; color: #c4231b; }
+  .hero-props .prop span { font: 400 13px/1.45 'Roboto', sans-serif; color: #606060; }
   .hero-cta { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .btn-hero { background: #c4231b; color: #fff; font: 700 20px 'Roboto', sans-serif;
     border-radius: 34px; padding: 18px 40px; }
   .btn-hero:hover { background: #a81d16; text-decoration: none; }
   .hero-nota { font: 500 15px 'Roboto', sans-serif; color: #606060; }
-  .hero-letra { font: 400 12px 'Roboto', sans-serif; color: #909090; }
   .hero-foto { position: relative; }
-  .marco { position: relative; width: 100%; aspect-ratio: 4/5; background: #e8ddd3;
-    overflow: hidden; box-shadow: 0 24px 60px rgba(43,10,8,.18); }
-  .marco img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-  .etiqueta { position: absolute; left: 20px; top: 20px; background: #f4ece6; padding: 8px 14px;
-    font: 700 13px ui-monospace, Menlo, monospace; letter-spacing: 1px; }
-  .placa { position: absolute; right: -18px; bottom: -18px; background: #0f0f0f; color: #fff;
-    padding: 18px 22px; display: flex; flex-direction: column; gap: 2px; }
-  .placa b { font: 900 26px/1 'Roboto', sans-serif; letter-spacing: -.6px; color: #e5382c; }
-  .placa span { font: 500 12px 'Roboto', sans-serif; color: #c9c9c9; }
+  .ventana { border-radius: 12px; overflow: hidden; background: #fff; border: 1px solid #e0d3c8;
+    box-shadow: 0 30px 70px rgba(43,10,8,.22); }
+  .ventana-barra { display: flex; align-items: center; gap: 8px; padding: 11px 15px;
+    background: #ece5de; border-bottom: 1px solid #e0d3c8; }
+  .ventana-barra .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .ventana-tit { margin-left: 8px; font: 500 13px 'Roboto', sans-serif; color: #6b6b6b; }
+  .ventana img { display: block; width: 100%; }
+  .foto-tag { position: absolute; right: -14px; bottom: -20px; background: #0f0f0f; color: #fff;
+    padding: 14px 20px; display: flex; flex-direction: column; gap: 2px; border-radius: 5px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.25); }
+  .foto-tag b { font: 900 18px/1 'Roboto', sans-serif; }
+  .foto-tag span { font: 500 12px 'Roboto', sans-serif; color: #c9c9c9; }
 
   /* CASOS */
   .casos { background: #141414; padding: 80px 64px; }
@@ -141,7 +149,9 @@
     .casos h2, .como h2, .precios h2 { font-size: 32px; }
     .cta h2 { font-size: 36px; letter-spacing: -1px; }
     nav a:not(.btn-nav) { display: none; }
-    .placa { right: 0; }
+    .hero-props { flex-direction: column; gap: 18px; }
+    .hero-props .prop + .prop { border-left: 0; padding-left: 0; border-top: 1px solid #d8c8bc; padding-top: 18px; }
+    .foto-tag { right: 0; }
   }
 </style>
 </head>
@@ -163,22 +173,34 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-txt">
-    <span class="sello">CAMPAÑA · CASOS 100% REALES*</span>
-    <h1>Una roca gana <b>$1.240/mes</b> en YouTube.</h1>
-    <p class="hero-p">No tiene manos. No sabe editar. No da la cara. Si ella puede monetizar,
-      tú también: guión, voz y video final con IA, en minutos.</p>
-    <div class="hero-cta">
-      <a class="btn-hero" href="#descargar">Descargar gratis →</a>
-      <span class="hero-nota">Mac y Windows · versión gratis para siempre</span>
+    <span class="sello">CANALES DE YOUTUBE SIN DAR LA CARA</span>
+    <h1>Crea vídeos faceless para YouTube <b>con un clic.</b></h1>
+    <p class="hero-p">Tú eliges el tema. La IA escribe el guión, pone la voz, monta el vídeo y crea la
+      miniatura. Exportas listo para subir. Sin cámara, sin micro, sin editar.</p>
+    <div class="hero-props">
+      <div class="prop">
+        <b>Te toma el mismo tiempo que prepararte un café</b>
+        <span>Un vídeo de 1 hora, listo en tan solo 5 minutos.</span>
+      </div>
+      <div class="prop">
+        <b>En solamente 3 pasos</b>
+        <span>guión · voz · exportar</span>
+      </div>
     </div>
-    <span class="hero-letra">*Tan reales como cualquier promesa de hacerse rico en internet. La app sí es real.</span>
+    <div class="hero-cta">
+      <a class="btn-hero" href="#descargar">Descárgalo gratis →</a>
+      <span class="hero-nota">Gratis · sin tarjeta</span>
+    </div>
   </div>
   <div class="hero-foto">
-    <div class="marco">
-      <img src="img/roca.webp" alt="La roca con micrófono de solapa">
-      <div class="etiqueta">CASO REAL · Nº 001</div>
+    <div class="ventana">
+      <div class="ventana-barra">
+        <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+        <span class="ventana-tit">AutoFaceless Studio</span>
+      </div>
+      <img src="img/editor-hero.webp" alt="El editor real de AutoFaceless Studio con un vídeo montado">
     </div>
-    <div class="placa"><b>$1.240/mes</b><span>4 meses monetizando</span></div>
+    <div class="foto-tag"><b>Así de fácil</b><span>el editor real · paso 4 de 4</span></div>
   </div>
 </section>
 

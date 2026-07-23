@@ -319,6 +319,83 @@ async function leerStats(request, env, url) {
                 por_version: versiones, nota: "conteo anonimo aproximado" });
 }
 
+// --- Medidor de exportación (minutos de video exportado al mes) ---
+// Tope mensual por plan (min/mes). Los planes de arriba de "pro" son ilimitados.
+const CAP_EXPORT = { free: 30, pro: 240 };
+const PLANES_ILIMITADOS = new Set(["premium", "owner", "lifetime", "todo", "vip", "beta"]);
+
+async function verificarParaExport(codigo) {
+  // Verifica firma Ed25519 + vigencia y devuelve el plan (cualquiera). Una licencia
+  // vencida NO cuenta (el usuario cae a Gratis).
+  try {
+    codigo = (codigo || "").trim().replace(/\s+/g, "");
+    const p = codigo.split(".");
+    if (p.length !== 3 || p[0] !== "AFS1") return { ok: false };
+    const payload = b64uDec(p[1]);
+    const llave = await crypto.subtle.importKey(
+      "raw", hexABytes(LLAVE_PUBLICA_HEX), { name: "Ed25519" }, false, ["verify"]);
+    if (!await crypto.subtle.verify("Ed25519", llave, b64uDec(p[2]), payload))
+      return { ok: false };
+    const d = JSON.parse(new TextDecoder().decode(payload));
+    const vence = new Date((d.exp || "") + "T23:59:59Z");
+    if (isNaN(vence.getTime()) || vence < new Date()) return { ok: false, vencida: true };
+    return { ok: true, id: d.id, plan: d.plan, exp: d.exp };
+  } catch (e) { return { ok: false }; }
+}
+
+async function _idExport(request, env, url, body) {
+  // Devuelve {plan, id, ilimitado}. Paga → por licencia firmada; Gratis → por id
+  // de instalación. La licencia manda (no se puede falsificar).
+  const codigo = extraerLicencia(request, url) || body.codigo || "";
+  if (codigo) {
+    const v = await verificarParaExport(codigo);
+    if (v.ok) return { plan: v.plan, id: "lic:" + v.id,
+                       ilimitado: PLANES_ILIMITADOS.has(v.plan) };
+  }
+  const inst = String(body.inst || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 64);
+  if (!inst) return null;
+  return { plan: "free", id: "inst:" + inst, ilimitado: false };
+}
+
+async function exportarCobrar(request, env, url) {
+  let b = {}; try { b = await request.json(); } catch (e) {}
+  const minutos = Math.max(0, Math.min(600, Number(b.minutos) || 0));
+  const who = await _idExport(request, env, url, b);
+  if (!who) return json({ ok: false, error: "falta identificador" }, 400);
+  if (who.ilimitado) return json({ ok: true, ilimitado: true });
+  const cap = CAP_EXPORT[who.plan] ?? CAP_EXPORT.free;
+  const key = `exp:${who.id}:${mesActual()}`;
+  const usado = parseFloat(await env.CUPOS.get(key) || "0") || 0;
+  if (usado + minutos > cap + 0.001)
+    return json({ ok: false, restante: Math.max(0, cap - usado), cap,
+                  plan: who.plan, mes: mesActual(), minutos });
+  await env.CUPOS.put(key, String(usado + minutos), { expirationTtl: 40 * 86400 });
+  return json({ ok: true, restante: Math.max(0, cap - (usado + minutos)), cap, plan: who.plan });
+}
+
+async function exportarSaldo(request, env, url) {
+  let b = {}; try { b = await request.json(); } catch (e) {}
+  const who = await _idExport(request, env, url, b);
+  if (!who) return json({ ok: false, error: "falta identificador" }, 400);
+  if (who.ilimitado) return json({ ok: true, ilimitado: true, plan: who.plan });
+  const cap = CAP_EXPORT[who.plan] ?? CAP_EXPORT.free;
+  const usado = parseFloat(await env.CUPOS.get(`exp:${who.id}:${mesActual()}`) || "0") || 0;
+  return json({ ok: true, cap, usado, restante: Math.max(0, cap - usado),
+                plan: who.plan, mes: mesActual() });
+}
+
+async function exportarReembolsar(request, env, url) {
+  // Best-effort: si la exportación falló tras cobrar, devuelve los minutos.
+  let b = {}; try { b = await request.json(); } catch (e) {}
+  const minutos = Math.max(0, Number(b.minutos) || 0);
+  const who = await _idExport(request, env, url, b);
+  if (!who || who.ilimitado) return json({ ok: true });
+  const key = `exp:${who.id}:${mesActual()}`;
+  const usado = parseFloat(await env.CUPOS.get(key) || "0") || 0;
+  await env.CUPOS.put(key, String(Math.max(0, usado - minutos)), { expirationTtl: 40 * 86400 });
+  return json({ ok: true });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -337,6 +414,14 @@ export default {
       return pingInstalacion(request, env);
     if (request.method === "GET" && ruta === "/stats")
       return leerStats(request, env, url);
+
+    // --- Medidor de exportación (minutos de video al mes) ---
+    if (request.method === "POST" && ruta === "/export/cobrar")
+      return exportarCobrar(request, env, url);
+    if (request.method === "POST" && ruta === "/export/saldo")
+      return exportarSaldo(request, env, url);
+    if (request.method === "POST" && ruta === "/export/reembolsar")
+      return exportarReembolsar(request, env, url);
 
     // --- CORS ---
     if (request.method === "OPTIONS")

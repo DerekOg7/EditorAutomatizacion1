@@ -268,7 +268,7 @@ def hilo_exportar(nombre):
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad, marca_agua=False):
+def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad, marca_agua=False, gate=None):
     p = PROYECTOS / nombre
     try:
         set_estado(nombre, fase="exportando", progreso=0, error=None,
@@ -281,12 +281,14 @@ def hilo_exportar_final(nombre, carpeta, nombre_archivo, calidad, marca_agua=Fal
         set_estado(nombre, fase="listo", progreso=100,
                    detalle=f"Guardado en {destino}", destino=str(destino))
     except ErrorPipeline as e:
+        editor.export_refund(gate)          # la exportación falló → devolver minutos
         set_estado(nombre, fase="error", error=str(e))
     except Exception as e:
+        editor.export_refund(gate)
         set_estado(nombre, fase="error", error=f"{type(e).__name__}: {e}")
 
 
-def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad, marca_agua=False):
+def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad, marca_agua=False, gate=None):
     try:
         set_estado("__union__", fase="exportando", progreso=0, error=None,
                    detalle="Preparando…", destino=None)
@@ -296,8 +298,10 @@ def hilo_exportar_union(nombres, carpeta, nombre_archivo, calidad, marca_agua=Fa
         set_estado("__union__", fase="listo", progreso=100,
                    detalle=f"Guardado en {destino}", destino=str(destino))
     except ErrorPipeline as e:
+        editor.export_refund(gate)
         set_estado("__union__", fase="error", error=str(e))
     except Exception as e:
+        editor.export_refund(gate)
         set_estado("__union__", fase="error", error=f"{type(e).__name__}: {e}")
 
 
@@ -1485,15 +1489,31 @@ def _calidad_permitida(calidad):
     return calidad
 
 
+def _resp_cupo(gate):
+    """402 con mensaje claro cuando el candado de exportación no deja pasar."""
+    if gate.get("razon") == "offline":
+        return jsonify({"error": "Necesitas conexión a internet para exportar (así "
+                        "contamos tu tiempo de video). Conéctate e inténtalo de nuevo.",
+                        "sin_internet": True}), 402
+    return jsonify({"error": "Se acabó tu tiempo de video de este mes. Mejora tu plan "
+                    "para exportar más.", "cupo_agotado": True,
+                    "restante": gate.get("restante"), "cap": gate.get("cap"),
+                    "plan": gate.get("plan")}), 402
+
+
 @app.post("/api/proyectos/<nombre>/exportar_final")
 def exportar_final(nombre):
     if ocupado(nombre):
         return jsonify({"error": "Este proyecto ya está trabajando."}), 409
     d = request.json or {}
+    # Candado de tiempo: exportar descuenta minutos de la bolsa mensual del plan.
+    gate = editor.export_gate(editor.duracion_proyecto_min(PROYECTOS / nombre))
+    if not gate.get("ok"):
+        return _resp_cupo(gate)
     threading.Thread(
         target=hilo_exportar_final,
         args=(nombre, d.get("carpeta", ""), d.get("nombre_archivo", ""),
-              _calidad_permitida(d.get("calidad", "alta")), not es_pro()),
+              _calidad_permitida(d.get("calidad", "alta")), not es_pro(), gate),
         daemon=True).start()
     return jsonify({"ok": True})
 
@@ -1527,11 +1547,16 @@ def exportar_union():
             return jsonify({"error": f"No existe la historia '{n}'."}), 404
     if ocupado("__union__"):
         return jsonify({"error": "Ya hay una exportación en curso."}), 409
+    # Candado de tiempo: el video unido cuenta la suma de las historias.
+    total_min = sum(editor.duracion_proyecto_min(PROYECTOS / n) for n in nombres)
+    gate = editor.export_gate(total_min)
+    if not gate.get("ok"):
+        return _resp_cupo(gate)
     threading.Thread(
         target=hilo_exportar_union,
         args=(nombres, datos.get("carpeta", ""),
               datos.get("nombre_archivo", "video_final"),
-              _calidad_permitida(datos.get("calidad", "alta")), not es_pro()),
+              _calidad_permitida(datos.get("calidad", "alta")), not es_pro(), gate),
         daemon=True).start()
     return jsonify({"ok": True})
 

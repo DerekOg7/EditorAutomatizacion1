@@ -1399,6 +1399,100 @@ def avisar_instalacion():
         pass
 
 
+# --- Medidor de exportación: minutos de video que se exportan al mes. El tope va
+# por plan y se lleva en el puente (Gratis/Ascenso NO pueden exportar sin que el
+# servidor apruebe → imposible burlar apagando el internet). Creador Pro y superiores
+# son ilimitados: se verifican con la firma de la licencia en el propio equipo. ---
+PLANES_EXPORT_ILIMITADO = {"premium", "owner", "lifetime", "todo", "vip", "beta"}
+
+
+def _plan_actual():
+    try:
+        import licencia
+        st = licencia.estado()
+        if st.get("activa"):
+            return st.get("plan", "free")
+    except Exception:
+        pass
+    return "free"
+
+
+def duracion_proyecto_min(p):
+    """Minutos (float) del video final del proyecto — para el medidor. Usa el máster
+    si existe; si no, la narración; si no, suma las escenas."""
+    p = Path(p)
+    for cand in (p / "video.mp4", p / "audio.mp3"):
+        if cand.exists():
+            try:
+                seg = ffprobe_duracion(cand)
+                if seg and seg > 0:
+                    return round(seg / 60.0, 3)
+            except Exception:
+                pass
+    try:
+        tot = sum(float(e.get("dur", 0) or 0) for e in leer_escenas(p))
+        if tot > 0:
+            return round(tot / 60.0, 3)
+    except Exception:
+        pass
+    return 0.0
+
+
+def _cuerpo_export(minutos):
+    cuerpo = {"minutos": round(float(minutos or 0), 3)}
+    try:
+        import licencia
+        cod = (licencia.leer_licencia_guardada() or "").strip()
+    except Exception:
+        cod = ""
+    if cod:
+        cuerpo["codigo"] = cod
+    else:
+        try:
+            _, d = _instalacion_datos()
+            cuerpo["inst"] = d["id"]
+        except Exception:
+            pass
+    return cuerpo
+
+
+def export_gate(minutos):
+    """Pide permiso al puente para exportar `minutos`. Planes ilimitados no miden y
+    funcionan sin internet. Con límite: EXIGE aprobación del servidor (sin gracia).
+    Devuelve {ok:True, medido, cuerpo, restante} o {ok:False, razon:'offline'|'cupo', ...}."""
+    plan = _plan_actual()
+    if plan in PLANES_EXPORT_ILIMITADO:
+        return {"ok": True, "medido": False, "plan": plan}
+    import requests
+    cuerpo = _cuerpo_export(minutos)
+    try:
+        r = requests.post(PUENTE_URL + "/export/cobrar", json=cuerpo, timeout=15)
+    except requests.RequestException:
+        return {"ok": False, "razon": "offline"}
+    if r.status_code >= 500:
+        return {"ok": False, "razon": "offline"}
+    try:
+        d = r.json()
+    except Exception:
+        return {"ok": False, "razon": "offline"}
+    if d.get("ok"):
+        return {"ok": True, "medido": True, "cuerpo": cuerpo,
+                "restante": d.get("restante"), "plan": plan}
+    return {"ok": False, "razon": "cupo", "restante": d.get("restante", 0),
+            "cap": d.get("cap"), "plan": plan}
+
+
+def export_refund(gate):
+    """Devuelve los minutos si la exportación falló después de haber cobrado."""
+    try:
+        if not gate or not gate.get("medido") or not gate.get("cuerpo"):
+            return
+        import requests
+        requests.post(PUENTE_URL + "/export/reembolsar", json=gate["cuerpo"], timeout=10)
+    except Exception:
+        pass
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")

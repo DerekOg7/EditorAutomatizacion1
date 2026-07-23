@@ -272,6 +272,53 @@ async function refrescarLicencia(request, env) {
 }
 
 // ============================================================ worker
+// --- Instalaciones (conteo anónimo) ---
+async function incr(env, key, by = 1) {
+  const cur = parseInt(await env.CUPOS.get(key) || "0", 10) || 0;
+  const nuevo = cur + by;
+  await env.CUPOS.put(key, String(nuevo));
+  return nuevo;
+}
+
+async function pingInstalacion(request, env) {
+  let d = {};
+  try { d = await request.json(); } catch (e) {}
+  const id = String(d.id || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 64);
+  if (!id) return json({ ok: false }, 400);
+  const so = ({ mac: "mac", win: "win", linux: "linux" })[d.so] || "otro";
+  const ver = String(d.ver || "?").replace(/[^0-9A-Za-z.\-]/g, "").slice(0, 16) || "?";
+  const key = `inst:${id}`;
+  const ahora = new Date().toISOString();
+  const existe = await env.CUPOS.get(key);
+  if (!existe) {                       // instalación nueva → cuenta una vez
+    await env.CUPOS.put(key, JSON.stringify({ so, ver, primero: ahora, ultimo: ahora }));
+    await incr(env, "stat:total");
+    await incr(env, `stat:so:${so}`);
+    await incr(env, `stat:ver:${ver}`);
+  } else {                             // ya contada → solo refresca "último visto"
+    let rec = {}; try { rec = JSON.parse(existe); } catch (e) {}
+    await env.CUPOS.put(key, JSON.stringify({
+      so: rec.so || so, ver, primero: rec.primero || ahora, ultimo: ahora }));
+  }
+  return json({ ok: true });
+}
+
+async function leerStats(request, env, url) {
+  // Opcionalmente protegido: si defines el secreto STATS_TOKEN, hay que pasar ?k=…
+  if (env.STATS_TOKEN && url.searchParams.get("k") !== env.STATS_TOKEN)
+    return json({ error: "no autorizado" }, 401);
+  const g = async (k) => parseInt(await env.CUPOS.get(k) || "0", 10) || 0;
+  const [total, mac, win, linux, otro] = await Promise.all([
+    g("stat:total"), g("stat:so:mac"), g("stat:so:win"), g("stat:so:linux"), g("stat:so:otro")]);
+  const versiones = {};
+  try {
+    const lista = await env.CUPOS.list({ prefix: "stat:ver:" });
+    for (const k of lista.keys) versiones[k.name.slice(9)] = await g(k.name);
+  } catch (e) {}
+  return json({ instalaciones: total, por_sistema: { mac, win, linux, otro },
+                por_version: versiones, nota: "conteo anonimo aproximado" });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -284,6 +331,12 @@ export default {
       return emisorWebhook(request, env);
     if (ruta === "/licencia/refrescar")     // auto-renovación (la app pide código fresco)
       return refrescarLicencia(request, env);
+
+    // --- Saludo de instalación (anónimo): cuenta instalaciones reales ---
+    if (request.method === "POST" && ruta === "/i")
+      return pingInstalacion(request, env);
+    if (request.method === "GET" && ruta === "/stats")
+      return leerStats(request, env, url);
 
     // --- CORS ---
     if (request.method === "OPTIONS")

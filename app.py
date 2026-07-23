@@ -1546,6 +1546,9 @@ def exportar_union_estado():
 # tocar nada. Best-effort; corre tanto en dev como empaquetada (app.py se importa).
 threading.Thread(target=editor._bucle_refresco_licencia, daemon=True).start()
 
+# Saludo anónimo de instalación (primer arranque) para contar instalaciones reales.
+threading.Thread(target=editor.avisar_instalacion, daemon=True).start()
+
 
 if __name__ == "__main__":
     PROYECTOS.mkdir(exist_ok=True)

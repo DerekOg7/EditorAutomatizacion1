@@ -1352,6 +1352,53 @@ def _bucle_refresco_licencia():
         time.sleep(12 * 3600)
 
 
+# --- Saludo de instalación: en el PRIMER arranque la app manda un ping anónimo al
+# puente para poder contar instalaciones reales. SOLO viaja un id al azar + el
+# sistema (mac/win) + la versión. Cero datos personales, cero contenido. ---
+
+def _instalacion_datos():
+    """Lee/crea el registro anónimo de esta instalación (id al azar estable)."""
+    import json, uuid
+    f = DATOS / "instalacion.json"
+    try:
+        d = json.loads(f.read_text())
+    except Exception:
+        d = {}
+    if not d.get("id"):
+        d = {"id": uuid.uuid4().hex, "avisado": False}
+        try:
+            f.write_text(json.dumps(d))
+        except Exception:
+            pass
+    return f, d
+
+
+def avisar_instalacion():
+    """Ping anónimo al puente una sola vez (primer arranque) para contar
+    instalaciones reales. Best-effort y silencioso: si no hay internet, no pasa
+    nada y se reintenta el próximo arranque (hasta que uno funcione)."""
+    try:
+        import json, requests
+        f, d = _instalacion_datos()
+        if d.get("avisado"):
+            return
+        try:
+            from version import VERSION as _v
+        except Exception:
+            _v = "?"
+        so = "win" if ES_WIN else ("mac" if ES_MAC else "linux")
+        r = requests.post(PUENTE_URL + "/i",
+                          json={"id": d["id"], "so": so, "ver": _v}, timeout=12)
+        if r.ok:
+            d["avisado"] = True
+            try:
+                f.write_text(json.dumps(d))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
 def _minimax_conf():
     env = leer_env()
     key = env.get("MINIMAX_API_KEY")

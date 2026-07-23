@@ -638,7 +638,8 @@
   .plan-badge { position: absolute; top: -11px; left: 18px; background: var(--acento); color: #fff;
     font: 800 10px 'Roboto', sans-serif; letter-spacing: .6px; padding: 3px 10px; border-radius: 10px; }
   .plan-nom { font: 800 16px 'Roboto', sans-serif; color: var(--texto); }
-  .plan-precio { font: 900 30px/1 'Roboto', sans-serif; color: var(--texto); margin: 6px 0 14px; }
+  .plan-gen { font: 800 15px 'Roboto', sans-serif; color: var(--acento); margin: 8px 0 2px; }
+  .plan-precio { font: 900 30px/1 'Roboto', sans-serif; color: var(--texto); margin: 4px 0 14px; }
   .plan-precio span { font: 600 13px 'Roboto', sans-serif; color: var(--tenue); }
   .plan-lista { list-style: none; margin: 0 0 16px; padding: 0; display: flex; flex-direction: column; gap: 9px; }
   .plan-lista li { font: 400 13px/1.45 'Roboto', sans-serif; color: var(--texto); padding-left: 22px; position: relative; }
@@ -814,26 +815,29 @@
 
     <!-- VISTA 1 · planes / paquetes -->
     <div id="lic-planes">
-      <p class="bienv-tagline" data-i18n="lic_planes_intro">Elige tu plan y desbloquea todo el potencial.</p>
+      <p class="bienv-tagline" data-i18n="lic_planes_intro">Crear y editar siempre es gratis. Lo que sube de plan es tu tiempo de video al mes.</p>
       <div class="planes-grid">
         <div class="plan-card">
-          <div class="plan-nom">Pro</div>
+          <div class="plan-badge" data-i18n="lic_masel">EL MÁS ELEGIDO</div>
+          <div class="plan-nom">Creador en Ascenso</div>
+          <div class="plan-gen" data-i18n="lic_asc_gen">⏱ 4 h de video al mes</div>
           <div class="plan-precio">$14.99<span>/mes</span></div>
           <ul class="plan-lista">
-            <li data-i18n="lic_pro_1">1080p y sin marca de agua</li>
-            <li data-i18n="lic_pro_2">Exportación ilimitada</li>
-            <li data-i18n="lic_pro_3">Conecta tus propias claves de IA (BYOK)</li>
+            <li data-i18n="lic_pro_1">1080p Full HD, sin marca de agua</li>
+            <li data-i18n="lic_pro_2">8× más tiempo de video que Gratis</li>
+            <li data-i18n="lic_pro_3">Conecta tus claves de IA de estudio (voz e imágenes)</li>
           </ul>
           <a class="primario plan-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/12511448-e384-46b2-a10b-1c20eccab944" target="_blank" rel="noopener" data-i18n="lic_suscribirme">Suscribirme</a>
         </div>
         <div class="plan-card destacado">
-          <div class="plan-badge" data-i18n="lic_popular">EL FAVORITO</div>
-          <div class="plan-nom">Premium</div>
+          <div class="plan-badge" data-i18n="lic_popular">TODO INCLUIDO</div>
+          <div class="plan-nom">Creador Pro</div>
+          <div class="plan-gen" data-i18n="lic_prem_gen">⏱ Video ilimitado</div>
           <div class="plan-precio">$24.99<span>/mes</span></div>
           <ul class="plan-lista">
-            <li data-i18n-html="lic_prem_1"><b>90 min de voz profesional al mes</b> (≈ 9 videos)</li>
-            <li data-i18n="lic_prem_2">80 imágenes IA premium + 8 min de música original</li>
-            <li data-i18n="lic_prem_3">Sin crear cuentas ni claves: todo incluido</li>
+            <li data-i18n="lic_prem_1">Exporta todo el video que quieras, sin límite</li>
+            <li data-i18n="lic_prem_2">IA premium incluida: voz HD, imágenes, música y video</li>
+            <li data-i18n="lic_prem_3">Sin crear cuentas ni claves: todo listo</li>
           </ul>
           <a class="primario plan-btn" href="https://autofaceless.lemonsqueezy.com/checkout/buy/0bf42b90-647a-4025-bcdc-b94126a9ed19" target="_blank" rel="noopener" data-i18n="lic_suscribirme">Suscribirme</a>
         </div>
@@ -1788,10 +1792,11 @@
 <div class="modal-fondo" id="modal-exportar">
   <div class="modal">
     <h3 id="exp-titulo" data-i18n="exp_title">Exportar esta historia</h3>
+    <div id="exp-tiempo" style="display:none;margin-bottom:14px"></div>
     <div id="exp-upsell" style="display:none;background:var(--acento-suave);border:1px solid #f3c9c4;border-radius:12px;padding:12px 14px;margin-bottom:14px">
       <div style="font:700 13px 'Roboto';color:var(--acento)" data-i18n="exp_free_t">Versión gratis</div>
-      <div style="font-size:12.5px;color:var(--texto);margin:3px 0 8px" data-i18n="exp_free_d">El video se exportará con una pequeña marca de agua y hasta 720p. Con Pro exportas en 1080p y sin marca de agua.</div>
-      <button class="primario" style="padding:7px 14px;font-size:13px" onclick="cerrarModal('modal-exportar');abrirLicencia()" data-i18n="exp_free_btn">✨ Mejorar a Pro</button>
+      <div style="font-size:12.5px;color:var(--texto);margin:3px 0 8px" data-i18n="exp_free_d">El video se exportará con una pequeña marca de agua y hasta 720p. Con un plan de pago exportas en 1080p y sin marca de agua.</div>
+      <button class="primario" style="padding:7px 14px;font-size:13px" onclick="cerrarModal('modal-exportar');abrirLicencia()" data-i18n="exp_free_btn">✨ Mejora tu plan</button>
     </div>
     <div id="exp-form">
       <div class="campo">
@@ -1992,18 +1997,19 @@ const EN = {
   lic_activate: "Activate license",
   lic_help: "Don't have a code? Contact us to join the beta.",
   lic_keep_free: "Continue with the free version",
-  lic_planes_intro: "Pick your plan and unlock the full potential.",
-  lic_suscribirme: "Subscribe", lic_popular: "MOST POPULAR",
-  lic_pro_1: "1080p and no watermark", lic_pro_2: "Unlimited exports",
-  lic_pro_3: "Connect your own AI keys (BYOK)",
-  lic_prem_1: "<b>90 min of pro voice-over per month</b> (≈ 9 videos)",
-  lic_prem_2: "80 premium AI images + 8 min of original music",
-  lic_prem_3: "No accounts or keys needed: all included",
+  lic_planes_intro: "Creating and editing is always free. What scales up is your video time per month.",
+  lic_suscribirme: "Subscribe", lic_popular: "ALL INCLUDED", lic_masel: "MOST CHOSEN",
+  lic_asc_gen: "⏱ 4 h of video per month", lic_prem_gen: "⏱ Unlimited video",
+  lic_pro_1: "1080p Full HD, no watermark", lic_pro_2: "8× more video time than Free",
+  lic_pro_3: "Connect your own studio AI keys (voice & images)",
+  lic_prem_1: "Export all the video you want, no limit",
+  lic_prem_2: "Premium AI included: HD voice, images, music & video",
+  lic_prem_3: "No accounts or keys: everything ready",
   lic_nota: "After subscribing you'll get your license code by email. Paste it here with \"I already have my license\".",
   lic_ya_tengo: "🔑 I already have my license", lic_ver_planes: "← See the plans",
   exp_free_t: "Free version",
-  exp_free_d: "The video will export with a small watermark and up to 720p. Pro exports 1080p with no watermark.",
-  exp_free_btn: "✨ Upgrade to Pro",
+  exp_free_d: "The video will export with a small watermark and up to 720p. A paid plan exports 1080p with no watermark.",
+  exp_free_btn: "✨ Upgrade your plan",
   // --- rediseño: barra superior ---
   tb_back: "← Back", tb_help: "? Help",
   // --- Principal ---
@@ -3190,7 +3196,7 @@ const fmt = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')
 async function api(ruta, opciones) {
   const r = await fetch(ruta, opciones);
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(d.error || `Error ${r.status}`);
+  if (!r.ok) { const e = new Error(d.error || `Error ${r.status}`); e.data = d; e.status = r.status; throw e; }
   return d;
 }
 
@@ -4819,6 +4825,41 @@ let expTimer = null;
 
 let expUnion = null;   // lista de historias si es exportación-unión, o null
 
+function renderExpTiempo(s) {
+  const el = $('exp-tiempo'); el.style.display = '';
+  const btn = $('btn-exp-lanzar');
+  const wrap = (bg, bd, html) => `<div style="background:${bg};border:1px solid ${bd};border-radius:12px;padding:11px 14px;font-size:13px">${html}</div>`;
+  let bloquea = false;
+  if (s.ilimitado) {
+    el.innerHTML = wrap('#eef7f0', '#cce8d5', `<b style="color:var(--ok)">✨ ${L('Exportación ilimitada','Unlimited export')}</b>`);
+  } else if (s.reexport_libre) {
+    el.innerHTML = wrap('#eef7f0', '#cce8d5', `<b style="color:var(--ok)">✓ ${L('Ya exportaste este video','You already exported this video')}</b><br><span style="color:var(--tenue)">${L('Volver a exportarlo no gasta tu tiempo.','Re-exporting it won\'t use your time.')}</span>`);
+  } else if (s.sin_internet) {
+    el.innerHTML = wrap('#fdf6e3', '#eddca6', `<b style="color:var(--ambar)">⚠ ${L('Necesitas internet para exportar','You need internet to export')}</b><br><span style="color:var(--tenue)">${L('Así contamos tu tiempo de video. Conéctate e inténtalo.','That\'s how we count your video time. Connect and try again.')}</span>`);
+    bloquea = true;
+  } else {
+    const cost = Math.max(1, Math.ceil(s.minutos_video || 0));
+    const rest = Math.max(0, Math.floor(s.restante || 0)), cap = s.cap || 0;
+    const pct = cap ? Math.min(100, Math.round((cap - rest) / cap * 100)) : 0;
+    const alcanza = (s.restante || 0) + 0.05 >= (s.minutos_video || 0);
+    const barra = `<div style="height:7px;background:var(--panel2);border-radius:4px;overflow:hidden;margin:7px 0"><div style="height:100%;width:${pct}%;background:${alcanza ? 'var(--acento)' : 'var(--alerta)'}"></div></div>`;
+    const sub = alcanza
+      ? `<span style="color:var(--tenue)">${L(`Este video usa ~${cost} min.`, `This video uses ~${cost} min.`)}</span>`
+      : `<span style="color:var(--alerta);font-weight:600">${L(`No te alcanza para este video (~${cost} min).`, `Not enough for this video (~${cost} min).`)}</span>`;
+    el.innerHTML = wrap('var(--bg)', 'var(--borde)',
+      `<div style="display:flex;justify-content:space-between;align-items:baseline"><span>${L('Tu tiempo de video este mes','Your video time this month')}</span><b style="font-variant-numeric:tabular-nums">${rest} / ${cap} min</b></div>${barra}${sub}
+       <div style="color:var(--tenue2);font-size:11px;margin-top:6px">${L('Crear y editar es gratis; el tiempo solo se cuenta al exportar y se renueva cada mes.','Creating and editing is free; time is only counted on export and renews monthly.')}</div>`);
+    if (!alcanza) bloquea = true;
+  }
+  if (bloquea && !s.sin_internet) {
+    btn.textContent = L('✨ Mejora tu plan','✨ Upgrade your plan'); btn.disabled = false;
+    btn.onclick = () => { cerrarModal('modal-exportar'); abrirLicencia(); };
+  } else {
+    btn.textContent = L('Exportar','Export'); btn.disabled = !!s.sin_internet;
+    btn.onclick = lanzarExportar;
+  }
+}
+
 async function abrirExportar() {
   $('exp-error').textContent = '';
   $('exp-resultado').style.display = 'none';
@@ -4852,6 +4893,12 @@ async function abrirExportar() {
       `<option value="${c.id}"${c.id === 'alta' ? ' selected' : ''}>${c.etiqueta}</option>`).join('');
     sincCarpeta();
   } catch (e) { $('exp-error').textContent = e.message; }
+  // medidor de tiempo de exportación (cuánto queda + costo de este video)
+  try {
+    const s = expUnion ? await api('/api/export_saldo')
+                       : await api(`/api/proyectos/${actual.nombre}/export_saldo`);
+    renderExpTiempo(s);
+  } catch (e) { $('exp-tiempo').style.display = 'none'; }
   $('modal-exportar').classList.add('visible');
 }
 
@@ -4890,9 +4937,12 @@ async function lanzarExportar() {
         { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(cuerpo) });
     }
   } catch (e) {
-    $('exp-error').textContent = e.message;
     $('exp-form').style.display = ''; $('exp-progreso').style.display = 'none';
-    $('btn-exp-lanzar').disabled = false; return;
+    $('btn-exp-lanzar').disabled = false;
+    if (e.data && e.data.cupo_agotado) {   // se acabó el tiempo → a la pantalla de planes
+      cerrarModal('modal-exportar'); abrirLicencia(); return;
+    }
+    $('exp-error').textContent = e.message; return;
   }
   clearInterval(expTimer);
   expTimer = setInterval(async () => {
@@ -5565,7 +5615,7 @@ function pintarPlan(lic) {
   const b = $('tb-plan');
   if (esPro) { b.classList.remove('on'); return; }
   b.classList.add('on');
-  b.textContent = L('🆓 Gratis · Mejora a Pro', '🆓 Free · Upgrade to Pro');
+  b.textContent = L('🆓 Gratis · Mejora tu plan', '🆓 Free · Upgrade your plan');
 }
 
 // abrir la pantalla de planes (unirse a Premium) — no bloquea, se puede seguir gratis

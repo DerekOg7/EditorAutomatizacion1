@@ -800,6 +800,31 @@ Bugs reportados por testers antes de "lanzar bien". NO se ha reempaquetado aún
   `~/Documents/CLAUDE/AutoFaceless-Studio-macOS.zip`. La Release oficial (Mac +
   Windows) la produce el CI al empujar el tag `v1.1`.
 
+## Post-v1.1 en curso (landing + conteo de instalaciones)
+
+- **Landing rediseñada** (`landing/index.html`): el hero de campaña "Una roca gana
+  $1.240/mes" se cambió por el hero de producto **"Crea vídeos faceless para
+  YouTube con un clic"** con la **captura REAL del editor** (`img/editor-hero.webp`,
+  capturada del proyecto Amelia con html2canvas y optimizada) dentro de un marco de
+  ventana; botón "Descárgalo gratis" (ya no beta); value props café/3-pasos. Nueva
+  **sección "Vídeos de verdad, hechos con la app"** (`#videos`): 4 clips cortos
+  (~28s, 720p, `landing/videos/*.mp4` + poster, `preload=none`) de videos reales
+  (Amelia, MH370, Elisa Lam, Sodder). Se eligieron CLIPS (no videos completos) para
+  no canibalizar vistas del canal ni reventar el ancho de banda de Netlify. Deploy:
+  arrastrar `~/Documents/CLAUDE/landing-para-netlify/` a Netlify (manual). La
+  descarga apunta a `releases/latest/download/…` → la landing NO se toca al sacar
+  versión nueva.
+- **Conteo de instalaciones reales (anónimo)**: `editor.avisar_instalacion()` manda
+  UN ping al puente en el primer arranque con SOLO `{id al azar, so, ver}` (cero
+  datos personales); id estable en `DATOS/instalacion.json`, marca `avisado` solo si
+  el ping tuvo éxito (reintenta si no hay internet). Arranca en un hilo daemon desde
+  `app.py`. Worker: `POST /i` (dedup por id en KV, cuenta `stat:total` + por sistema
+  + por versión) y `GET /stats` (lee conteos; opcional `STATS_TOKEN` via `?k=`).
+  Verificado: Deno 10/10 + Python. **Empieza a contar cuando (a) se repega el
+  `worker.js` en Cloudflare y (b) sale la v1.2.** Leer conteo: `curl .../stats`.
+- **PENDIENTE de Derek**: reconfigurar los paquetes Gratis/Pro/Premium (dirá cómo);
+  agrupar con el ping en un solo build **v1.2**.
+
 ## Estado actual: v1.0 (LANZAMIENTO — MVP en el mercado)
 
 > Las secciones de arriba (v0.07–v0.16) documentan lo añadido después de v0.06.

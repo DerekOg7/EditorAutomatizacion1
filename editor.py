@@ -1019,6 +1019,37 @@ NICHOS = {
         "bienvenida": "¿Qué evento o época de la historia quieres contar? Te armo un guión "
                       "documental con datos, fechas y una narrativa que atrape.",
     },
+    "motivacion": {
+        "nombre": "Motivación & Superación", "emoji": "🔥", "color": "#7a2a10",
+        "desc": "Mensajes de motivación, disciplina y superación personal que empujan a la acción.",
+        "estilo": "motivación y superación personal; tono inspirador y enérgico, frases "
+                  "potentes y ritmo ascendente; historias de esfuerzo, disciplina y "
+                  "resiliencia; háblale al espectador de tú y cierra con un llamado claro a "
+                  "la acción.",
+        "bienvenida": "¿Sobre qué quieres motivar? (disciplina, no rendirse, hábitos…) Te "
+                      "armo un guión inspirador con frases potentes y un cierre que empuje "
+                      "a la acción.",
+    },
+    "ciencia": {
+        "nombre": "Ciencia & Universo", "emoji": "🔬", "color": "#0f2a5a",
+        "desc": "Divulgación científica y del cosmos: cómo funciona el mundo, con datos y asombro.",
+        "estilo": "divulgación científica (física, biología, espacio, tecnología); explica "
+                  "conceptos complejos de forma simple y fascinante; datos y descubrimientos "
+                  "reales; tono de asombro y curiosidad, riguroso pero accesible; nada de "
+                  "pseudociencia.",
+        "bienvenida": "¿Qué tema de ciencia o del universo quieres explicar? Te armo un guión "
+                      "que lo hace simple y fascinante, con datos reales y mucho asombro.",
+    },
+    "religion": {
+        "nombre": "Religión & Espiritualidad", "emoji": "🙏", "color": "#4a3670",
+        "desc": "Historias, enseñanzas y reflexiones de fe y espiritualidad, con tono respetuoso.",
+        "estilo": "contenido religioso y espiritual; historias, enseñanzas y reflexiones de "
+                  "fe con tono respetuoso, sereno e inspirador; mensajes de esperanza, "
+                  "gratitud y propósito; evita el sectarismo y el dogmatismo agresivo, y "
+                  "respeta las creencias del espectador.",
+        "bienvenida": "¿Qué tema de fe o espiritualidad quieres tratar? (una parábola, una "
+                      "reflexión, gratitud…) Te armo un guión respetuoso e inspirador.",
+    },
 }
 
 

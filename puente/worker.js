@@ -61,6 +61,14 @@ function json(objeto, status = 200) {
     status, headers: { "Content-Type": "application/json" },
   });
 }
+// Igual que json() pero permite que un navegador de otro dominio (la landing) lea
+// la respuesta. Solo lo necesita /promo, que se llama desde el navegador.
+function jsonCORS(objeto, status = 200) {
+  return new Response(JSON.stringify(objeto), {
+    status, headers: { "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*" },
+  });
+}
 
 // -------------------------------------------------------------- licencia (verificar)
 async function verificarLicencia(codigo) {
@@ -206,12 +214,12 @@ const PROMO_PLAN = "pro";   // codigo interno de Creador en Ascenso
 
 async function promoAscenso(request, env) {
   if (!env.LICENSE_PRIVATE_KEY_HEX || !env.RESEND_API_KEY)
-    return json({ error: "La promo no esta configurada todavia." }, 503);
+    return jsonCORS({ error: "La promo no esta configurada todavia." }, 503);
   let b = {};
   try { b = await request.json(); } catch (_) {}
   const email = String(b.email || "").trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 120)
-    return json({ error: "Escribe un correo valido." }, 400);
+    return jsonCORS({ error: "Escribe un correo valido." }, 400);
 
   // Una promo por correo: si ya se emitio, reenviamos el MISMO codigo (idempotente).
   const emailKey = `promo:${email}`;
@@ -223,7 +231,7 @@ async function promoAscenso(request, env) {
     const ipKey = `promoip:${ip}:${new Date().toISOString().slice(0, 13)}`;
     const usos = parseInt(await env.CUPOS.get(ipKey) || "0", 10) || 0;
     if (usos >= 5)
-      return json({ error: "Demasiadas solicitudes. Intenta mas tarde." }, 429);
+      return jsonCORS({ error: "Demasiadas solicitudes. Intenta mas tarde." }, 429);
     await env.CUPOS.put(ipKey, String(usos + 1), { expirationTtl: 3600 });
   }
 
@@ -234,10 +242,10 @@ async function promoAscenso(request, env) {
   const codigo = previo || await generarLicencia(id, PROMO_PLAN, exp, env.LICENSE_PRIVATE_KEY_HEX);
 
   const enviado = await enviarEmailPromo(env, email, codigo, exp);
-  if (!enviado) return json({ error: "No pudimos enviar el correo. Reintenta." }, 502);
+  if (!enviado) return jsonCORS({ error: "No pudimos enviar el correo. Reintenta." }, 502);
 
   if (!previo) await env.CUPOS.put(emailKey, codigo, { expirationTtl: 90 * 86400 });
-  return json({ ok: true });
+  return jsonCORS({ ok: true });
 }
 
 async function enviarEmailPromo(env, para, codigo, exp) {

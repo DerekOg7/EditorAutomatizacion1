@@ -354,7 +354,13 @@ def hilo_video_ia(nombre, n, prompt):
 
 @app.get("/")
 def index():
-    return send_file(BASE / "static" / "index.html")
+    # Sin caché: la app se abre en el navegador y este cacheaba el HTML viejo tras
+    # actualizar (se veía la versión anterior). Así siempre carga el HTML fresco.
+    resp = send_file(BASE / "static" / "index.html")
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @app.get("/api/salud")

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AutoFaceless Studio — Editor</title>
+<link rel="icon" type="image/png" href="/static/af.png">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap');
   :root {
@@ -58,6 +59,10 @@
   .iso-96 { width: 96px; height: 96px; border-radius: 26px; box-shadow: 0 12px 32px rgba(196,35,27,.28); }
   .iso-96 .cabeza { top: 17px; width: 34px; height: 34px; }
   .iso-96 .hombros { top: 59px; width: 62px; height: 40px; border-radius: 31px 31px 0 0; }
+  /* logo principal AF (icono de la marca) — reemplaza al isotipo faceless */
+  .af-logo { display: block; object-fit: contain; flex: none; }
+  .af-96 { width: 96px; height: 96px; filter: drop-shadow(0 10px 24px rgba(0,0,0,.20)); }
+  .af-34 { width: 34px; height: 34px; }
 
   /* ============ barra superior compartida ============ */
   #topbar {
@@ -837,7 +842,7 @@
 
 <div id="licencia">
   <div class="bienv-caja lic-caja">
-    <div class="iso iso-96" style="margin:0 auto 18px"><div class="cabeza"></div><div class="hombros"></div></div>
+    <img src="/static/af.png" alt="AutoFaceless" class="af-logo af-96" style="margin:0 auto 18px">
     <div class="bienv-marca">AutoFaceless <span>Studio</span></div>
 
     <!-- VISTA 1 · planes / paquetes -->
@@ -920,7 +925,7 @@
 
 <div id="bienvenida">
   <div class="bienv-caja">
-    <div class="iso iso-96" style="margin:0 auto 20px"><div class="cabeza"></div><div class="hombros"></div></div>
+    <img src="/static/af.png" alt="AutoFaceless" class="af-logo af-96" style="margin:0 auto 20px">
     <div class="bienv-marca">AutoFaceless <span>Studio</span></div>
     <p class="bienv-tagline" data-i18n="welcome_tagline">Crea videos faceless completos sin saber editar. Te guiamos paso a paso.</p>
     <div class="bienv-lbl" data-i18n="welcome_lang">ELIGE TU IDIOMA</div>
@@ -952,7 +957,7 @@
 <header id="topbar">
   <button id="tb-atras" class="btn-pill" onclick="irAtras()" data-i18n="tb_back">← Atrás</button>
   <div id="tb-marca" onclick="irA('home')">
-    <div class="iso iso-34"><div class="cabeza"></div><div class="hombros"></div></div>
+    <img src="/static/af.png" alt="AutoFaceless" class="af-logo af-34">
     <div>
       <div class="nombre">AutoFaceless <span>Studio</span></div>
       <div class="sub" id="tb-sub">Videos faceless automáticos</div>
@@ -976,7 +981,7 @@
   <section id="pg-home" class="pagina activa">
     <div class="home-wrap">
       <div class="home-hero">
-        <div class="iso iso-96"><div class="cabeza"></div><div class="hombros"></div></div>
+        <img src="/static/af.png" alt="AutoFaceless" class="af-logo af-96">
         <h1>AutoFaceless <span>Studio</span></h1>
         <p class="home-tagline" data-i18n="home_tagline">Crea videos faceless completos sin saber editar. Elige un nicho y te guiamos paso a paso: guión, voz en off y video final listo para exportar.</p>
       </div>

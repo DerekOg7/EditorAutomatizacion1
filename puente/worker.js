@@ -180,14 +180,25 @@ function planDeVariante(env, attrs) {
 
 async function enviarEmail(env, para, codigo, plan) {
   const from = env.EMAIL_FROM || "AutoFaceless Studio <licencias@autofaceless.studio>";
-  const nombrePlan = plan === "premium" ? "Premium" : "Pro";
+  // Nombres comerciales: pro -> "Creador en Ascenso", premium -> "Creador Pro".
+  const nombrePlan = plan === "premium" ? "Creador Pro" : "Creador en Ascenso";
   // Solo ASCII para que NINGUN cliente de correo muestre caracteres raros.
+  // El logo AF va en la cabecera (hospedado en la landing, HTTPS).
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0f0f0f">
-      <h2 style="color:#c4231b">Gracias por unirte a AutoFaceless ${nombrePlan}</h2>
+      <div style="text-align:center;padding:8px 0 4px">
+        <img src="https://autofaceless.studio/img/icono-192.png" width="60" height="60"
+             alt="AutoFaceless Studio"
+             style="display:inline-block;border-radius:14px;vertical-align:middle">
+        <div style="font:700 17px Arial,sans-serif;margin-top:8px">AutoFaceless
+          <span style="color:#c4231b">Studio</span></div>
+      </div>
+      <h2 style="color:#c4231b;text-align:center;font-size:22px;margin:18px 0 6px">
+        Gracias por unirte a ${nombrePlan}</h2>
       <p>Este es tu codigo de licencia. Activalo dentro de la app:</p>
-      <p style="background:#f4ece6;border:1px solid #e5e5e5;border-radius:8px;padding:14px;
-         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all">${codigo}</p>
+      <p style="background:#f4ece6;border:1px solid #e5ddd3;border-radius:10px;padding:16px;
+         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;
+         text-align:center">${codigo}</p>
       <p><b>Como activarlo:</b></p>
       <ol style="line-height:1.7">
         <li>Abre AutoFaceless Studio.</li>
@@ -196,7 +207,9 @@ async function enviarEmail(env, para, codigo, plan) {
       </ol>
       <p style="color:#606060;font-size:13px">Tu licencia se renueva con tu suscripcion; en cada
       renovacion te llegara un codigo nuevo a este correo.</p>
-      <p style="color:#909090;font-size:12px">Dudas? Responde a este correo. - AutoFaceless Studio</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:18px 0">
+      <p style="color:#909090;font-size:12px;text-align:center">Dudas? Responde a este correo.
+      &middot; AutoFaceless Studio</p>
     </div>`;
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -251,23 +264,40 @@ async function promoAscenso(request, env) {
 async function enviarEmailPromo(env, para, codigo, exp) {
   const from = env.EMAIL_FROM || "AutoFaceless Studio <licencias@autofaceless.studio>";
   // Solo ASCII para que NINGUN cliente de correo muestre caracteres raros.
+  // El logo AF va en la cabecera (hospedado en la landing, HTTPS).
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0f0f0f">
-      <h2 style="color:#c4231b">Tu prueba de Creador en Ascenso, gratis</h2>
+      <div style="text-align:center;padding:8px 0 4px">
+        <img src="https://autofaceless.studio/img/icono-192.png" width="60" height="60"
+             alt="AutoFaceless Studio"
+             style="display:inline-block;border-radius:14px;vertical-align:middle">
+        <div style="font:700 17px Arial,sans-serif;margin-top:8px">AutoFaceless
+          <span style="color:#c4231b">Studio</span></div>
+      </div>
+      <h2 style="color:#c4231b;text-align:center;font-size:22px;margin:18px 0 6px">
+        Tu prueba de Creador en Ascenso, gratis</h2>
       <p>Gracias por probar AutoFaceless Studio. Este es tu codigo para activar
       <b>Creador en Ascenso</b> gratis hasta el <b>${exp}</b>:</p>
-      <p style="background:#f4ece6;border:1px solid #e5e5e5;border-radius:8px;padding:14px;
-         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all">${codigo}</p>
+      <p style="background:#f4ece6;border:1px solid #e5ddd3;border-radius:10px;padding:16px;
+         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all;
+         text-align:center">${codigo}</p>
       <p><b>Como activarlo:</b></p>
       <ol style="line-height:1.7">
         <li>Descarga y abre AutoFaceless Studio (Mac o Windows).</li>
         <li>Arriba a la derecha, entra a "Claves API / Licencia".</li>
         <li>Pega el codigo y dale "Activar".</li>
       </ol>
+      <p style="text-align:center;margin:22px 0">
+        <a href="https://autofaceless.studio"
+           style="background:#c4231b;color:#fff;text-decoration:none;font:700 15px Arial,sans-serif;
+                  padding:13px 26px;border-radius:12px;display:inline-block">Descargar la app</a>
+      </p>
       <p style="color:#606060;font-size:13px">Con Creador en Ascenso exportas en 1080p
       sin marca de agua y conectas tus claves de IA. La prueba dura 14 dias; cuando
       quieras seguir, te suscribes desde la app.</p>
-      <p style="color:#909090;font-size:12px">Dudas? Responde a este correo. - AutoFaceless Studio</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:18px 0">
+      <p style="color:#909090;font-size:12px;text-align:center">Dudas? Responde a este correo.
+      &middot; AutoFaceless Studio</p>
     </div>`;
   const r = await fetch("https://api.resend.com/emails", {
     method: "POST",

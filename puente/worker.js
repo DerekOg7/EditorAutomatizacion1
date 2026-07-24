@@ -29,8 +29,8 @@ const PLANES_PREMIUM = new Set(["premium", "todo", "vip", "owner", "lifetime"]);
 const CUPO_MES = { voz: 90000, imagen: 80, musica: 480, video: 4 };
 // Tope diario anti-abuso: un tercio del mes
 const CUPO_DIA = { voz: 30000, imagen: 27, musica: 160, video: 2 };
-const NOMBRE = { voz: "caracteres de voz", imagen: "imágenes",
-                 musica: "segundos de música", video: "clips de video" };
+const NOMBRE = { voz: "caracteres de voz", imagen: "imagenes",
+                 musica: "segundos de musica", video: "clips de video" };
 
 // Emisor
 const DIAS_GRACIA = 3;
@@ -120,10 +120,10 @@ async function cobrar(env, id, categoria, cantidad) {
   const usadoDia = uso.dia[categoria] || 0;
   if (usadoMes + cantidad > CUPO_MES[categoria])
     return { ok: false, error: `Cupo mensual de ${NOMBRE[categoria]} agotado ` +
-      `(${CUPO_MES[categoria]}/mes). Se renueva el día 1, o usa tu propia clave (BYOK).` };
+      `(${CUPO_MES[categoria]}/mes). Se renueva el dia 1, o usa tu propia clave (BYOK).` };
   if (usadoDia + cantidad > CUPO_DIA[categoria])
     return { ok: false, error: `Tope diario de ${NOMBRE[categoria]} alcanzado ` +
-      `(${CUPO_DIA[categoria]}/día). Vuelve mañana o usa tu propia clave.` };
+      `(${CUPO_DIA[categoria]}/dia). Vuelve manana o usa tu propia clave.` };
   uso.mes[categoria] = usadoMes + cantidad;
   uso.dia[categoria] = usadoDia + cantidad;
   await Promise.all([
@@ -346,10 +346,10 @@ async function emisorWebhook(request, env) {
   const cuerpo = await request.text();
   const firma = request.headers.get("X-Signature");
   if (!await firmaWebhookValida(env.LS_SIGNING_SECRET, cuerpo, firma))
-    return json({ error: "Firma inválida." }, 401);
+    return json({ error: "Firma invalida." }, 401);
 
   let evento;
-  try { evento = JSON.parse(cuerpo); } catch (_) { return json({ error: "JSON inválido." }, 400); }
+  try { evento = JSON.parse(cuerpo); } catch (_) { return json({ error: "JSON invalido." }, 400); }
 
   const nombreEvento = evento?.meta?.event_name || request.headers.get("X-Event-Name") || "";
   const attrs = evento?.data?.attributes || {};
@@ -372,7 +372,7 @@ async function emisorWebhook(request, env) {
 async function refrescarLicencia(request, env) {
   const body = await request.json().catch(() => ({}));
   const v = await verificarFirma(body.codigo || "");
-  if (!v.ok) return json({ error: "Licencia inválida." }, 401);
+  if (!v.ok) return json({ error: "Licencia invalida." }, 401);
   const sub = await env.CUPOS.get(`sub:${v.id}`, "json");
   if (!sub || !sub.activa) return json({ activa: false });
   const codigo = await generarLicencia(v.id, sub.plan, expDeSub(sub.hasta),
@@ -514,7 +514,7 @@ async function pexelsProxy(request, env, url) {
   if (!inst) return json({ error: "falta id" }, 400);
   const k = `px:${inst}:${new Date().toISOString().slice(0, 13)}`;   // por hora
   const usado = parseInt(await env.CUPOS.get(k) || "0", 10) || 0;
-  if (usado >= 400) return json({ error: "límite temporal, intenta más tarde" }, 429);
+  if (usado >= 400) return json({ error: "limite temporal, intenta mas tarde" }, 429);
   await env.CUPOS.put(k, String(usado + 1), { expirationTtl: 3600 });
   const destino = "https://api.pexels.com" + url.pathname.slice(3) + url.search;
   try {
@@ -522,7 +522,7 @@ async function pexelsProxy(request, env, url) {
     return new Response(r.body, { status: r.status, headers: {
       "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
   } catch (e) {
-    return json({ error: "pexels no respondió" }, 502);
+    return json({ error: "pexels no respondio" }, 502);
   }
 }
 
@@ -572,11 +572,11 @@ export default {
     const lic = await verificarLicencia(extraerLicencia(request, url));
     if (!lic.ok) {
       const msg = {
-        formato: "Licencia inválida.", firma: "Licencia inválida (firma).",
-        vencida: "Tu licencia está vencida — renuévala para seguir usando la IA incluida.",
+        formato: "Licencia invalida.", firma: "Licencia invalida (firma).",
+        vencida: "Tu licencia esta vencida. Renuevala para seguir usando la IA incluida.",
         no_premium: "La IA incluida es del plan Premium. Tu plan actual no la incluye: " +
-                    "usa tus propias claves (🔑) o mejora a Premium.",
-      }[lic.razon] || "Licencia inválida.";
+                    "usa tus propias claves o mejora a Premium.",
+      }[lic.razon] || "Licencia invalida.";
       return json({ error: msg }, lic.razon === "no_premium" ? 403 : 401);
     }
 

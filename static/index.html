@@ -506,6 +506,21 @@
   #ed-centro #pv-izq { flex: none; }
   #ed-centro #pv-lienzo { width: auto; height: min(46vh, 600px); max-width: 100%; margin: 0 auto; }
   #ed-centro #pv-lienzo.alto { height: min(58vh, 760px); }
+  /* ===== Editor en pantallas angostas (ventana no maximizada / laptops chicas) ===== */
+  /* <=1040px: la barra de acciones envuelve (nunca se corta "Exportar video") y el
+     panel de detalle se estrecha para dar aire al preview. */
+  @media (max-width: 1040px) {
+    #cabecera { flex-wrap: wrap; row-gap: 8px; }
+    #ed-derecha:not(.colapsado) { width: 320px; min-width: 320px; }
+  }
+  /* <=900px: se apila -> preview + linea de tiempo a todo el ancho y el panel de
+     detalle debajo, para que el video no quede aplastado. */
+  @media (max-width: 900px) {
+    #ed-cuerpo { flex-direction: column; overflow-y: auto; }
+    #ed-centro { overflow: visible; }
+    #ed-derecha:not(.colapsado) { width: auto; min-width: 0; border-left: none;
+      border-top: 1px solid var(--borde); }
+  }
   #tl-cab { display: flex; align-items: center; gap: 10px; margin: 16px 0 6px; flex-wrap: wrap; }
   #musica-fila { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tenue); margin-top: 8px; }
   #ed-derecha #detalle { display: none; }

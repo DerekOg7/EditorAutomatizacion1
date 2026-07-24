@@ -186,6 +186,7 @@
     h1 { font-size: 46px; letter-spacing: -1.6px; }
     .grid3 { grid-template-columns: 1fr; }
     .pk-grid { flex-direction: column; }
+    .tira-chip { font-size: 13px; padding: 8px 14px; }
     .casos h2, .como h2, .precios h2, .videos h2 { font-size: 32px; }
     .videos-grid { grid-template-columns: 1fr; }
     .cta h2 { font-size: 36px; letter-spacing: -1px; }
@@ -193,6 +194,50 @@
     .hero-props { flex-direction: column; gap: 18px; }
     .hero-props .prop + .prop { border-left: 0; padding-left: 0; border-top: 1px solid #d8c8bc; padding-top: 18px; }
     .foto-tag { right: 0; }
+  }
+
+  /* ---------------- MOVIMIENTO ---------------- */
+  @keyframes heroIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+  @keyframes flota  { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  @keyframes tira   { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* entrada escalonada del hero */
+  .hero-txt > * { animation: heroIn .7s cubic-bezier(.2,.7,.3,1) both; }
+  .hero-txt > *:nth-child(1) { animation-delay: .05s; }
+  .hero-txt > *:nth-child(2) { animation-delay: .13s; }
+  .hero-txt > *:nth-child(3) { animation-delay: .21s; }
+  .hero-txt > *:nth-child(4) { animation-delay: .29s; }
+  .hero-txt > *:nth-child(5) { animation-delay: .37s; }
+  .hero-foto { animation: heroIn .85s cubic-bezier(.2,.7,.3,1) .22s both; }
+  .ventana { animation: flota 7s ease-in-out 1.3s infinite; }
+
+  /* revelado al hacer scroll (lo activa el JS) */
+  .rev { opacity: 0; transform: translateY(26px);
+    transition: opacity .7s cubic-bezier(.2,.7,.3,1), transform .7s cubic-bezier(.2,.7,.3,1); }
+  .rev.on { opacity: 1; transform: none; }
+
+  /* micro-interacciones */
+  .btn-hero, .pk-btn, .btn-dl { transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+  .btn-hero:hover, .btn-dl:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(196,35,27,.32); }
+  .caso, .vid-card, .pk-card { transition: transform .22s ease, box-shadow .22s ease; }
+  .caso:hover, .vid-card:hover { transform: translateY(-6px); box-shadow: 0 20px 44px rgba(0,0,0,.20); }
+  .pk-card:hover { transform: translateY(-4px); }
+
+  /* tira infinita de nichos */
+  .nichos-tira { background: #141414; padding: 22px 0 24px; overflow: hidden;
+    border-top: 1px solid #262626; border-bottom: 1px solid #262626; }
+  .tira-tit { text-align: center; font: 700 11px ui-monospace, Menlo, monospace; letter-spacing: 1.6px;
+    color: #8a8a8a; margin-bottom: 16px; }
+  .tira-track { display: flex; gap: 14px; width: max-content; animation: tira 38s linear infinite; }
+  .nichos-tira:hover .tira-track { animation-play-state: paused; }
+  .tira-chip { display: flex; align-items: center; gap: 9px; white-space: nowrap; background: #1e1e1e;
+    border: 1px solid #303030; border-radius: 30px; padding: 10px 20px;
+    font: 600 14.5px 'Roboto', sans-serif; color: #ece5dd; }
+  .tira-chip i { font-style: normal; font-size: 18px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-txt > *, .hero-foto, .ventana, .tira-track { animation: none !important; }
+    .rev { opacity: 1 !important; transform: none !important; transition: none !important; }
   }
 </style>
 </head>
@@ -246,6 +291,33 @@
   </div>
 </section>
 
+<!-- TIRA DE NICHOS -->
+<div class="nichos-tira">
+  <div class="tira-tit">10 NICHOS LISTOS PARA PRODUCIR</div>
+  <div class="tira-track">
+    <span class="tira-chip"><i>🕵️</i>Misterio · True Crime</span>
+    <span class="tira-chip"><i>🏆</i>Top 10 · Rankings</span>
+    <span class="tira-chip"><i>💡</i>Sabías qué</span>
+    <span class="tira-chip"><i>📈</i>Finanzas &amp; Negocios</span>
+    <span class="tira-chip"><i>🦁</i>Documentales de Animales</span>
+    <span class="tira-chip"><i>📜</i>Historia &amp; Documental</span>
+    <span class="tira-chip"><i>🔥</i>Motivación</span>
+    <span class="tira-chip"><i>🔬</i>Ciencia &amp; Universo</span>
+    <span class="tira-chip"><i>🙏</i>Religión &amp; Espiritualidad</span>
+    <span class="tira-chip"><i>🌙</i>Música Relajante</span>
+    <span class="tira-chip"><i>🕵️</i>Misterio · True Crime</span>
+    <span class="tira-chip"><i>🏆</i>Top 10 · Rankings</span>
+    <span class="tira-chip"><i>💡</i>Sabías qué</span>
+    <span class="tira-chip"><i>📈</i>Finanzas &amp; Negocios</span>
+    <span class="tira-chip"><i>🦁</i>Documentales de Animales</span>
+    <span class="tira-chip"><i>📜</i>Historia &amp; Documental</span>
+    <span class="tira-chip"><i>🔥</i>Motivación</span>
+    <span class="tira-chip"><i>🔬</i>Ciencia &amp; Universo</span>
+    <span class="tira-chip"><i>🙏</i>Religión &amp; Espiritualidad</span>
+    <span class="tira-chip"><i>🌙</i>Música Relajante</span>
+  </div>
+</div>
+
 <!-- CASOS -->
 <section class="casos" id="casos">
   <div class="casos-in">
@@ -256,15 +328,15 @@
     <div class="grid3">
       <div class="caso">
         <div class="caso-foto"><img src="img/perro.webp" alt="Perro con auriculares"><div class="caso-num">Nº 002</div></div>
-        <div class="caso-txt"><h3>Un perro. <b>$860/mes.</b></h3><p>No sabe que es famoso.</p></div>
+        <div class="caso-txt"><h3>Un perro. <b class="cifra" data-n="860">$860/mes.</b></h3><p>No sabe que es famoso.</p></div>
       </div>
       <div class="caso">
         <div class="caso-foto"><img src="img/bebe.webp" alt="Bebé con tablet"><div class="caso-num">Nº 003</div></div>
-        <div class="caso-txt"><h3>Un bebé. <b>$2.100/mes.</b></h3><p>Todavía no sabe hablar.</p></div>
+        <div class="caso-txt"><h3>Un bebé. <b class="cifra" data-n="2100">$2.100/mes.</b></h3><p>Todavía no sabe hablar.</p></div>
       </div>
       <div class="caso">
         <div class="caso-foto"><img src="img/gallina.webp" alt="Gallina con anillo de luz"><div class="caso-num">Nº 004</div></div>
-        <div class="caso-txt"><h3>Una gallina. <b>$430/mes.</b></h3><p>Sube un short cada mañana.</p></div>
+        <div class="caso-txt"><h3>Una gallina. <b class="cifra" data-n="430">$430/mes.</b></h3><p>Sube un short cada mañana.</p></div>
       </div>
     </div>
   </div>
@@ -429,6 +501,60 @@
   </div>
   <span class="nota">Fotos y videos de stock por <a href="https://www.pexels.com" target="_blank" rel="noopener" style="color:#8a8a8a">Pexels</a> · © 2026 · Ninguna roca fue obligada a monetizar.</span>
 </footer>
+
+<script>
+/* ---- Movimiento: revelado al hacer scroll, contadores y vídeos al pasar el ratón ---- */
+(function () {
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // 1) revelado progresivo de secciones y tarjetas
+  if (!reduce && 'IntersectionObserver' in window) {
+    var sel = '.casos-top, .caso, .videos-top, .vid-card, .como h2, .paso, ' +
+              '.precios h2, .pk-card, .precios .nota, .cta-in > *, .nichos-tira .tira-tit';
+    var items = [].slice.call(document.querySelectorAll(sel));
+    items.forEach(function (el) { el.classList.add('rev'); });
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var hermanos = e.target.parentElement ? [].slice.call(e.target.parentElement.children) : [];
+        var i = Math.max(0, hermanos.indexOf(e.target));
+        e.target.style.transitionDelay = Math.min(i, 5) * 80 + 'ms';
+        e.target.classList.add('on');
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
+  // 2) las cifras de dinero suben contando al aparecer
+  var cifras = [].slice.call(document.querySelectorAll('.cifra'));
+  if (cifras.length && 'IntersectionObserver' in window) {
+    var io2 = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var el = e.target, fin = parseInt(el.dataset.n, 10) || 0;
+        io2.unobserve(el);
+        if (reduce) return;
+        var t0 = performance.now(), dur = 1200;
+        (function paso(t) {
+          var p = Math.min(1, (t - t0) / dur);
+          var v = Math.round(fin * (1 - Math.pow(1 - p, 3)));
+          // punto de miles siempre (es-ES no lo pone en números de 4 cifras)
+          el.textContent = '$' + String(v).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '/mes.';
+          if (p < 1) requestAnimationFrame(paso);
+        })(t0);
+      });
+    }, { threshold: 0.6 });
+    cifras.forEach(function (el) { io2.observe(el); });
+  }
+
+  // 3) los vídeos reales se reproducen al pasar el ratón (y se pausan al salir)
+  [].slice.call(document.querySelectorAll('.vid-card video')).forEach(function (v) {
+    v.addEventListener('mouseenter', function () { var p = v.play(); if (p && p.catch) p.catch(function(){}); });
+    v.addEventListener('mouseleave', function () { v.pause(); });
+  });
+})();
+</script>
 
 </body>
 </html>

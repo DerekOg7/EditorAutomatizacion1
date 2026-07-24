@@ -198,6 +198,77 @@ async function enviarEmail(env, para, codigo, plan) {
   return r.ok;
 }
 
+// --- Promo de lanzamiento: correo -> licencia gratis de "Creador en Ascenso" ---
+// Creador en Ascenso es BYOK (el usuario pone sus claves): regalar pruebas NO nos
+// cuesta creditos de IA. Solo hay que evitar abuso de envio de correos.
+const PROMO_DIAS = 14;      // duracion de la prueba gratis
+const PROMO_PLAN = "pro";   // codigo interno de Creador en Ascenso
+
+async function promoAscenso(request, env) {
+  if (!env.LICENSE_PRIVATE_KEY_HEX || !env.RESEND_API_KEY)
+    return json({ error: "La promo no esta configurada todavia." }, 503);
+  let b = {};
+  try { b = await request.json(); } catch (_) {}
+  const email = String(b.email || "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || email.length > 120)
+    return json({ error: "Escribe un correo valido." }, 400);
+
+  // Una promo por correo: si ya se emitio, reenviamos el MISMO codigo (idempotente).
+  const emailKey = `promo:${email}`;
+  const previo = await env.CUPOS.get(emailKey);
+
+  // Anti-abuso: tope por IP y por hora (solo para correos nuevos).
+  if (!previo) {
+    const ip = request.headers.get("CF-Connecting-IP") || "?";
+    const ipKey = `promoip:${ip}:${new Date().toISOString().slice(0, 13)}`;
+    const usos = parseInt(await env.CUPOS.get(ipKey) || "0", 10) || 0;
+    if (usos >= 5)
+      return json({ error: "Demasiadas solicitudes. Intenta mas tarde." }, 429);
+    await env.CUPOS.put(ipKey, String(usos + 1), { expirationTtl: 3600 });
+  }
+
+  const d = new Date();
+  d.setUTCDate(d.getUTCDate() + PROMO_DIAS);
+  const exp = d.toISOString().slice(0, 10);   // AAAA-MM-DD
+  const id = "promo-" + email;
+  const codigo = previo || await generarLicencia(id, PROMO_PLAN, exp, env.LICENSE_PRIVATE_KEY_HEX);
+
+  const enviado = await enviarEmailPromo(env, email, codigo, exp);
+  if (!enviado) return json({ error: "No pudimos enviar el correo. Reintenta." }, 502);
+
+  if (!previo) await env.CUPOS.put(emailKey, codigo, { expirationTtl: 90 * 86400 });
+  return json({ ok: true });
+}
+
+async function enviarEmailPromo(env, para, codigo, exp) {
+  const from = env.EMAIL_FROM || "AutoFaceless Studio <licencias@autofaceless.studio>";
+  // Solo ASCII para que NINGUN cliente de correo muestre caracteres raros.
+  const html = `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;color:#0f0f0f">
+      <h2 style="color:#c4231b">Tu prueba de Creador en Ascenso, gratis</h2>
+      <p>Gracias por probar AutoFaceless Studio. Este es tu codigo para activar
+      <b>Creador en Ascenso</b> gratis hasta el <b>${exp}</b>:</p>
+      <p style="background:#f4ece6;border:1px solid #e5e5e5;border-radius:8px;padding:14px;
+         font-family:ui-monospace,Menlo,monospace;font-size:13px;word-break:break-all">${codigo}</p>
+      <p><b>Como activarlo:</b></p>
+      <ol style="line-height:1.7">
+        <li>Descarga y abre AutoFaceless Studio (Mac o Windows).</li>
+        <li>Arriba a la derecha, entra a "Claves API / Licencia".</li>
+        <li>Pega el codigo y dale "Activar".</li>
+      </ol>
+      <p style="color:#606060;font-size:13px">Con Creador en Ascenso exportas en 1080p
+      sin marca de agua y conectas tus claves de IA. La prueba dura 14 dias; cuando
+      quieras seguir, te suscribes desde la app.</p>
+      <p style="color:#909090;font-size:12px">Dudas? Responde a este correo. - AutoFaceless Studio</p>
+    </div>`;
+  const r = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from, to: [para], subject: "Tu prueba gratis de Creador en Ascenso", html }),
+  });
+  return r.ok;
+}
+
 // fecha de vencimiento a partir de la suscripción (renovación/fin + gracia)
 function expDeSub(hastaISO) {
   const base = hastaISO ? new Date(hastaISO) : new Date(Date.now() + 35 * 86400e3);
@@ -435,6 +506,10 @@ export default {
       return pingInstalacion(request, env);
     if (request.method === "GET" && ruta === "/stats")
       return leerStats(request, env, url);
+
+    // --- Promo de lanzamiento: correo -> licencia gratis de Creador en Ascenso ---
+    if (request.method === "POST" && ruta === "/promo")
+      return promoAscenso(request, env);
 
     // --- Medidor de exportación (minutos de video al mes) ---
     if (request.method === "POST" && ruta === "/export/cobrar")

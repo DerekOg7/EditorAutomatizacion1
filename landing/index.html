@@ -110,6 +110,48 @@
   .precios-in { display: flex; flex-direction: column; gap: 34px; }
   .precios h2 { margin: 0; font: 900 46px/1 'Roboto', sans-serif; letter-spacing: -1.5px; }
   .precios .nota { font: 400 13px 'Roboto', sans-serif; color: #909090; }
+  /* --- Promo de lanzamiento (bien vistosa) --- */
+  .promo { position: relative; border-radius: 22px; overflow: hidden;
+    background: linear-gradient(120deg,#c4231b 0%,#e5382c 42%,#ff7a3d 100%);
+    box-shadow: 0 22px 50px rgba(196,35,27,.32); }
+  .promo-glow { position: absolute; inset: -40% -10%; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(255,255,255,.45), transparent 70%);
+    opacity: .5; animation: promoGlow 6s ease-in-out infinite; }
+  @keyframes promoGlow { 0%,100%{ transform: translateX(-22%) } 50%{ transform: translateX(22%) } }
+  .promo-in { position: relative; padding: 34px 40px; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .promo-badge { display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(0,0,0,.22); color: #fff; font: 800 12px/1 'Roboto', sans-serif;
+    letter-spacing: 1.2px; padding: 8px 15px; border-radius: 999px;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.28) inset; animation: promoPulse 2.2s ease-in-out infinite; }
+  @keyframes promoPulse { 0%,100%{ transform: scale(1); opacity:.95 } 50%{ transform: scale(1.045); opacity:1 } }
+  .promo-tit { margin: 0; color: #fff; font: 900 40px/1.05 'Roboto', sans-serif; letter-spacing: -1px;
+    text-shadow: 0 2px 14px rgba(0,0,0,.18); }
+  .promo-tit span { text-decoration: underline; text-decoration-color: rgba(255,255,255,.55);
+    text-underline-offset: 5px; }
+  .promo-tit em { font-style: normal; display: inline-block; background: #fff; color: #c4231b;
+    padding: 0 12px; border-radius: 10px; transform: rotate(-1.5deg); box-shadow: 0 6px 16px rgba(0,0,0,.18); }
+  .promo-sub { margin: 0; max-width: 620px; color: rgba(255,255,255,.94);
+    font: 400 16px/1.55 'Roboto', sans-serif; }
+  .promo-sub b { font-weight: 800; }
+  .promo-form { display: flex; gap: 10px; width: 100%; max-width: 540px; margin-top: 4px; }
+  .promo-form input { flex: 1; border: none; border-radius: 14px; padding: 16px 18px;
+    font: 500 16px 'Roboto', sans-serif; color: #0f0f0f; outline: none;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); }
+  .promo-form button { border: none; border-radius: 14px; padding: 16px 24px; cursor: pointer;
+    background: #141414; color: #fff; font: 800 16px 'Roboto', sans-serif; white-space: nowrap;
+    box-shadow: 0 8px 20px rgba(0,0,0,.28); transition: transform .18s ease, filter .18s ease; }
+  .promo-form button:hover { transform: translateY(-2px); filter: brightness(1.12); }
+  .promo-form button:disabled { opacity: .7; cursor: default; transform: none; }
+  .promo-nota { color: rgba(255,255,255,.82); font: 400 13px 'Roboto', sans-serif; }
+  .promo-ok { background: #0f0f0f; color: #fff; font: 800 18px 'Roboto', sans-serif;
+    border-radius: 16px; padding: 18px 26px; display: inline-flex; align-items: center; gap: 10px; }
+  @media (max-width: 720px) {
+    .promo-in { padding: 26px 20px; }
+    .promo-tit { font-size: 27px; }
+    .promo-form { flex-direction: column; }
+    .promo-glow, .promo-badge { animation: none; }
+  }
   /* tarjetas de precios (diseño unificado con la app) */
   .pk-grid { display: flex; gap: 18px; align-items: stretch; }
   .pk-card { flex: 1; background: #fff; border: 1px solid #e6dacd; border-radius: 18px;
@@ -426,6 +468,23 @@
 <section class="precios" id="precios">
   <div class="precios-in">
     <h2>Empieza gratis. Crece cuando quieras.</h2>
+
+    <!-- PROMO DE LANZAMIENTO: correo -> licencia gratis de Creador en Ascenso -->
+    <div class="promo" id="promo">
+      <div class="promo-glow"></div>
+      <div class="promo-in">
+        <span class="promo-badge">🎁 PROMO DE LANZAMIENTO · TIEMPO LIMITADO</span>
+        <h3 class="promo-tit">Prueba <span>Creador en Ascenso</span> <em>gratis 14 días</em></h3>
+        <p class="promo-sub">1080p sin marca de agua, tus claves de IA y 8× más tiempo de exportación.
+           Deja tu correo y <b>te llega tu licencia al instante</b> para activarla en la app.</p>
+        <form class="promo-form" id="form-promo">
+          <input type="email" id="promo-email" name="email" placeholder="tu@email.com" required autocomplete="email">
+          <button type="submit" id="promo-btn">Quiero mi licencia gratis →</button>
+        </form>
+        <span class="promo-nota" id="promo-nota">Sin tarjeta. Revisa tu bandeja (y spam) en unos segundos.</span>
+      </div>
+    </div>
+
     <div class="pk-grid">
       <div class="pk-card">
         <div class="pk-nom">Gratis</div>
@@ -527,6 +586,37 @@
       })
       .catch(function () {
         document.getElementById('form-nota').textContent = 'No se pudo enviar, intenta de nuevo.';
+      });
+  });
+
+  // PROMO: manda el correo al puente y este devuelve la licencia gratis por email.
+  var PUENTE = 'https://puente-autofaceless.derekog7.workers.dev';
+  var fp = document.getElementById('form-promo');
+  fp.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = (document.getElementById('promo-email').value || '').trim();
+    var btn = document.getElementById('promo-btn');
+    var nota = document.getElementById('promo-nota');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    fetch(PUENTE + '/promo', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    })
+      .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+      .then(function (res) {
+        if (res.ok && res.d && res.d.ok) {
+          fp.innerHTML = '<span class="promo-ok">✅ ¡Listo! Revisa tu correo, ' +
+            'te enviamos tu licencia.</span>';
+          nota.textContent = 'Si no llega en un par de minutos, mira en spam o promociones.';
+        } else {
+          btn.disabled = false; btn.textContent = 'Quiero mi licencia gratis →';
+          nota.textContent = (res.d && res.d.error) ? res.d.error :
+            'No se pudo enviar, intenta de nuevo.';
+        }
+      })
+      .catch(function () {
+        btn.disabled = false; btn.textContent = 'Quiero mi licencia gratis →';
+        nota.textContent = 'Sin conexión con el servidor. Intenta de nuevo.';
       });
   });
 </script>

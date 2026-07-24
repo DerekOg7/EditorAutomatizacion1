@@ -1066,6 +1066,35 @@ def _mensajes_openai(mensajes, sistema):
     return ms
 
 
+def _gemini_puente_texto(mensajes, sistema, modelo=""):
+    """IA de texto GRATIS por el puente (NUESTRA clave de Gemini), sin que el usuario
+    configure nada. Devuelve (texto|None, status). status 429 = tope diario gratis."""
+    import requests
+    mod = modelo or "gemini-flash-latest"
+    contents = [{"role": "user" if m.get("rol") == "usuario" else "model",
+                 "parts": [{"text": m.get("texto", "")}]} for m in mensajes]
+    try:
+        _, _inst = _instalacion_datos()
+        inst_id = _inst.get("id", "")
+    except Exception:
+        inst_id = ""
+    try:
+        r = requests.post(
+            PUENTE_URL + f"/gtexto/v1beta/models/{mod}:generateContent",
+            headers={"X-Inst": inst_id},
+            json={"contents": contents,
+                  "systemInstruction": {"parts": [{"text": sistema}]}},
+            timeout=180)
+    except requests.RequestException:
+        return None, 0
+    if not r.ok:
+        return None, r.status_code
+    try:
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"].strip(), 200
+    except (KeyError, IndexError):
+        return None, 200
+
+
 def chat_guion(mensajes, proveedor="gratis", modelo="", sistema=None):
     """Un turno de un asistente LLM. mensajes = [{rol, texto}, ...] con el
     historial completo (el último es del usuario). `sistema` = prompt de sistema
@@ -1151,7 +1180,17 @@ def chat_guion(mensajes, proveedor="gratis", modelo="", sistema=None):
                 f"¿Está descargado? Prueba: ollama pull {mod}")
         return r.json().get("message", {}).get("content", "").strip()
 
-    # gratis (Pollinations) — sin clave
+    # gratis — usa NUESTRA Gemini por el puente (fiable, sin pedir claves). Si el
+    # usuario llegó a su tope diario gratis, se lo decimos; si el puente falla por
+    # otra razón, cae a Pollinations como último respaldo.
+    texto, status = _gemini_puente_texto(mensajes, sistema, modelo)
+    if texto:
+        return texto
+    if status == 429:
+        err("Llegaste al límite de IA gratis por hoy. Mañana se renueva, o pon tu "
+            "propia clave de Gemini (es gratis en aistudio.google.com) en 🔑 Claves "
+            "API para uso ilimitado.")
+    # respaldo: Pollinations (sin clave)
     intentos = 0
     while intentos < 3:
         intentos += 1

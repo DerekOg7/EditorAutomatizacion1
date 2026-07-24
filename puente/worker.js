@@ -526,6 +526,48 @@ async function pexelsProxy(request, env, url) {
   }
 }
 
+// --- IA de TEXTO gratis: proxy a Gemini con NUESTRA clave, SIN licencia, para que
+// el guion y el deep search funcionen siempre sin pedir claves. Solo texto (bloquea
+// modelos de imagen, que si cuestan). Protegido con tope diario por instalacion + un
+// tope global (cortafuegos) para que nadie dispare la factura de Gemini. ---
+const IA_TOPE_DIA_INST = 40;      // peticiones/dia por instalacion
+const IA_TOPE_DIA_GLOBAL = 12000; // cortafuegos global/dia (ajustable)
+
+async function geminiTextoGratis(request, env, url) {
+  if (!env.GEMINI_API_KEY) return jsonCORS({ error: "IA no configurada" }, 503);
+  const camino = url.pathname.slice("/gtexto".length);   // /v1beta/models/<mod>:generateContent
+  if (/image|imagen/i.test(camino))                       // no regalar generacion de imagen
+    return jsonCORS({ error: "solo texto" }, 400);
+  const dia = new Date().toISOString().slice(0, 10);
+  const inst = (request.headers.get("X-Inst") || "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 64)
+               || (request.headers.get("CF-Connecting-IP") || "?");
+  const kInst = `ia:${inst}:${dia}`;
+  const kGlob = `ia:global:${dia}`;
+  const usos = parseInt(await env.CUPOS.get(kInst) || "0", 10) || 0;
+  if (usos >= IA_TOPE_DIA_INST)
+    return jsonCORS({ error: "Llegaste al limite de IA gratis por hoy. Manana se renueva, " +
+      "o pon tu propia clave para uso ilimitado." }, 429);
+  const glob = parseInt(await env.CUPOS.get(kGlob) || "0", 10) || 0;
+  if (glob >= IA_TOPE_DIA_GLOBAL)
+    return jsonCORS({ error: "IA gratis con mucha demanda ahora mismo, intenta mas tarde." }, 429);
+  const dest = new URL("https://generativelanguage.googleapis.com" + camino);
+  dest.searchParams.set("key", env.GEMINI_API_KEY);
+  let r;
+  try {
+    r = await fetch(dest, { method: "POST",
+      headers: { "Content-Type": "application/json" }, body: await request.text() });
+  } catch (e) {
+    return jsonCORS({ error: "IA no respondio" }, 502);
+  }
+  // Solo contamos las llamadas que Gemini acepto (no gastar cupo por errores).
+  if (r.ok) {
+    await env.CUPOS.put(kInst, String(usos + 1), { expirationTtl: 2 * 86400 });
+    await env.CUPOS.put(kGlob, String(glob + 1), { expirationTtl: 2 * 86400 });
+  }
+  return new Response(r.body, { status: r.status, headers: {
+    "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -560,6 +602,10 @@ export default {
     // --- Pexels compartido: imágenes/videos de stock sin que el usuario ponga clave ---
     if (ruta.startsWith("/px/"))
       return pexelsProxy(request, env, url);
+
+    // --- IA de texto gratis (guion/deep search) con NUESTRA clave de Gemini, sin licencia ---
+    if (request.method === "POST" && ruta.startsWith("/gtexto/"))
+      return geminiTextoGratis(request, env, url);
 
     // --- CORS ---
     if (request.method === "OPTIONS")

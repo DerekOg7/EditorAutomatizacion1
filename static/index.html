@@ -84,6 +84,12 @@
   .seg button:hover { background: #f2f2f2; }
   .seg button.on:hover { background: var(--oscuro2); }
   #tb-ayuda { border-radius: 18px; padding: 7px 14px; font-size: 13px; }
+  /* pantallas angostas: que la barra superior no cause scroll horizontal */
+  @media (max-width: 600px) {
+    #topbar { padding: 10px 12px; gap: 10px; }
+    #tb-der { gap: 7px; }
+    #tb-marca .sub { display: none; }
+  }
 
   /* ============ contenedor de páginas ============ */
   #paginas { flex: 1; min-height: 0; display: flex; position: relative; overflow: hidden; }
@@ -638,7 +644,9 @@
   #lic-msg { min-height: 20px; font-size: 13px; margin-top: 8px; }
   #lic-estado { font-size: 13px; color: var(--tenue); margin: -6px 0 14px; }
   /* pantalla de planes (unirse a Premium) — tarjetas iguales a la landing */
-  .lic-caja { max-width: 1060px; }
+  /* selector compuesto: la caja tiene clases "bienv-caja lic-caja" y bienv-caja
+     fija 460px mas abajo; con .bienv-caja.lic-caja ganamos por especificidad. */
+  .bienv-caja.lic-caja { max-width: 1060px; }
   .pk-grid { display: flex; gap: 18px; align-items: stretch; margin: 8px 0 16px; text-align: left; }
   .pk-card { flex: 1; background: #fff; border: 1px solid #e6dacd; border-radius: 18px;
     padding: 24px 20px 24px; display: flex; flex-direction: column; gap: 13px; position: relative;
@@ -685,7 +693,7 @@
   #lic-cerrar:hover { color: var(--texto); border-color: var(--borde2); }
   .lic-link { background: none; border: 0; color: var(--tenue); cursor: pointer; font: 600 13px 'Roboto', sans-serif; margin-top: 12px; }
   .lic-link:hover { color: var(--texto); }
-  @media (max-width: 900px) { .pk-grid { flex-direction: column; } .lic-caja { max-width: 460px; } }
+  @media (max-width: 900px) { .pk-grid { flex-direction: column; } .bienv-caja.lic-caja { max-width: 460px; } }
   #tb-lic { display: none; align-items: center; gap: 6px; background: var(--acento-suave);
     color: var(--acento); border-radius: 14px; padding: 5px 12px; font: 600 12px 'Roboto', sans-serif; }
   #tb-lic.on { display: inline-flex; }

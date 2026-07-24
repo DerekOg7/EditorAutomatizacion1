@@ -235,13 +235,50 @@
     font: 600 14.5px 'Roboto', sans-serif; color: #ece5dd; }
   .tira-chip i { font-style: normal; font-size: 18px; }
 
+  /* --- titular palabra por palabra --- */
+  .hero-txt > h1 { animation: none; }
+  .pal { display: inline-block; overflow: hidden; vertical-align: bottom;
+    padding-bottom: .09em; margin-bottom: -.09em; }
+  .pal-in { display: inline-block; animation: palIn .8s cubic-bezier(.2,.85,.3,1) both; }
+  @keyframes palIn { from { transform: translateY(108%); } to { transform: none; } }
+
+  /* --- inclinación 3D del mockup (el JS mueve --ry/--rx) --- */
+  .ventana { will-change: transform; }
+  @keyframes flota {
+    0%,100% { transform: perspective(1200px) translateY(0)    rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)); }
+    50%     { transform: perspective(1200px) translateY(-10px) rotateY(var(--ry,0deg)) rotateX(var(--rx,0deg)); }
+  }
+
+  /* --- resplandor ambiental que deriva en el hero --- */
+  .hero { position: relative; overflow: hidden; }
+  .hero > * { position: relative; z-index: 1; }
+  .hero::before { content: ""; position: absolute; width: 68vw; height: 68vw; left: -14vw; top: -24vw;
+    background: radial-gradient(circle, rgba(196,35,27,.13), transparent 62%);
+    filter: blur(18px); pointer-events: none; z-index: 0;
+    animation: deriva 20s ease-in-out infinite alternate; }
+  @keyframes deriva { from { transform: translate(0,0) scale(1); } to { transform: translate(13vw,9vw) scale(1.18); } }
+
+  /* --- destello que barre el botón principal --- */
+  .btn-hero { position: relative; overflow: hidden; }
+  .btn-hero::after { content: ""; position: absolute; top: 0; left: -60%; width: 38%; height: 100%;
+    background: linear-gradient(100deg, transparent, rgba(255,255,255,.30), transparent);
+    transform: skewX(-18deg); animation: brillo 5s ease-in-out 2.2s infinite; pointer-events: none; }
+  @keyframes brillo { 0% { left: -60%; } 20%, 100% { left: 135%; } }
+
+  /* --- barra de progreso de lectura --- */
+  #progreso { position: fixed; top: 0; left: 0; height: 3px; width: 0; z-index: 50;
+    background: linear-gradient(90deg, #c4231b, #e5382c); transition: width .08s linear; }
+
   @media (prefers-reduced-motion: reduce) {
-    .hero-txt > *, .hero-foto, .ventana, .tira-track { animation: none !important; }
+    .hero-txt > *, .hero-foto, .ventana, .tira-track, .pal-in { animation: none !important; }
+    .hero::before, .btn-hero::after { animation: none !important; }
     .rev { opacity: 1 !important; transform: none !important; transition: none !important; }
   }
 </style>
 </head>
 <body>
+
+<div id="progreso"></div>
 
 <header>
   <div class="logo">
@@ -553,6 +590,53 @@
     v.addEventListener('mouseenter', function () { var p = v.play(); if (p && p.catch) p.catch(function(){}); });
     v.addEventListener('mouseleave', function () { v.pause(); });
   });
+
+  // 4) el titular entra palabra por palabra
+  var h1 = document.querySelector('.hero h1');
+  if (h1 && !reduce) {
+    var trozos = [];
+    [].slice.call(h1.childNodes).forEach(function (n) {
+      var rojo = n.nodeType === 1 && n.tagName === 'B';
+      (n.textContent || '').split(/(\s+)/).forEach(function (w) {
+        if (!w.trim()) { if (w) trozos.push(null); return; }   // null = espacio
+        trozos.push({ w: w, rojo: rojo });
+      });
+    });
+    var i = 0;
+    h1.innerHTML = trozos.map(function (t) {
+      if (!t) return ' ';
+      var d = (0.06 + (i++) * 0.055).toFixed(3);
+      return '<span class="pal"><span class="pal-in" style="animation-delay:' + d + 's' +
+             (t.rojo ? ';color:#c4231b' : '') + '">' + t.w + '</span></span>';
+    }).join('');
+  }
+
+  // 5) el mockup se inclina siguiendo el ratón (se compone con la flotación)
+  var hero = document.querySelector('.hero'), vent = document.querySelector('.ventana');
+  if (hero && vent && !reduce && window.matchMedia('(hover: hover)').matches) {
+    hero.addEventListener('mousemove', function (e) {
+      var r = vent.getBoundingClientRect();
+      var dx = (e.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      var dy = (e.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      vent.style.setProperty('--ry', (Math.max(-1, Math.min(1, dx)) * 5).toFixed(2) + 'deg');
+      vent.style.setProperty('--rx', (Math.max(-1, Math.min(1, dy)) * -4).toFixed(2) + 'deg');
+    });
+    hero.addEventListener('mouseleave', function () {
+      vent.style.setProperty('--ry', '0deg'); vent.style.setProperty('--rx', '0deg');
+    });
+  }
+
+  // 6) barra de progreso de lectura
+  var barra = document.getElementById('progreso');
+  if (barra) {
+    var pintar = function () {
+      var h = document.documentElement.scrollHeight - window.innerHeight;
+      barra.style.width = (h > 0 ? (window.scrollY / h) * 100 : 0) + '%';
+    };
+    window.addEventListener('scroll', pintar, { passive: true });
+    window.addEventListener('resize', pintar);
+    pintar();
+  }
 })();
 </script>
 

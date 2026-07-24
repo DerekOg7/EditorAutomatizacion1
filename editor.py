@@ -1631,20 +1631,24 @@ def export_gate(minutos, proyecto=None):
     try:
         r = requests.post(PUENTE_URL + "/export/cobrar", json=cuerpo, timeout=15)
     except requests.RequestException:
-        return {"ok": False, "razon": "offline"}
-    if r.status_code >= 500:
-        return {"ok": False, "razon": "offline"}
+        return {"ok": False, "razon": "offline"}   # sin CONEXIÓN real → bloquea (sin gracia)
     try:
         d = r.json()
     except Exception:
-        return {"ok": False, "razon": "offline"}
+        d = {}
     if d.get("ok"):
         return {"ok": True, "medido": True, "cuerpo": cuerpo,
                 "restante": d.get("restante"), "plan": plan,
                 "proyecto": str(proyecto) if proyecto is not None else None,
                 "firma": firma, "minutos": cuerpo.get("minutos")}
-    return {"ok": False, "razon": "cupo", "restante": d.get("restante", 0),
-            "cap": d.get("cap"), "plan": plan}
+    if d.get("cap") is not None or d.get("restante") is not None:
+        return {"ok": False, "razon": "cupo", "restante": d.get("restante", 0),
+                "cap": d.get("cap"), "plan": plan}
+    # El servidor respondió con un error inesperado (400 "falta identificador",
+    # 5xx, etc.) y el usuario SÍ está online: no lo castigamos por un problema del
+    # servidor → dejamos exportar esta vez (sin medir). No se puede burlar apagando
+    # el wifi: eso da error de conexión y se bloquea arriba.
+    return {"ok": True, "medido": False, "plan": plan, "nota": "servidor_no_midio"}
 
 
 def export_refund(gate):
@@ -1677,16 +1681,23 @@ def export_saldo(proyecto=None):
     import requests
     try:
         r = requests.post(PUENTE_URL + "/export/saldo", json=_cuerpo_export(0), timeout=12)
+    except requests.RequestException:
+        res["sin_internet"] = True          # error de CONEXIÓN real → sin internet
+        return res
+    try:
         d = r.json() if r.ok else {}
     except Exception:
         d = {}
-    if not d:
-        res["sin_internet"] = True
-    elif d.get("ilimitado"):
+    if d.get("ilimitado"):
         res["ilimitado"] = True
-    else:
+    elif d.get("cap") is not None or d.get("restante") is not None:
         res.update({"cap": d.get("cap"), "usado": d.get("usado"),
                     "restante": d.get("restante")})
+    else:
+        # El servidor SÍ respondió, pero sin un saldo legible (400/500/etc.).
+        # NO es "sin internet": no bloqueamos el pre-chequeo; que el usuario
+        # intente exportar y el candado real (export_gate) decida.
+        res["saldo_desconocido"] = True
     return res
 
 

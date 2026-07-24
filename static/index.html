@@ -4900,6 +4900,9 @@ function renderExpTiempo(s) {
   } else if (s.sin_internet) {
     el.innerHTML = wrap('#fdf6e3', '#eddca6', `<b style="color:var(--ambar)">⚠ ${L('Necesitas internet para exportar','You need internet to export')}</b><br><span style="color:var(--tenue)">${L('Así contamos tu tiempo de video. Conéctate e inténtalo.','That\'s how we count your video time. Connect and try again.')}</span>`);
     bloquea = true;
+  } else if (s.saldo_desconocido) {
+    // El servidor no nos dio el saldo, pero hay internet: dejamos intentar exportar.
+    el.innerHTML = wrap('var(--bg)', 'var(--borde)', `<span style="color:var(--tenue)">${L('No pudimos verificar tu tiempo ahora mismo. Puedes intentar exportar de todas formas.','We could not check your time right now. You can still try to export.')}</span>`);
   } else {
     const cost = Math.max(1, Math.ceil(s.minutos_video || 0));
     const rest = Math.max(0, Math.floor(s.restante || 0)), cap = s.cap || 0;
